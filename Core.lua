@@ -380,6 +380,10 @@ function DungeonOptimizer:SlashCommand(input)
     if cmd == "scan" then
         self:ScanGroup()
     elseif cmd == "reset" then
+        if not self:IsSyncLeader() then
+            self:Print("|cffff8800Only the group leader can reset exclusions.|r")
+            return
+        end
         wipe(self.db.profile.excludedDungeons)
         self:Print(NS.L["EXCLUDED_RESET"])
         self:BroadcastExcluded()
@@ -610,6 +614,14 @@ NS.CLASS_COLORS = {
 function NS.ColorByClass(text, class)
     local color = NS.CLASS_COLORS[class] or "ffffff"
     return string.format("|cff%s%s|r", color, text)
+end
+
+-- ============================================================================
+-- SYNC LEADER: Only group/raid leader can modify exclusions
+-- ============================================================================
+function DungeonOptimizer:IsSyncLeader()
+    if not IsInGroup() then return true end -- solo = always leader
+    return UnitIsGroupLeader("player") or UnitIsGroupAssistant("player")
 end
 
 -- ============================================================================

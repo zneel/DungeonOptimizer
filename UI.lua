@@ -133,10 +133,14 @@ function UI:RefreshUI()
     countLabel:SetWidth(100)
     topGroup:AddChild(countLabel)
 
+    local isLeader = NS.Core:IsSyncLeader()
+
     local resetBtn = AceGUI:Create("Button")
     resetBtn:SetText(NS.L["RESET_EXCLUSIONS"])
     resetBtn:SetWidth(130)
+    resetBtn:SetDisabled(not isLeader)
     resetBtn:SetCallback("OnClick", function()
+        if not NS.Core:IsSyncLeader() then return end
         wipe(NS.Core.db.profile.excludedDungeons)
         NS.Core.lastRanking = NS.Core:CalculateDungeonRanking()
         self:RefreshUI()
@@ -357,12 +361,21 @@ function UI:RefreshUI()
     checkGroup:SetLayout("Flow")
     self.mainFrame:AddChild(checkGroup)
 
+    if not isLeader then
+        local lockLabel = AceGUI:Create("Label")
+        lockLabel:SetText("|cff888888Only the group leader can toggle exclusions.|r")
+        lockLabel:SetFullWidth(true)
+        checkGroup:AddChild(lockLabel)
+    end
+
     for _, dungeon in ipairs(NS.DUNGEONS) do
         local cb = AceGUI:Create("CheckBox")
         cb:SetLabel(dungeon.name)
         cb:SetValue(NS.Core.db.profile.excludedDungeons[dungeon.id] or false)
         cb:SetWidth(200)
+        cb:SetDisabled(not isLeader)
         cb:SetCallback("OnValueChanged", function(widget, event, value)
+            if not NS.Core:IsSyncLeader() then return end
             NS.Core.db.profile.excludedDungeons[dungeon.id] = value or nil
             NS.Core.lastRanking = NS.Core:CalculateDungeonRanking()
             self:RefreshUI()
