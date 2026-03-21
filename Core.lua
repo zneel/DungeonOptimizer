@@ -40,6 +40,17 @@ function NS.GetActiveBISTable()
     return NS.BIS_MYTHIC
 end
 
+-- Find which BIS slot an item maps to for a given spec
+function NS.FindBISSlot(spec, itemId)
+    local bisTable = NS.GetActiveBISTable()
+    local bisList = bisTable[spec]
+    if not bisList then return nil end
+    for slot, bisItemId in pairs(bisList) do
+        if bisItemId == itemId then return slot end
+    end
+    return nil
+end
+
 -- ============================================================================
 -- PER-PLAYER COMPLETION HELPERS
 -- ============================================================================
@@ -552,7 +563,7 @@ end
 -- ============================================================================
 -- BIS COMPARISON ENGINE
 -- ============================================================================
-function DungeonOptimizer:PlayerNeedsItem(playerData, itemId, slot)
+function DungeonOptimizer:PlayerNeedsItem(playerData, itemId)
     if not playerData or not playerData.spec then return false end
 
     local bisTable = NS.GetActiveBISTable()
@@ -638,13 +649,14 @@ function DungeonOptimizer:ScoreDungeon(dungeonId)
         local seenItems = {}
 
         for _, drop in ipairs(lootTable) do
-            if not seenItems[drop.itemId] and self:PlayerNeedsItem(playerData, drop.itemId, drop.slot) then
+            if not seenItems[drop.itemId] and self:PlayerNeedsItem(playerData, drop.itemId) then
                 seenItems[drop.itemId] = true
+                local bisSlot = NS.FindBISSlot(playerData.spec, drop.itemId)
                 table.insert(needed, {
                     itemId = drop.itemId,
-                    slot = drop.slot,
+                    slot = bisSlot,
                     itemName = drop.itemName or ("Item " .. drop.itemId),
-                    slotName = NS.SLOT_NAMES[drop.slot] or "?",
+                    slotName = NS.SLOT_NAMES[bisSlot] or "?",
                     boss = drop.boss or "",
                 })
             end

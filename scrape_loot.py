@@ -237,12 +237,11 @@ def parse_dungeon_page(html):
 
             items.append({
                 "itemId": item_id,
-                "slot": slot_id,
                 "itemName": item_name,
                 "boss": boss_name,
             })
 
-    items.sort(key=lambda x: (x["boss"], x["slot"], x["itemId"]))
+    items.sort(key=lambda x: (x["boss"], x["itemId"]))
     return items
 
 
@@ -305,7 +304,7 @@ def format_dungeon_loot(all_loot):
             name_str = json.dumps(item["itemName"]) if item["itemName"] else "nil"
             boss_str = json.dumps(item.get("boss", "")) if item.get("boss") else "nil"
             lines.append(
-                f'        {{ itemId = {item["itemId"]}, slot = {item["slot"]}, '
+                f'        {{ itemId = {item["itemId"]}, '
                 f'itemName = {name_str}, boss = {boss_str} }},'
             )
 
