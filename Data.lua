@@ -66,6 +66,9 @@ NS.BIS_OVERALL = {
         [5] = 251216, -- Maledict Vest (Nexus-Point Xenas)
         [11] = 251217, -- Occlusion of Void (Nexus-Point Xenas)
         [13] = 250256, -- Heart of Wind (Windrunner Spire)
+    
+        [16] = 251106, -- Resolute Runeglaive (Magister's Terrace)
+        [17] = 251162, -- Traitor's Talon (Maisara Caverns)
     },
     DRUID_BALANCE = {
         [11] = 251217, -- Occlusion of Void (Nexus-Point Xenas)
@@ -268,6 +271,9 @@ NS.BIS_MYTHIC = {
         [12] = 251217, -- Occlusion of Void (Nexus-Point Xenas)
         [13] = 193701, -- Algeth'ar Puzzle Box (Windrunner Spire)
         [14] = 252420, -- Solarflare Prism (Skyreach)
+    
+        [16] = 251106, -- Resolute Runeglaive (Magister's Terrace)
+        [17] = 251122, -- Shadowslash Slicer (Magister's Terrace)
     },
     DEMONHUNTER_VENGEANCE = {
         [2] = 151309, -- Necklace of the Twisting Void (Seat of the Triumvirate)
@@ -279,6 +285,8 @@ NS.BIS_MYTHIC = {
         [12] = 49812, -- Purloined Wedding Ring (Pit of Saron)
         [13] = 250256, -- Heart of Wind (Windrunner Spire)
         [14] = 252420, -- Solarflare Prism (Skyreach)
+        [16] = 251106, -- Resolute Runeglaive (Magister's Terrace)
+        [17] = 251162, -- Traitor's Talon (Maisara Caverns)
     },
     DRUID_BALANCE = {
         [2] = 50228, -- Barbed Ymirheim Choker (Pit of Saron)

@@ -172,6 +172,22 @@ function DungeonOptimizer:GET_ITEM_INFO_RECEIVED()
 end
 
 function DungeonOptimizer:GROUP_ROSTER_UPDATE()
+    -- If we left a group or joined a raid, purge stale data immediately
+    if not IsInGroup() or IsInRaid() then
+        wipe(NS.groupData)
+        wipe(NS.skippedPlayers or {})
+        if NS.keystones then wipe(NS.keystones) end
+        -- Re-scan just the player if solo
+        if not IsInGroup() and not IsInRaid() then
+            NS.Inspect:ScanGroup()
+        end
+        if NS.UI and NS.UI.mainFrame and NS.UI.mainFrame:IsShown() then
+            NS.UI:RefreshUI()
+        end
+        return
+    end
+
+    -- Normal party: debounced re-scan
     if NS.UI and NS.UI.mainFrame and NS.UI.mainFrame:IsShown() then
         if self._rosterTimer then
             self:CancelTimer(self._rosterTimer)
@@ -387,6 +403,17 @@ function DungeonOptimizer:SlashCommand(input)
         wipe(self.db.profile.excludedDungeons)
         self:Print(NS.L["EXCLUDED_RESET"])
         self:BroadcastExcluded()
+        if NS.UI and NS.UI.mainFrame and NS.UI.mainFrame:IsShown() then
+            NS.UI:RefreshUI()
+        end
+    elseif cmd == "purge" then
+        wipe(NS.groupData)
+        wipe(NS.skippedPlayers or {})
+        if NS.keystones then wipe(NS.keystones) end
+        wipe(self.db.profile.excludedDungeons)
+        self.lastRanking = nil
+        self:Print("|cff00ff00All data purged.|r Scanning fresh...")
+        NS.Inspect:ScanGroup()
         if NS.UI and NS.UI.mainFrame and NS.UI.mainFrame:IsShown() then
             NS.UI:RefreshUI()
         end

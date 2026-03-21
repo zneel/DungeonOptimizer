@@ -298,24 +298,24 @@ end
 -- Start scanning the entire group
 -- ============================================================================
 function Inspect:ScanGroup()
-    -- Don't wipe groupData — keep synced players' data
-    -- Only clear inspect-specific state
+    -- Wipe all state for a clean scan
     wipe(inspectQueue)
     wipe(NS.skippedPlayers)
+    wipe(NS.groupData)  -- Clear stale data from previous groups
     isInspecting = false
     currentInspectUnit = nil
     retryCount = 0
 
-    -- Mark existing synced data as stale but don't delete
-    -- (will be refreshed by inspect or new sync message)
+    -- Block scanning in raids — this addon is M+ only (max 5 players)
+    if IsInRaid() then
+        NS.Core:Print("|cffff8800Dungeon Optimizer is designed for M+ groups (max 5 players). Raid scanning is disabled.|r")
+        return
+    end
 
     local numMembers
     local prefix
 
-    if IsInRaid() then
-        numMembers = GetNumGroupMembers()
-        prefix = "raid"
-    elseif IsInGroup() then
+    if IsInGroup() then
         numMembers = GetNumGroupMembers()
         prefix = "party"
     else
@@ -327,10 +327,8 @@ function Inspect:ScanGroup()
     table.insert(inspectQueue, "player")
 
     if prefix then
-        local maxIndex = numMembers
-        if prefix == "party" then
-            maxIndex = numMembers - 1
-        end
+        -- In party, tokens are party1..party4, player is separate
+        local maxIndex = numMembers - 1
         for i = 1, maxIndex do
             local unit = prefix .. i
             if UnitExists(unit) and not UnitIsUnit(unit, "player") then
