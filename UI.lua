@@ -43,8 +43,8 @@ end
 -- ============================================================================
 function UI:CreateMainFrame()
     local frame = AceGUI:Create("Frame")
-    frame:SetTitle("Dungeon Optimizer - Midnight Season 1")
-    frame:SetStatusText("Right-click minimap icon to scan | /do help")
+    frame:SetTitle(NS.L["WINDOW_TITLE"])
+    frame:SetStatusText(NS.L["STATUS_TEXT"])
     frame:SetLayout("Flow")
     frame:SetWidth(780)
     frame:SetHeight(650)
@@ -69,7 +69,7 @@ function UI:RefreshUI()
     self.mainFrame:AddChild(topGroup)
 
     local scanBtn = AceGUI:Create("Button")
-    scanBtn:SetText("Scan Group")
+    scanBtn:SetText(NS.L["SCAN_GROUP"])
     scanBtn:SetWidth(140)
     scanBtn:SetCallback("OnClick", function()
         NS.Core:ScanGroup()
@@ -79,13 +79,13 @@ function UI:RefreshUI()
     local countLabel = AceGUI:Create("Label")
     local scanned = NS.Inspect:GetScannedCount()
     local totalGroup = IsInGroup() and GetNumGroupMembers() or 1
-    countLabel:SetText(string.format("  |cff00ff00%d|r / %d scanned", scanned, totalGroup))
+    countLabel:SetText(string.format(NS.L["SCANNED_COUNT"], scanned, totalGroup))
     countLabel:SetWidth(120)
     topGroup:AddChild(countLabel)
 
     -- BIS Mode dropdown
     local modeDropdown = AceGUI:Create("Dropdown")
-    modeDropdown:SetLabel("BIS Mode")
+    modeDropdown:SetLabel(NS.L["BIS_MODE"])
     modeDropdown:SetWidth(160)
     local modeList = {}
     for _, m in ipairs(NS.BIS_MODES) do
@@ -101,7 +101,7 @@ function UI:RefreshUI()
     topGroup:AddChild(modeDropdown)
 
     local resetBtn = AceGUI:Create("Button")
-    resetBtn:SetText("Reset Exclusions")
+    resetBtn:SetText(NS.L["RESET_EXCLUSIONS"])
     resetBtn:SetWidth(140)
     resetBtn:SetCallback("OnClick", function()
         wipe(NS.Core.db.profile.excludedDungeons)
@@ -113,7 +113,7 @@ function UI:RefreshUI()
     -- === GROUP SUMMARY ===
     if scanned > 0 then
         local summaryHeading = AceGUI:Create("Heading")
-        summaryHeading:SetText("Group Members")
+        summaryHeading:SetText(NS.L["GROUP_MEMBERS"])
         summaryHeading:SetFullWidth(true)
         self.mainFrame:AddChild(summaryHeading)
 
@@ -129,14 +129,55 @@ function UI:RefreshUI()
                 pct = math.floor(((total - missing) / total) * 100)
             end
             local classColor = NS.CLASS_COLORS[playerData.class] or "ffffff"
-            local specLabel = playerData.spec or "Unknown"
+            local specLabel = playerData.spec or NS.L["UNKNOWN_SPEC"]
 
-            local pLabel = AceGUI:Create("Label")
+            -- Use InteractiveLabel for hover tooltip (#6)
+            local pLabel = AceGUI:Create("InteractiveLabel")
             pLabel:SetText(string.format(
                 "|cff%s%s|r |cff888888(%s)|r : |cff00ff00%d|r/%d BIS (%d%%)",
                 classColor, playerData.name, specLabel, total - missing, total, pct
             ))
             pLabel:SetWidth(370)
+
+            -- Show BIS items on hover
+            local capturedData = playerData
+            pLabel:SetCallback("OnEnter", function(widget)
+                GameTooltip:SetOwner(widget.frame, "ANCHOR_RIGHT")
+                GameTooltip:AddLine(string.format(NS.L["BIS_LIST_HEADER"], classColor, capturedData.name, specLabel))
+                GameTooltip:AddLine(" ")
+
+                local bisTable = NS.GetActiveBISTable()
+                local bisList = bisTable[capturedData.spec]
+                if bisList then
+                    for slot, bisItemId in pairs(bisList) do
+                        local slotName = NS.SLOT_NAMES[slot] or "?"
+                        local equipped = capturedData.gear[slot]
+                        local itemName = GetItemInfo(bisItemId) or ("Item #" .. bisItemId)
+
+                        if equipped == bisItemId then
+                            GameTooltip:AddDoubleLine(
+                                slotName,
+                                "|cff00ff00" .. itemName .. " " .. NS.L["EQUIPPED"] .. "|r",
+                                0.6, 0.6, 0.6, 0, 1, 0
+                            )
+                        else
+                            GameTooltip:AddDoubleLine(
+                                slotName,
+                                "|cffff4444" .. itemName .. " " .. NS.L["MISSING"] .. "|r",
+                                0.6, 0.6, 0.6, 1, 0.27, 0.27
+                            )
+                        end
+                    end
+                else
+                    GameTooltip:AddLine(NS.L["NO_BIS_DATA"])
+                end
+
+                GameTooltip:Show()
+            end)
+            pLabel:SetCallback("OnLeave", function()
+                GameTooltip:Hide()
+            end)
+
             summaryGroup:AddChild(pLabel)
         end
 
@@ -156,7 +197,7 @@ function UI:RefreshUI()
 
     -- === DUNGEON EXCLUSION CHECKBOXES ===
     local excludeHeading = AceGUI:Create("Heading")
-    excludeHeading:SetText("Exclude Dungeons (already completed)")
+    excludeHeading:SetText(NS.L["EXCLUDE_DUNGEONS"])
     excludeHeading:SetFullWidth(true)
     self.mainFrame:AddChild(excludeHeading)
 
@@ -181,7 +222,7 @@ function UI:RefreshUI()
     -- === DUNGEON RANKING ===
     local modeLabel = modeList[NS.Core.db.profile.bisMode] or "Mythic+"
     local rankHeading = AceGUI:Create("Heading")
-    rankHeading:SetText(string.format("Dungeon Ranking - %s (best to worst)", modeLabel))
+    rankHeading:SetText(string.format(NS.L["DUNGEON_RANKING"], modeLabel))
     rankHeading:SetFullWidth(true)
     self.mainFrame:AddChild(rankHeading)
 
@@ -189,7 +230,7 @@ function UI:RefreshUI()
 
     if #ranking == 0 then
         local noData = AceGUI:Create("Label")
-        noData:SetText("|cffff0000No dungeons available. Check exclusions or scan the group.|r")
+        noData:SetText(NS.L["NO_DUNGEONS"])
         noData:SetFullWidth(true)
         self.mainFrame:AddChild(noData)
         return
@@ -231,17 +272,15 @@ function UI:CreateDungeonEntry(parent, rank, entry)
     local dungeonGroup = AceGUI:Create("InlineGroup")
     dungeonGroup:SetFullWidth(true)
 
-    local title = string.format(
-        "|cff%s#%d|r  %s  -  |cff00ff00%d upgrade(s)|r for the group",
-        rankColor, rank, dungeon.name, score
-    )
+    local upgradeText = string.format(NS.L["UPGRADES_FOR_GROUP"], score)
+    local title = string.format("|cff%s#%d|r  %s  -  %s", rankColor, rank, dungeon.name, upgradeText)
     dungeonGroup:SetTitle(title)
     dungeonGroup:SetLayout("Flow")
     parent:AddChild(dungeonGroup)
 
     if score == 0 then
         local noUpgrade = AceGUI:Create("Label")
-        noUpgrade:SetText("   |cff888888No BIS upgrades available in this dungeon.|r")
+        noUpgrade:SetText(NS.L["NO_BIS_UPGRADES"])
         noUpgrade:SetFullWidth(true)
         dungeonGroup:AddChild(noUpgrade)
         return
@@ -262,16 +301,16 @@ function UI:CreateDungeonEntry(parent, rank, entry)
         -- Player line
         local playerLabel = AceGUI:Create("Label")
         local playerText = string.format(
-            "   |cff%s%s|r  -  %d BIS item(s) needed:",
+            NS.L["BIS_ITEMS_NEEDED"],
             classColor, pInfo.name, pInfo.count
         )
         playerLabel:SetText(playerText)
         playerLabel:SetFullWidth(true)
         dungeonGroup:AddChild(playerLabel)
 
-        -- Item details
+        -- Item details with tooltip on hover (#4)
         for _, item in ipairs(pInfo.needed) do
-            local itemLabel = AceGUI:Create("Label")
+            local itemLabel = AceGUI:Create("InteractiveLabel")
 
             -- Try to load item info from cache (GetItemInfo triggers async query on first call)
             local displayName
@@ -290,6 +329,18 @@ function UI:CreateDungeonEntry(parent, rank, entry)
             )
             itemLabel:SetText(itemText)
             itemLabel:SetFullWidth(true)
+
+            -- Show WoW item tooltip on hover
+            local capturedItemId = item.itemId
+            itemLabel:SetCallback("OnEnter", function(widget)
+                GameTooltip:SetOwner(widget.frame, "ANCHOR_RIGHT")
+                GameTooltip:SetHyperlink("item:" .. capturedItemId)
+                GameTooltip:Show()
+            end)
+            itemLabel:SetCallback("OnLeave", function()
+                GameTooltip:Hide()
+            end)
+
             dungeonGroup:AddChild(itemLabel)
         end
     end

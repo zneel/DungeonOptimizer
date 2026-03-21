@@ -12,24 +12,22 @@ local ADDON_NAME, NS = ...
 NS.SLOT_IDS = { HEAD = 1, NECK = 2, SHOULDER = 3, BACK = 15, CHEST = 5, WRIST = 9, HANDS = 10, WAIST = 6, LEGS = 7, FEET = 8, FINGER1 = 11, FINGER2 = 12, TRINKET1 = 13, TRINKET2 = 14, MAINHAND = 16, OFFHAND = 17,
 }
 
-NS.SLOT_NAMES = {
-    [1] = "Head",
-    [2] = "Neck",
-    [3] = "Shoulders",
-    [5] = "Chest",
-    [6] = "Waist",
-    [7] = "Legs",
-    [8] = "Feet",
-    [9] = "Wrist",
-    [10] = "Hands",
-    [11] = "Ring 1",
-    [12] = "Ring 2",
-    [13] = "Trinket 1",
-    [14] = "Trinket 2",
-    [15] = "Back",
-    [16] = "Main Hand",
-    [17] = "Off Hand",
+-- Slot names resolved via locale (NS.L loaded from Locales.lua)
+local SLOT_LOCALE_KEYS = {
+    [1] = "SLOT_HEAD", [2] = "SLOT_NECK", [3] = "SLOT_SHOULDERS",
+    [5] = "SLOT_CHEST", [6] = "SLOT_WAIST", [7] = "SLOT_LEGS",
+    [8] = "SLOT_FEET", [9] = "SLOT_WRIST", [10] = "SLOT_HANDS",
+    [11] = "SLOT_RING1", [12] = "SLOT_RING2",
+    [13] = "SLOT_TRINKET1", [14] = "SLOT_TRINKET2",
+    [15] = "SLOT_BACK", [16] = "SLOT_MAINHAND", [17] = "SLOT_OFFHAND",
 }
+NS.SLOT_NAMES = setmetatable({}, {
+    __index = function(_, slotId)
+        local key = SLOT_LOCALE_KEYS[slotId]
+        if key and NS.L then return NS.L[key] end
+        return "Slot " .. tostring(slotId)
+    end,
+})
 
 -- ============================================================================
 -- DUNGEON LIST - Midnight Season 1 M+ Pool
@@ -100,7 +98,24 @@ NS.BIS_OVERALL = {
         [13] = 249343, -- Gaze of the Alnseer (Chimaerus in The Dreamrift)
         [14] = 249344, -- Light Company Guidon (Imperator Averzian in The Voidspire)
     },
-    -- DEMONHUNTER_DEVOURER removed: not a valid WoW spec (DH has Havoc + Vengeance only)
+    DEMONHUNTER_DEVOURER = {
+        [16] = 193710, -- Spellboon Saber (Algeth'ar Academy)
+        [17] = 193710, -- Spellboon Saber (Algeth'ar Academy)
+        [1] = 250033, -- Devouring Reaver's Intake (Tier Set)
+        [2] = 151309, -- Necklace of the Twisting Void (Seat of the Triumvirate)
+        [3] = 250031, -- Devouring Reaver's Exhaustplates (Tier Set)
+        [15] = 260312, -- Defiant Defender's Drape (Magister's Terrace)
+        [5] = 250036, -- Devouring Reaver's Engine (Tier Set)
+        [9] = 193714, -- Frenzyroot Cuffs (Algeth'ar Academy)
+        [10] = 250034, -- Devouring Reaver's Essence Grips (Tier Set)
+        [6] = 49806, -- Flayer's Black Belt (Pit of Saron)
+        [7] = 49817, -- Shaggy Wyrmleather Leggings (Pit of Saron)
+        [8] = 258577, -- Boots of Burning Focus (Skyreach)
+        [11] = 251093, -- Omission of Light (Nexus-Point Xenas)
+        [12] = 251115, -- Bifurcation Band (Magister's Terrace)
+        [13] = 250144, -- Emberwing Feather (Windrunner Spire)
+        [14] = 250256, -- Heart of Wind (Windrunner Spire)
+    },
     DEMONHUNTER_HAVOC = {
         [16] = 260408, --  (Midnight Falls)
         [17] = 251175, --  (Maisara Caverns)
@@ -771,7 +786,24 @@ NS.BIS_MYTHIC = {
         [13] = 193701, -- Algeth'ar Puzzle Box (Algeth'ar Academy)
         [14] = 252420, -- Solarflare Prism (Skyreach)
     },
-    -- DEMONHUNTER_DEVOURER removed: not a valid WoW spec
+    DEMONHUNTER_DEVOURER = {
+        [16] = 193710, -- Spellboon Saber (Algeth'ar Academy)
+        [17] = 193710, -- Spellboon Saber (Algeth'ar Academy)
+        [1] = 250033, -- Devouring Reaver's Intake (Tier Set)
+        [2] = 151309, -- Necklace of the Twisting Void (Seat of the Triumvirate)
+        [3] = 250031, -- Devouring Reaver's Exhaustplates (Tier Set)
+        [15] = 260312, -- Defiant Defender's Drape (Magister's Terrace)
+        [5] = 250036, -- Devouring Reaver's Engine (Tier Set)
+        [9] = 193714, -- Frenzyroot Cuffs (Algeth'ar Academy)
+        [10] = 250034, -- Devouring Reaver's Essence Grips (Tier Set)
+        [6] = 49806, -- Flayer's Black Belt (Pit of Saron)
+        [7] = 49817, -- Shaggy Wyrmleather Leggings (Pit of Saron)
+        [8] = 258577, -- Boots of Burning Focus (Skyreach)
+        [11] = 251093, -- Omission of Light (Nexus-Point Xenas)
+        [12] = 251115, -- Bifurcation Band (Magister's Terrace)
+        [13] = 250144, -- Emberwing Feather (Windrunner Spire)
+        [14] = 250256, -- Heart of Wind (Windrunner Spire)
+    },
     DEMONHUNTER_HAVOC = {
         [16] = 260408, --  (Midnight Falls)
         [17] = 249280, --  (Vaelgor and Ezzorak)
@@ -1441,7 +1473,24 @@ NS.BIS_RAID = {
         [13] = 249343, -- Gaze of the Alnseer (Chimaerus in The Dreamrift)
         [14] = 249344, -- Light Company Guidon (Imperator Averzian in The Voidspire)
     },
-    -- DEMONHUNTER_DEVOURER removed: not a valid WoW spec
+    DEMONHUNTER_DEVOURER = {
+        [16] = 193710, -- Spellboon Saber (Algeth'ar Academy)
+        [17] = 193710, -- Spellboon Saber (Algeth'ar Academy)
+        [1] = 250033, -- Devouring Reaver's Intake (Tier Set)
+        [2] = 151309, -- Necklace of the Twisting Void (Seat of the Triumvirate)
+        [3] = 250031, -- Devouring Reaver's Exhaustplates (Tier Set)
+        [15] = 260312, -- Defiant Defender's Drape (Magister's Terrace)
+        [5] = 250036, -- Devouring Reaver's Engine (Tier Set)
+        [9] = 193714, -- Frenzyroot Cuffs (Algeth'ar Academy)
+        [10] = 250034, -- Devouring Reaver's Essence Grips (Tier Set)
+        [6] = 49806, -- Flayer's Black Belt (Pit of Saron)
+        [7] = 49817, -- Shaggy Wyrmleather Leggings (Pit of Saron)
+        [8] = 258577, -- Boots of Burning Focus (Skyreach)
+        [11] = 251093, -- Omission of Light (Nexus-Point Xenas)
+        [12] = 251115, -- Bifurcation Band (Magister's Terrace)
+        [13] = 250144, -- Emberwing Feather (Windrunner Spire)
+        [14] = 250256, -- Heart of Wind (Windrunner Spire)
+    },
     DEMONHUNTER_HAVOC = {
         [16] = 251175, --  (Maisara Caverns)
         [1] = 251109, --  (Magister's Terrace)
@@ -2262,6 +2311,7 @@ NS.SPEC_MAP = {
     [270] = "MONK_MISTWEAVER",
     [577] = "DEMONHUNTER_HAVOC",
     [581] = "DEMONHUNTER_VENGEANCE",
+    [1456] = "DEMONHUNTER_DEVOURER",
     [1467] = "EVOKER_DEVASTATION",
     [1468] = "EVOKER_PRESERVATION",
     [1473] = "EVOKER_AUGMENTATION",

@@ -70,8 +70,8 @@ function DungeonOptimizer:OnInitialize()
         OnTooltipShow = function(tooltip)
             tooltip:AddLine("|cff00ff00Dungeon Optimizer|r")
             tooltip:AddLine(" ")
-            tooltip:AddLine("|cffeda55fLeft-click|r : Open/Close window")
-            tooltip:AddLine("|cffeda55fRight-click|r : Scan group")
+            tooltip:AddLine(NS.L["TOOLTIP_LEFT"])
+            tooltip:AddLine(NS.L["TOOLTIP_RIGHT"])
         end,
     })
 
@@ -84,7 +84,7 @@ function DungeonOptimizer:OnInitialize()
     self:RegisterChatCommand("dopt", "SlashCommand")
     self:RegisterChatCommand("dungeonopt", "SlashCommand")
 
-    self:Print("|cff00ff00Dungeon Optimizer|r loaded. Type |cffeda55f/do|r to open.")
+    self:Print(NS.L["ADDON_LOADED"])
 end
 
 function DungeonOptimizer:OnEnable()
@@ -138,15 +138,15 @@ function DungeonOptimizer:SlashCommand(input)
         self:ScanGroup()
     elseif cmd == "reset" then
         wipe(self.db.profile.excludedDungeons)
-        self:Print("Excluded dungeons reset.")
+        self:Print(NS.L["EXCLUDED_RESET"])
         if NS.UI and NS.UI.mainFrame and NS.UI.mainFrame:IsShown() then
             NS.UI:RefreshUI()
         end
     elseif cmd == "help" then
-        self:Print("|cff00ff00Dungeon Optimizer - Commands:|r")
-        self:Print("  |cffeda55f/do|r - Open/Close window")
-        self:Print("  |cffeda55f/do scan|r - Scan group members")
-        self:Print("  |cffeda55f/do reset|r - Reset excluded dungeons")
+        self:Print(NS.L["HELP_TITLE"])
+        self:Print(NS.L["HELP_OPEN"])
+        self:Print(NS.L["HELP_SCAN"])
+        self:Print(NS.L["HELP_RESET"])
     else
         NS.UI:Toggle()
     end
@@ -156,19 +156,19 @@ end
 -- GROUP SCANNING
 -- ============================================================================
 function DungeonOptimizer:ScanGroup()
-    self:Print("Scanning group...")
+    self:Print(NS.L["SCANNING_GROUP"])
     NS.Inspect:ScanGroup()
 end
 
 -- Called by Inspect module when scan is complete
 function DungeonOptimizer:OnScanComplete()
     local count = NS.Inspect:GetScannedCount()
-    self:Print(string.format("Scan complete: |cff00ff00%d|r member(s) scanned.", count))
+    self:Print(string.format(NS.L["SCAN_COMPLETE"], count))
 
     -- Report skipped players
     if NS.skippedPlayers and #NS.skippedPlayers > 0 then
         for _, msg in ipairs(NS.skippedPlayers) do
-            self:Print(string.format("  |cffff8800Skipped:|r %s", msg))
+            self:Print(string.format("  |cffff8800%s|r %s", NS.L["SKIPPED"], msg))
         end
     end
 

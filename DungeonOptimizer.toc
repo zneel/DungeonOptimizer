@@ -11,6 +11,7 @@
 
 embeds.xml
 
+Locales.lua
 Data.lua
 Inspect.lua
 Core.lua
