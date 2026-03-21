@@ -206,30 +206,42 @@ function UI:RefreshUI()
 
     -- === #23: GREAT VAULT PROGRESS ===
     local vault = NS.Core:GetVaultProgress()
-    if vault.totalRuns > 0 or (vault.slots and #vault.slots > 0) then
-        local vaultGroup = AceGUI:Create("SimpleGroup")
-        vaultGroup:SetFullWidth(true)
-        vaultGroup:SetLayout("Flow")
-        self.mainFrame:AddChild(vaultGroup)
+    if vault.slots and #vault.slots > 0 then
+        local vaultHeading = AceGUI:Create("Heading")
+        vaultHeading:SetText("Great Vault")
+        vaultHeading:SetFullWidth(true)
+        self.mainFrame:AddChild(vaultHeading)
 
-        local vaultText = "|cffffcc00Vault:|r "
-        for i, slot in ipairs(vault.slots) do
-            local color = slot.progress >= slot.threshold and "00ff00" or "ff8800"
-            vaultText = vaultText .. string.format(
-                " Slot %d: |cff%s%d/%d|r", i, color, slot.progress, slot.threshold
-            )
-            if slot.level and slot.level > 0 then
-                vaultText = vaultText .. string.format(" (+%d)", slot.level)
-            end
-        end
         if vault.hasRewards then
-            vaultText = vaultText .. "  |cff00ff00[Rewards available!]|r"
+            local rewardLabel = AceGUI:Create("Label")
+            rewardLabel:SetText("|cff00ff00Unclaimed rewards available!|r")
+            rewardLabel:SetFullWidth(true)
+            self.mainFrame:AddChild(rewardLabel)
         end
 
-        local vaultLabel = AceGUI:Create("Label")
-        vaultLabel:SetText(vaultText)
-        vaultLabel:SetFullWidth(true)
-        vaultGroup:AddChild(vaultLabel)
+        local slotNames = { "1 dungeon", "4 dungeons", "8 dungeons" }
+        for i, slot in ipairs(vault.slots) do
+            local slotGroup = AceGUI:Create("SimpleGroup")
+            slotGroup:SetFullWidth(true)
+            slotGroup:SetLayout("Flow")
+            self.mainFrame:AddChild(slotGroup)
+
+            local unlocked = slot.progress >= slot.threshold
+            local statusIcon = unlocked and "|cff00ff00[+]|r" or "|cffff8800[-]|r"
+            local progressColor = unlocked and "00ff00" or "ff8800"
+            local progressText = string.format("|cff%s%d/%d|r", progressColor, slot.progress, slot.threshold)
+
+            local keyInfo = ""
+            if slot.level and slot.level > 0 then
+                keyInfo = string.format("  |cff69ccf0(+%d key)|r", slot.level)
+            end
+
+            local label = AceGUI:Create("Label")
+            label:SetText(string.format("  %s  Slot %d (%s): %s%s",
+                statusIcon, i, slotNames[i] or "?", progressText, keyInfo))
+            label:SetFullWidth(true)
+            slotGroup:AddChild(label)
+        end
     end
 
     -- === #21: PARTY KEYSTONES ===
