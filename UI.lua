@@ -83,23 +83,6 @@ function UI:RefreshUI()
     countLabel:SetWidth(120)
     topGroup:AddChild(countLabel)
 
-    -- BIS Mode dropdown
-    local modeDropdown = AceGUI:Create("Dropdown")
-    modeDropdown:SetLabel(NS.L["BIS_MODE"])
-    modeDropdown:SetWidth(160)
-    local modeList = {}
-    for _, m in ipairs(NS.BIS_MODES) do
-        modeList[m.key] = m.label
-    end
-    modeDropdown:SetList(modeList, { "overall", "mythic", "raid" })
-    modeDropdown:SetValue(NS.Core.db.profile.bisMode or "mythic")
-    modeDropdown:SetCallback("OnValueChanged", function(widget, event, value)
-        NS.Core.db.profile.bisMode = value
-        NS.Core.lastRanking = NS.Core:CalculateDungeonRanking()
-        self:RefreshUI()
-    end)
-    topGroup:AddChild(modeDropdown)
-
     local resetBtn = AceGUI:Create("Button")
     resetBtn:SetText(NS.L["RESET_EXCLUSIONS"])
     resetBtn:SetWidth(140)
@@ -239,9 +222,8 @@ function UI:RefreshUI()
     end
 
     -- === DUNGEON RANKING ===
-    local modeLabel = modeList[NS.Core.db.profile.bisMode] or "Mythic+"
     local rankHeading = AceGUI:Create("Heading")
-    rankHeading:SetText(string.format(NS.L["DUNGEON_RANKING"], modeLabel))
+    rankHeading:SetText(string.format(NS.L["DUNGEON_RANKING"], "Mythic+"))
     rankHeading:SetFullWidth(true)
     self.mainFrame:AddChild(rankHeading)
 

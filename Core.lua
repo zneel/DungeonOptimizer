@@ -28,23 +28,9 @@ local defaults = {
     },
 }
 
--- BIS mode labels
-NS.BIS_MODES = {
-    { key = "overall", label = "Overall" },
-    { key = "mythic",  label = "Mythic+" },
-    { key = "raid",    label = "Raid" },
-}
-
--- Returns the active BIS table based on current mode
+-- Returns the BIS table (always Mythic+ — this is a dungeon optimizer)
 function NS.GetActiveBISTable()
-    local mode = NS.Core and NS.Core.db and NS.Core.db.profile.bisMode or "mythic"
-    if mode == "raid" then
-        return NS.BIS_RAID
-    elseif mode == "overall" then
-        return NS.BIS_OVERALL
-    else
-        return NS.BIS_MYTHIC
-    end
+    return NS.BIS_MYTHIC
 end
 
 -- ============================================================================
