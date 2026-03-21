@@ -31,7 +31,7 @@ local defaults = {
 -- BIS mode labels
 NS.BIS_MODES = {
     { key = "overall", label = "Overall" },
-    { key = "mythic",  label = "Mythique+" },
+    { key = "mythic",  label = "Mythic+" },
     { key = "raid",    label = "Raid" },
 }
 
@@ -70,8 +70,8 @@ function DungeonOptimizer:OnInitialize()
         OnTooltipShow = function(tooltip)
             tooltip:AddLine("|cff00ff00Dungeon Optimizer|r")
             tooltip:AddLine(" ")
-            tooltip:AddLine("|cffeda55fClic gauche|r : Ouvrir/Fermer la fenêtre")
-            tooltip:AddLine("|cffeda55fClic droit|r : Scanner le groupe")
+            tooltip:AddLine("|cffeda55fLeft-click|r : Open/Close window")
+            tooltip:AddLine("|cffeda55fRight-click|r : Scan group")
         end,
     })
 
@@ -80,10 +80,11 @@ function DungeonOptimizer:OnInitialize()
     icon:Register(ADDON_NAME, self.launcher, self.db.profile.minimap)
 
     -- Slash commands
+    self:RegisterChatCommand("do", "SlashCommand")
     self:RegisterChatCommand("dopt", "SlashCommand")
     self:RegisterChatCommand("dungeonopt", "SlashCommand")
 
-    self:Print("|cff00ff00Dungeon Optimizer|r chargé. Tapez |cffeda55f/dopt|r pour ouvrir.")
+    self:Print("|cff00ff00Dungeon Optimizer|r loaded. Type |cffeda55f/do|r to open.")
 end
 
 function DungeonOptimizer:OnEnable()
@@ -137,15 +138,15 @@ function DungeonOptimizer:SlashCommand(input)
         self:ScanGroup()
     elseif cmd == "reset" then
         wipe(self.db.profile.excludedDungeons)
-        self:Print("Donjons exclus réinitialisés.")
+        self:Print("Excluded dungeons reset.")
         if NS.UI and NS.UI.mainFrame and NS.UI.mainFrame:IsShown() then
             NS.UI:RefreshUI()
         end
     elseif cmd == "help" then
-        self:Print("|cff00ff00Dungeon Optimizer - Commandes :|r")
-        self:Print("  |cffeda55f/dopt|r - Ouvrir/Fermer la fenêtre")
-        self:Print("  |cffeda55f/dopt scan|r - Scanner le groupe")
-        self:Print("  |cffeda55f/dopt reset|r - Réinitialiser les donjons exclus")
+        self:Print("|cff00ff00Dungeon Optimizer - Commands:|r")
+        self:Print("  |cffeda55f/do|r - Open/Close window")
+        self:Print("  |cffeda55f/do scan|r - Scan group members")
+        self:Print("  |cffeda55f/do reset|r - Reset excluded dungeons")
     else
         NS.UI:Toggle()
     end
@@ -155,14 +156,21 @@ end
 -- GROUP SCANNING
 -- ============================================================================
 function DungeonOptimizer:ScanGroup()
-    self:Print("Scan du groupe en cours...")
+    self:Print("Scanning group...")
     NS.Inspect:ScanGroup()
 end
 
 -- Called by Inspect module when scan is complete
 function DungeonOptimizer:OnScanComplete()
     local count = NS.Inspect:GetScannedCount()
-    self:Print(string.format("Scan terminé : |cff00ff00%d|r membre(s) analysé(s).", count))
+    self:Print(string.format("Scan complete: |cff00ff00%d|r member(s) scanned.", count))
+
+    -- Report skipped players
+    if NS.skippedPlayers and #NS.skippedPlayers > 0 then
+        for _, msg in ipairs(NS.skippedPlayers) do
+            self:Print(string.format("  |cffff8800Skipped:|r %s", msg))
+        end
+    end
 
     -- Calculate and refresh UI
     self.lastRanking = self:CalculateDungeonRanking()

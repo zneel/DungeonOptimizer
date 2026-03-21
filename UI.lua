@@ -12,25 +12,6 @@ local UI = NS.UI
 UI.mainFrame = nil
 
 -- ============================================================================
--- CLASS ICON COORDS (for class icons in the UI)
--- ============================================================================
-local CLASS_ICON_TCOORDS = {
-    WARRIOR     = { 0, 0.25, 0, 0.25 },
-    MAGE        = { 0.25, 0.5, 0, 0.25 },
-    ROGUE       = { 0.5, 0.75, 0, 0.25 },
-    DRUID       = { 0.75, 1, 0, 0.25 },
-    HUNTER      = { 0, 0.25, 0.25, 0.5 },
-    SHAMAN      = { 0.25, 0.5, 0.25, 0.5 },
-    PRIEST      = { 0.5, 0.75, 0.25, 0.5 },
-    WARLOCK     = { 0.75, 1, 0.25, 0.5 },
-    PALADIN     = { 0, 0.25, 0.5, 0.75 },
-    DEATHKNIGHT = { 0.25, 0.5, 0.5, 0.75 },
-    MONK        = { 0.5, 0.75, 0.5, 0.75 },
-    DEMONHUNTER = { 0.75, 1, 0.5, 0.75 },
-    EVOKER      = { 0, 0.25, 0.75, 1 },
-}
-
--- ============================================================================
 -- TOGGLE MAIN WINDOW
 -- ============================================================================
 function UI:Toggle()
@@ -62,8 +43,8 @@ end
 -- ============================================================================
 function UI:CreateMainFrame()
     local frame = AceGUI:Create("Frame")
-    frame:SetTitle("Dungeon Optimizer - Midnight S1")
-    frame:SetStatusText("Clic droit minimap = scanner | /dopt help")
+    frame:SetTitle("Dungeon Optimizer - Midnight Season 1")
+    frame:SetStatusText("Right-click minimap icon to scan | /do help")
     frame:SetLayout("Flow")
     frame:SetWidth(780)
     frame:SetHeight(650)
@@ -88,8 +69,8 @@ function UI:RefreshUI()
     self.mainFrame:AddChild(topGroup)
 
     local scanBtn = AceGUI:Create("Button")
-    scanBtn:SetText("Scanner le groupe")
-    scanBtn:SetWidth(170)
+    scanBtn:SetText("Scan Group")
+    scanBtn:SetWidth(140)
     scanBtn:SetCallback("OnClick", function()
         NS.Core:ScanGroup()
     end)
@@ -97,13 +78,14 @@ function UI:RefreshUI()
 
     local countLabel = AceGUI:Create("Label")
     local scanned = NS.Inspect:GetScannedCount()
-    countLabel:SetText(string.format("  |cff00ff00%d|r scannés", scanned))
-    countLabel:SetWidth(100)
+    local totalGroup = IsInGroup() and GetNumGroupMembers() or 1
+    countLabel:SetText(string.format("  |cff00ff00%d|r / %d scanned", scanned, totalGroup))
+    countLabel:SetWidth(120)
     topGroup:AddChild(countLabel)
 
     -- BIS Mode dropdown
     local modeDropdown = AceGUI:Create("Dropdown")
-    modeDropdown:SetLabel("Mode BIS")
+    modeDropdown:SetLabel("BIS Mode")
     modeDropdown:SetWidth(160)
     local modeList = {}
     for _, m in ipairs(NS.BIS_MODES) do
@@ -119,7 +101,7 @@ function UI:RefreshUI()
     topGroup:AddChild(modeDropdown)
 
     local resetBtn = AceGUI:Create("Button")
-    resetBtn:SetText("Reset exclusions")
+    resetBtn:SetText("Reset Exclusions")
     resetBtn:SetWidth(140)
     resetBtn:SetCallback("OnClick", function()
         wipe(NS.Core.db.profile.excludedDungeons)
@@ -131,7 +113,7 @@ function UI:RefreshUI()
     -- === GROUP SUMMARY ===
     if scanned > 0 then
         local summaryHeading = AceGUI:Create("Heading")
-        summaryHeading:SetText("Membres du groupe")
+        summaryHeading:SetText("Group Members")
         summaryHeading:SetFullWidth(true)
         self.mainFrame:AddChild(summaryHeading)
 
@@ -147,7 +129,7 @@ function UI:RefreshUI()
                 pct = math.floor(((total - missing) / total) * 100)
             end
             local classColor = NS.CLASS_COLORS[playerData.class] or "ffffff"
-            local specLabel = playerData.spec or "?"
+            local specLabel = playerData.spec or "Unknown"
 
             local pLabel = AceGUI:Create("Label")
             pLabel:SetText(string.format(
@@ -157,11 +139,24 @@ function UI:RefreshUI()
             pLabel:SetWidth(370)
             summaryGroup:AddChild(pLabel)
         end
+
+        -- Show skipped players warning
+        if NS.skippedPlayers and #NS.skippedPlayers > 0 then
+            local warnLabel = AceGUI:Create("Label")
+            local warnText = "|cffff8800Skipped:|r "
+            for i, msg in ipairs(NS.skippedPlayers) do
+                if i > 1 then warnText = warnText .. ", " end
+                warnText = warnText .. msg
+            end
+            warnLabel:SetText(warnText)
+            warnLabel:SetFullWidth(true)
+            summaryGroup:AddChild(warnLabel)
+        end
     end
 
     -- === DUNGEON EXCLUSION CHECKBOXES ===
     local excludeHeading = AceGUI:Create("Heading")
-    excludeHeading:SetText("Donjons à exclure (déjà faits)")
+    excludeHeading:SetText("Exclude Dungeons (already completed)")
     excludeHeading:SetFullWidth(true)
     self.mainFrame:AddChild(excludeHeading)
 
@@ -172,9 +167,9 @@ function UI:RefreshUI()
 
     for _, dungeon in ipairs(NS.DUNGEONS) do
         local cb = AceGUI:Create("CheckBox")
-        cb:SetLabel(dungeon.shortName)
+        cb:SetLabel(dungeon.name)
         cb:SetValue(NS.Core.db.profile.excludedDungeons[dungeon.id] or false)
-        cb:SetWidth(150)
+        cb:SetWidth(200)
         cb:SetCallback("OnValueChanged", function(widget, event, value)
             NS.Core.db.profile.excludedDungeons[dungeon.id] = value or nil
             NS.Core.lastRanking = NS.Core:CalculateDungeonRanking()
@@ -184,9 +179,9 @@ function UI:RefreshUI()
     end
 
     -- === DUNGEON RANKING ===
-    local modeLabel = modeList[NS.Core.db.profile.bisMode] or "Mythique+"
+    local modeLabel = modeList[NS.Core.db.profile.bisMode] or "Mythic+"
     local rankHeading = AceGUI:Create("Heading")
-    rankHeading:SetText(string.format("Classement des donjons - %s (du plus opti au moins opti)", modeLabel))
+    rankHeading:SetText(string.format("Dungeon Ranking - %s (best to worst)", modeLabel))
     rankHeading:SetFullWidth(true)
     self.mainFrame:AddChild(rankHeading)
 
@@ -194,7 +189,7 @@ function UI:RefreshUI()
 
     if #ranking == 0 then
         local noData = AceGUI:Create("Label")
-        noData:SetText("|cffff0000Aucun donjon disponible. Vérifiez les exclusions ou scannez le groupe.|r")
+        noData:SetText("|cffff0000No dungeons available. Check exclusions or scan the group.|r")
         noData:SetFullWidth(true)
         self.mainFrame:AddChild(noData)
         return
@@ -237,7 +232,7 @@ function UI:CreateDungeonEntry(parent, rank, entry)
     dungeonGroup:SetFullWidth(true)
 
     local title = string.format(
-        "|cff%s#%d|r  %s  -  |cff00ff00%d upgrade(s)|r pour le groupe",
+        "|cff%s#%d|r  %s  -  |cff00ff00%d upgrade(s)|r for the group",
         rankColor, rank, dungeon.name, score
     )
     dungeonGroup:SetTitle(title)
@@ -246,7 +241,7 @@ function UI:CreateDungeonEntry(parent, rank, entry)
 
     if score == 0 then
         local noUpgrade = AceGUI:Create("Label")
-        noUpgrade:SetText("   |cff888888Aucun upgrade BIS disponible dans ce donjon.|r")
+        noUpgrade:SetText("   |cff888888No BIS upgrades available in this dungeon.|r")
         noUpgrade:SetFullWidth(true)
         dungeonGroup:AddChild(noUpgrade)
         return
@@ -259,6 +254,7 @@ function UI:CreateDungeonEntry(parent, rank, entry)
     end
     table.sort(sortedPlayers, function(a, b) return a.info.count > b.info.count end)
 
+    -- Show ALL players (no limit)
     for _, playerEntry in ipairs(sortedPlayers) do
         local pInfo = playerEntry.info
         local classColor = NS.CLASS_COLORS[pInfo.class] or "ffffff"
@@ -266,7 +262,7 @@ function UI:CreateDungeonEntry(parent, rank, entry)
         -- Player line
         local playerLabel = AceGUI:Create("Label")
         local playerText = string.format(
-            "   |cff%s%s|r  -  %d item(s) BIS :",
+            "   |cff%s%s|r  -  %d BIS item(s) needed:",
             classColor, pInfo.name, pInfo.count
         )
         playerLabel:SetText(playerText)
@@ -297,24 +293,4 @@ function UI:CreateDungeonEntry(parent, rank, entry)
             dungeonGroup:AddChild(itemLabel)
         end
     end
-end
-
--- ============================================================================
--- GROUP MEMBER SUMMARY
--- ============================================================================
-function UI:GetGroupSummaryText()
-    local lines = {}
-    for playerName, playerData in pairs(NS.groupData) do
-        local missing, total = NS.Core:CountMissingBIS(playerData)
-        local pct = 0
-        if total > 0 then
-            pct = math.floor(((total - missing) / total) * 100)
-        end
-        local classColor = NS.CLASS_COLORS[playerData.class] or "ffffff"
-        table.insert(lines, string.format(
-            "|cff%s%s|r : %d/%d BIS (%d%%)",
-            classColor, playerData.name, total - missing, total, pct
-        ))
-    end
-    return table.concat(lines, "\n")
 end

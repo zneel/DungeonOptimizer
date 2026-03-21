@@ -13,9 +13,15 @@ local inspectQueue = {}
 local isInspecting = false
 local currentInspectUnit = nil
 local inspectTimer = nil
+local retryCount = 0
+local MAX_RETRIES = 2
+local INSPECT_TIMEOUT = 5 -- seconds per inspect attempt
 
 -- Stored group data: { ["PlayerName-Realm"] = { spec = "KEY", gear = {[slot]=itemId} } }
 NS.groupData = {}
+
+-- Skipped players tracking (for user feedback)
+NS.skippedPlayers = {}
 
 -- ============================================================================
 -- Get the player's own spec key
@@ -107,6 +113,7 @@ function Inspect:OnInspectReady(guid)
     ClearInspectPlayer()
     isInspecting = false
     currentInspectUnit = nil
+    retryCount = 0
 
     self:ProcessNextInspect()
 end
@@ -126,13 +133,15 @@ function Inspect:ProcessNextInspect()
 
     local unit = table.remove(inspectQueue, 1)
 
-    -- Skip if unit no longer exists or is out of range
+    -- Skip if unit no longer exists or is disconnected
     if not UnitExists(unit) or not UnitIsConnected(unit) then
+        local name = UnitName(unit) or unit
+        table.insert(NS.skippedPlayers, name .. " (not available)")
         self:ProcessNextInspect()
         return
     end
 
-    -- Player doesn't need inspect
+    -- Player doesn't need inspect API
     if UnitIsUnit(unit, "player") then
         local fullName = self:GetUnitFullName(unit)
         if fullName then
@@ -150,25 +159,46 @@ function Inspect:ProcessNextInspect()
 
     -- Check range for inspect (index 2 = inspect range ~28 yards)
     if not CheckInteractDistance(unit, 2) then
-        -- Unit too far, skip
+        local name = UnitName(unit) or unit
+        table.insert(NS.skippedPlayers, name .. " (out of range)")
         self:ProcessNextInspect()
         return
     end
 
     currentInspectUnit = unit
     isInspecting = true
+    retryCount = 0
     NotifyInspect(unit)
 
-    -- Safety timeout: if inspect doesn't return in 3s, move on
+    -- Safety timeout with retry
+    self:StartInspectTimeout()
+end
+
+-- ============================================================================
+-- Inspect timeout with retry logic
+-- ============================================================================
+function Inspect:StartInspectTimeout()
     if inspectTimer then
         inspectTimer:Cancel()
     end
-    inspectTimer = C_Timer.NewTimer(3, function()
-        if isInspecting then
-            ClearInspectPlayer()
-            isInspecting = false
-            currentInspectUnit = nil
-            Inspect:ProcessNextInspect()
+    inspectTimer = C_Timer.NewTimer(INSPECT_TIMEOUT, function()
+        if isInspecting and currentInspectUnit then
+            retryCount = retryCount + 1
+            if retryCount <= MAX_RETRIES and UnitExists(currentInspectUnit) and CheckInteractDistance(currentInspectUnit, 2) then
+                -- Retry the inspect
+                ClearInspectPlayer()
+                NotifyInspect(currentInspectUnit)
+                Inspect:StartInspectTimeout()
+            else
+                -- Give up on this unit
+                local name = UnitName(currentInspectUnit) or currentInspectUnit
+                table.insert(NS.skippedPlayers, name .. " (inspect timed out)")
+                ClearInspectPlayer()
+                isInspecting = false
+                currentInspectUnit = nil
+                retryCount = 0
+                Inspect:ProcessNextInspect()
+            end
         end
     end)
 end
@@ -180,8 +210,10 @@ function Inspect:ScanGroup()
     -- Clear previous data
     wipe(NS.groupData)
     wipe(inspectQueue)
+    wipe(NS.skippedPlayers)
     isInspecting = false
     currentInspectUnit = nil
+    retryCount = 0
 
     local numMembers
     local prefix
@@ -198,7 +230,7 @@ function Inspect:ScanGroup()
         prefix = nil
     end
 
-    -- Always add the player
+    -- Always add the player first
     table.insert(inspectQueue, "player")
 
     if prefix then

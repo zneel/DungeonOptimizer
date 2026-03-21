@@ -13,36 +13,36 @@ NS.SLOT_IDS = { HEAD = 1, NECK = 2, SHOULDER = 3, BACK = 15, CHEST = 5, WRIST = 
 }
 
 NS.SLOT_NAMES = {
-    [1] = "Tête",
-    [2] = "Cou",
-    [3] = "Épaules",
-    [5] = "Torse",
-    [6] = "Taille",
-    [7] = "Jambes",
-    [8] = "Pieds",
-    [9] = "Poignets",
-    [10] = "Mains",
-    [11] = "Doigt 1",
-    [12] = "Doigt 2",
-    [13] = "Bijou 1",
-    [14] = "Bijou 2",
-    [15] = "Dos",
-    [16] = "Main droite",
-    [17] = "Main gauche",
+    [1] = "Head",
+    [2] = "Neck",
+    [3] = "Shoulders",
+    [5] = "Chest",
+    [6] = "Waist",
+    [7] = "Legs",
+    [8] = "Feet",
+    [9] = "Wrist",
+    [10] = "Hands",
+    [11] = "Ring 1",
+    [12] = "Ring 2",
+    [13] = "Trinket 1",
+    [14] = "Trinket 2",
+    [15] = "Back",
+    [16] = "Main Hand",
+    [17] = "Off Hand",
 }
 
 -- ============================================================================
 -- DUNGEON LIST - Midnight Season 1 M+ Pool
 -- ============================================================================
 NS.DUNGEONS = {
-    { id = "MAGISTER", name = "Magister's Terrace", shortName = "Magister", icon = "Interface\\Icons\\achievement_dungeon_magistersterrace_heroic" },
-    { id = "SEAT", name = "Seat of the Triumvirate", shortName = "Seat", icon = "Interface\\Icons\\achievement_dungeon_seatofthetriumvirate" },
-    { id = "SKYREACH", name = "Skyreach", shortName = "Skyreach", icon = "Interface\\Icons\\achievement_dungeon_skyreach" },
-    { id = "ALGETHAR", name = "Algeth'ar Academy", shortName = "Algeth'ar", icon = "Interface\\Icons\\achievement_dungeon_algetharacademy" },
-    { id = "PIT_OF_SARON", name = "Pit of Saron", shortName = "Pit", icon = "Interface\\Icons\\achievement_dungeon_pitofsaron" },
-    { id = "WINDRUNNER", name = "Windrunner Spire", shortName = "Windrunner", icon = "Interface\\Icons\\inv_misc_tournaments_banner_bloodelf" },
-    { id = "MAISARA", name = "Maisara Caverns", shortName = "Maisara", icon = "Interface\\Icons\\achievement_dungeon_utgardekeep" },
-    { id = "NEXUS_XENAS", name = "Nexus-Point Xenas", shortName = "Xenas", icon = "Interface\\Icons\\achievement_dungeon_nexus70" },
+    { id = "MAGISTER", name = "Magisters' Terrace", icon = "Interface\\Icons\\achievement_dungeon_magistersterrace_heroic" },
+    { id = "SEAT", name = "The Seat of the Triumvirate", icon = "Interface\\Icons\\achievement_dungeon_seatofthetriumvirate" },
+    { id = "SKYREACH", name = "Skyreach", icon = "Interface\\Icons\\achievement_dungeon_skyreach" },
+    { id = "ALGETHAR", name = "Algeth'ar Academy", icon = "Interface\\Icons\\achievement_dungeon_algetharacademy" },
+    { id = "PIT_OF_SARON", name = "Pit of Saron", icon = "Interface\\Icons\\achievement_dungeon_pitofsaron" },
+    { id = "WINDRUNNER", name = "Windrunner Spire", icon = "Interface\\Icons\\inv_misc_tournaments_banner_bloodelf" },
+    { id = "MAISARA", name = "Maisara Caverns", icon = "Interface\\Icons\\achievement_dungeon_utgardekeep" },
+    { id = "NEXUS_XENAS", name = "Nexus-Point Xenas", icon = "Interface\\Icons\\achievement_dungeon_nexus70" },
 }
 
 -- ============================================================================
