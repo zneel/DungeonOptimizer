@@ -86,6 +86,8 @@ function DungeonOptimizer:OnEnable()
 
     C_ChatInfo.RegisterAddonMessagePrefix(ADDON_MSG_PREFIX)
     C_ChatInfo.RegisterAddonMessagePrefix(ADDON_MSG_PREFIX_KEY)
+    -- Register gear sync prefix
+    NS.Inspect:RegisterSync()
 
     -- #18: Build dynamic dungeon list from C_ChallengeMode API
     self:BuildDynamicDungeonList()
@@ -736,7 +738,6 @@ function DungeonOptimizer:CHAT_MSG_ADDON(event, prefix, message, channel, sender
             end
         end
     elseif prefix == ADDON_MSG_PREFIX_KEY then
-        -- #21: keystone sync
         local mapID, level, dungeonName = message:match("^(%d+):(%d+):(.*)$")
         if mapID and level and sender then
             NS.partyKeystones[sender] = {
@@ -744,6 +745,16 @@ function DungeonOptimizer:CHAT_MSG_ADDON(event, prefix, message, channel, sender
                 level = tonumber(level),
                 dungeonName = dungeonName or "",
             }
+            if NS.UI and NS.UI.mainFrame and NS.UI.mainFrame:IsShown() then
+                NS.UI:RefreshUI()
+            end
+        end
+    elseif prefix == "DOptGear" then
+        -- Gear sync: another addon user broadcasted their equipment
+        if NS.Inspect:OnGearMessage(message, sender) then
+            self:Print(string.format("Received gear from |cff00ff00%s|r (via addon sync).", sender or "?"))
+            -- Recalculate rankings with new data
+            self.lastRanking = self:CalculateDungeonRanking()
             if NS.UI and NS.UI.mainFrame and NS.UI.mainFrame:IsShown() then
                 NS.UI:RefreshUI()
             end

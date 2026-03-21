@@ -277,13 +277,19 @@ function UI:RefreshUI()
             local classColor = NS.CLASS_COLORS[playerData.class] or "ffffff"
             local specLabel = playerData.spec or NS.L["UNKNOWN_SPEC"]
 
+            local sourceTag = ""
+            if playerData.source == "sync" then
+                sourceTag = " |cff888888[synced]|r"
+            end
+
             local pLabel = AceGUI:Create("InteractiveLabel")
             pLabel:SetText(string.format(
-                "|cff%s%s|r |cff888888(%s)|r : |cff00ff00%d|r/%d BIS (%d%%)",
+                "|cff%s%s|r |cff888888(%s)|r : |cff00ff00%d|r/%d BIS (%d%%)%s",
                 classColor, playerData.name, specLabel,
-                totalDungeon - missingDungeon, totalDungeon, dungeonPct
+                totalDungeon - missingDungeon, totalDungeon, dungeonPct,
+                sourceTag
             ))
-            pLabel:SetWidth(400)
+            pLabel:SetWidth(450)
 
             -- #19: Show BIS items with ilvl on hover
             local capturedData = playerData

@@ -1,6 +1,11 @@
 -- ============================================================================
 -- DungeonOptimizer - Inspect.lua
 -- Handles scanning group members' equipped gear and specializations
+--
+-- Two modes:
+--   1. LOCAL INSPECT: NotifyInspect (requires 28yd range)
+--   2. ADDON SYNC: Each addon user broadcasts their own gear via addon
+--      messages. No range requirement — works cross-continent.
 -- ============================================================================
 
 local ADDON_NAME, NS = ...
@@ -15,13 +20,20 @@ local currentInspectUnit = nil
 local inspectTimer = nil
 local retryCount = 0
 local MAX_RETRIES = 2
-local INSPECT_TIMEOUT = 5 -- seconds per inspect attempt
+local INSPECT_TIMEOUT = 5
 
--- Stored group data: { ["PlayerName-Realm"] = { spec = "KEY", gear = {[slot]=itemId} } }
+-- Stored group data: { ["PlayerName-Realm"] = { spec, gear, class, name, unit, ilvls, source } }
 NS.groupData = {}
-
--- Skipped players tracking (for user feedback)
 NS.skippedPlayers = {}
+
+local GEAR_MSG_PREFIX = "DOptGear"
+
+-- ============================================================================
+-- REGISTER GEAR SYNC PREFIX (called from Core:OnEnable)
+-- ============================================================================
+function Inspect:RegisterSync()
+    C_ChatInfo.RegisterAddonMessagePrefix(GEAR_MSG_PREFIX)
+end
 
 -- ============================================================================
 -- Get the player's own spec key
@@ -31,6 +43,12 @@ function Inspect:GetPlayerSpecKey()
     if not specIndex then return nil end
     local specID = GetSpecializationInfo(specIndex)
     return NS.SPEC_MAP[specID]
+end
+
+function Inspect:GetPlayerSpecID()
+    local specIndex = GetSpecialization()
+    if not specIndex then return nil end
+    return GetSpecializationInfo(specIndex)
 end
 
 -- ============================================================================
@@ -64,7 +82,6 @@ function Inspect:GetUnitSpecKey(unit)
     if UnitIsUnit(unit, "player") then
         return self:GetPlayerSpecKey()
     end
-
     local specID = GetInspectSpecialization(unit)
     if specID and specID > 0 then
         return NS.SPEC_MAP[specID]
@@ -85,7 +102,79 @@ function Inspect:GetUnitFullName(unit)
 end
 
 -- ============================================================================
--- Process inspect result for current unit
+-- GEAR BROADCAST: Serialize own gear and send to group
+-- No range required — each player reads their own equipment
+-- ============================================================================
+function Inspect:BroadcastOwnGear()
+    if not IsInGroup() then return end
+
+    local specID = self:GetPlayerSpecID()
+    local specKey = self:GetPlayerSpecKey()
+    local class = select(2, UnitClass("player"))
+    local name = UnitName("player")
+
+    if not specKey then return end
+
+    -- Format: specID|class|slot:itemId,slot:itemId,...
+    local parts = {}
+    for slotName, slotId in pairs(NS.SLOT_IDS) do
+        local itemId = self:GetEquippedItemID("player", slotId)
+        if itemId then
+            table.insert(parts, slotId .. ":" .. itemId)
+        end
+    end
+
+    local gearStr = table.concat(parts, ",")
+    local message = string.format("%s|%s|%s", tostring(specID), class, gearStr)
+
+    local channel = IsInRaid() and "RAID" or "PARTY"
+    C_ChatInfo.SendAddonMessage(GEAR_MSG_PREFIX, message, channel)
+end
+
+-- ============================================================================
+-- GEAR RECEIVE: Parse incoming gear broadcast from another addon user
+-- ============================================================================
+function Inspect:OnGearMessage(message, sender)
+    if not message or not sender then return end
+
+    -- Don't process our own messages
+    local myName = UnitName("player")
+    if sender:find(myName) then return end
+
+    local specIDStr, class, gearStr = message:match("^(%d+)|(%u+)|(.+)$")
+    if not specIDStr or not class or not gearStr then return end
+
+    local specID = tonumber(specIDStr)
+    local specKey = NS.SPEC_MAP[specID]
+
+    -- Parse gear
+    local gear = {}
+    for entry in gearStr:gmatch("[^,]+") do
+        local slotId, itemId = entry:match("^(%d+):(%d+)$")
+        if slotId and itemId then
+            gear[tonumber(slotId)] = tonumber(itemId)
+        end
+    end
+
+    -- Extract display name from sender (Name-Realm or just Name)
+    local displayName = sender:match("^([^-]+)") or sender
+
+    -- Store/update group data (merge with existing if we have inspect data)
+    NS.groupData[sender] = {
+        spec = specKey,
+        gear = gear,
+        class = class,
+        name = displayName,
+        unit = nil, -- no unit token for remote synced players
+        source = "sync", -- distinguish from local inspect
+        ilvls = {}, -- will be empty for synced players (can't read remote ilvls)
+    }
+
+    return true
+end
+
+-- ============================================================================
+-- Process inspect result for current unit (local inspect)
 -- ============================================================================
 function Inspect:OnInspectReady(guid)
     if not currentInspectUnit then return end
@@ -108,6 +197,7 @@ function Inspect:OnInspectReady(guid)
         unit = currentInspectUnit,
         class = select(2, UnitClass(currentInspectUnit)),
         name = UnitName(currentInspectUnit),
+        source = "inspect",
     }
 
     ClearInspectPlayer()
@@ -124,7 +214,8 @@ end
 function Inspect:ProcessNextInspect()
     if #inspectQueue == 0 then
         isInspecting = false
-        -- Notify core that scan is complete
+        -- After inspect queue is done, broadcast our own gear for remote users
+        self:BroadcastOwnGear()
         if NS.Core and NS.Core.OnScanComplete then
             NS.Core:OnScanComplete()
         end
@@ -133,10 +224,9 @@ function Inspect:ProcessNextInspect()
 
     local unit = table.remove(inspectQueue, 1)
 
-    -- Skip if unit no longer exists or is disconnected
     if not UnitExists(unit) or not UnitIsConnected(unit) then
         local name = UnitName(unit) or unit
-        table.insert(NS.skippedPlayers, name .. " (not available)")
+        table.insert(NS.skippedPlayers, name .. " (not available - will try sync)")
         self:ProcessNextInspect()
         return
     end
@@ -151,16 +241,21 @@ function Inspect:ProcessNextInspect()
                 unit = unit,
                 class = select(2, UnitClass(unit)),
                 name = UnitName(unit),
+                source = "local",
             }
         end
         self:ProcessNextInspect()
         return
     end
 
-    -- Check range for inspect (index 2 = inspect range ~28 yards)
+    -- Check range for inspect
     if not CheckInteractDistance(unit, 2) then
         local name = UnitName(unit) or unit
-        table.insert(NS.skippedPlayers, name .. " (out of range)")
+        -- Don't mark as skipped — they might sync via addon messages
+        local fullName = self:GetUnitFullName(unit)
+        if not NS.groupData[fullName] then
+            table.insert(NS.skippedPlayers, name .. " (out of range - waiting for sync)")
+        end
         self:ProcessNextInspect()
         return
     end
@@ -169,8 +264,6 @@ function Inspect:ProcessNextInspect()
     isInspecting = true
     retryCount = 0
     NotifyInspect(unit)
-
-    -- Safety timeout with retry
     self:StartInspectTimeout()
 end
 
@@ -185,14 +278,12 @@ function Inspect:StartInspectTimeout()
         if isInspecting and currentInspectUnit then
             retryCount = retryCount + 1
             if retryCount <= MAX_RETRIES and UnitExists(currentInspectUnit) and CheckInteractDistance(currentInspectUnit, 2) then
-                -- Retry the inspect
                 ClearInspectPlayer()
                 NotifyInspect(currentInspectUnit)
                 Inspect:StartInspectTimeout()
             else
-                -- Give up on this unit
                 local name = UnitName(currentInspectUnit) or currentInspectUnit
-                table.insert(NS.skippedPlayers, name .. " (inspect timed out)")
+                table.insert(NS.skippedPlayers, name .. " (timed out - waiting for sync)")
                 ClearInspectPlayer()
                 isInspecting = false
                 currentInspectUnit = nil
@@ -207,13 +298,16 @@ end
 -- Start scanning the entire group
 -- ============================================================================
 function Inspect:ScanGroup()
-    -- Clear previous data
-    wipe(NS.groupData)
+    -- Don't wipe groupData — keep synced players' data
+    -- Only clear inspect-specific state
     wipe(inspectQueue)
     wipe(NS.skippedPlayers)
     isInspecting = false
     currentInspectUnit = nil
     retryCount = 0
+
+    -- Mark existing synced data as stale but don't delete
+    -- (will be refreshed by inspect or new sync message)
 
     local numMembers
     local prefix
@@ -225,7 +319,6 @@ function Inspect:ScanGroup()
         numMembers = GetNumGroupMembers()
         prefix = "party"
     else
-        -- Solo: just scan the player
         numMembers = 0
         prefix = nil
     end
@@ -235,8 +328,6 @@ function Inspect:ScanGroup()
 
     if prefix then
         local maxIndex = numMembers
-        -- In a party, tokens are party1..party4 (player is separate)
-        -- In a raid, tokens are raid1..raidN (player is included)
         if prefix == "party" then
             maxIndex = numMembers - 1
         end
@@ -248,12 +339,11 @@ function Inspect:ScanGroup()
         end
     end
 
-    -- Start processing queue
     self:ProcessNextInspect()
 end
 
 -- ============================================================================
--- Get number of group members scanned
+-- Get number of group members scanned (from any source)
 -- ============================================================================
 function Inspect:GetScannedCount()
     local count = 0
