@@ -34,6 +34,26 @@ checkout() {
     fi
 }
 
+# Fallback for libs whose CurseForge SVN is broken (500 errors)
+download_single_file() {
+    local name="$1"
+    local url="$2"
+    local filename="$3"
+    local dest="$LIBS_DIR/$name"
+
+    if [ -f "$dest/$filename" ] && [ -s "$dest/$filename" ]; then
+        echo "  [OK] $name (already present)"
+    else
+        echo "  [INSTALL] $name (GitHub fallback)"
+        mkdir -p "$dest"
+        curl -sL "$url" -o "$dest/$filename"
+        if [ ! -s "$dest/$filename" ]; then
+            echo "  [ERROR] Failed to download $name"
+            exit 1
+        fi
+    fi
+}
+
 echo "[1/10] LibStub..."
 checkout "LibStub" "https://repos.curseforge.com/wow/libstub/trunk"
 
@@ -59,7 +79,10 @@ echo "[8/10] AceGUI-3.0..."
 checkout "AceGUI-3.0" "https://repos.curseforge.com/wow/ace3/trunk/AceGUI-3.0"
 
 echo "[9/10] LibDataBroker-1.1..."
-checkout "LibDataBroker-1.1" "https://repos.curseforge.com/wow/libdatabroker-1-1/trunk"
+# CurseForge SVN returns 500 for this lib — use GitHub fallback
+download_single_file "LibDataBroker-1.1" \
+    "https://raw.githubusercontent.com/tekkub/libdatabroker-1-1/master/LibDataBroker-1.1.lua" \
+    "LibDataBroker-1.1.lua"
 
 echo "[10/10] LibDBIcon-1.0..."
 checkout "LibDBIcon-1.0" "https://repos.curseforge.com/wow/libdbicon-1-0/trunk/LibDBIcon-1.0"
