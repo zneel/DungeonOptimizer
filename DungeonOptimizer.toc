@@ -1,0 +1,15 @@
+## Interface: 110100
+## Title: Dungeon Optimizer
+## Notes: Analyse le stuff du groupe et recommande le donjon mythique+ le plus optimal à farmer.
+## Author: BIS-Group
+## Version: 1.0.0
+## SavedVariables: DungeonOptimizerDB
+## DefaultState: enabled
+## X-Embeds: Ace3, LibDataBroker-1.1, LibDBIcon-1.0
+
+embeds.xml
+
+Data.lua
+Inspect.lua
+Core.lua
+UI.lua

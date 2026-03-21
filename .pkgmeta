@@ -1,0 +1,40 @@
+package-as: DungeonOptimizer
+
+externals:
+  Libs/LibStub:
+    url: https://repos.curseforge.com/wow/libstub/trunk
+    type: svn
+  Libs/CallbackHandler-1.0:
+    url: https://repos.curseforge.com/wow/callbackhandler/trunk/CallbackHandler-1.0
+    type: svn
+  Libs/AceAddon-3.0:
+    url: https://repos.curseforge.com/wow/ace3/trunk/AceAddon-3.0
+    type: svn
+  Libs/AceConsole-3.0:
+    url: https://repos.curseforge.com/wow/ace3/trunk/AceConsole-3.0
+    type: svn
+  Libs/AceDB-3.0:
+    url: https://repos.curseforge.com/wow/ace3/trunk/AceDB-3.0
+    type: svn
+  Libs/AceEvent-3.0:
+    url: https://repos.curseforge.com/wow/ace3/trunk/AceEvent-3.0
+    type: svn
+  Libs/AceTimer-3.0:
+    url: https://repos.curseforge.com/wow/ace3/trunk/AceTimer-3.0
+    type: svn
+  Libs/AceGUI-3.0:
+    url: https://repos.curseforge.com/wow/ace3/trunk/AceGUI-3.0
+    type: svn
+  Libs/LibDataBroker-1.1:
+    url: https://repos.curseforge.com/wow/libdatabroker-1-1/trunk
+    type: svn
+  Libs/LibDBIcon-1.0:
+    url: https://repos.curseforge.com/wow/libdbicon-1-0/trunk/LibDBIcon-1.0
+    type: svn
+
+ignore:
+  - CURSEFORGE_DESC.bbcode
+  - install_libs.sh
+  - README.md
+  - .github
+  - snapshots

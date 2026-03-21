@@ -1,0 +1,14 @@
+# Dependencies (downloaded via install_libs.sh / .pkgmeta)
+Libs/
+
+# Build artifacts
+*.zip
+
+# SVN metadata
+.svn/
+
+# macOS
+.DS_Store
+
+# Snapshots (scraped data)
+snapshots/
