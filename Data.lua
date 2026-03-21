@@ -2130,7 +2130,6 @@ NS.DUNGEON_LOOT = {
     },
     SEAT = {
         { itemId = 151332, slot = 10, itemName = "Voidclaw Gauntlets" },
-        { itemId = 50228, slot = 2, itemName = "Barbed Ymirheim Choker" },
         { itemId = 151336, slot = 1, itemName = nil },
         { itemId = 151321, slot = 9, itemName = nil },
         { itemId = 258514, slot = 16, itemName = nil },
@@ -2260,7 +2259,6 @@ NS.DUNGEON_LOOT = {
         { itemId = 251093, slot = 11, itemName = nil },
         { itemId = 251206, slot = 15, itemName = nil },
         { itemId = 251201, slot = 16, itemName = nil },
-        { itemId = 251175, slot = 16, itemName = nil },
         { itemId = 251213, slot = 3, itemName = "Nysarra's Mantle" },
         { itemId = 258047, slot = 16, itemName = "Splitshroud Stinger" },
         { itemId = 251115, slot = 11, itemName = "Omission of Light" },

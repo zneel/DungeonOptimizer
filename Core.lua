@@ -230,11 +230,20 @@ function DungeonOptimizer:CountMissingBIS(playerData)
 
     local total = 0
     local missing = 0
+    local seenBisItems = {} -- Avoid counting same item twice for ring/trinket pairs
 
     for slot, bisItemId in pairs(bisList) do
-        total = total + 1
-        if playerData.gear[slot] ~= bisItemId then
-            missing = missing + 1
+        -- For paired slots (rings 11/12, trinkets 13/14), only count unique items
+        local isPaired = (slot == 12 or slot == 14)
+        local pairSlot = isPaired and (slot - 1) or nil
+
+        if isPaired and bisList[pairSlot] == bisItemId then
+            -- Same item in both paired slots, already counted via slot 11/13
+        else
+            total = total + 1
+            if playerData.gear[slot] ~= bisItemId then
+                missing = missing + 1
+            end
         end
     end
 
@@ -256,9 +265,11 @@ function DungeonOptimizer:ScoreDungeon(dungeonId)
 
     for playerName, playerData in pairs(NS.groupData) do
         local needed = {}
+        local seenItems = {} -- Deduplicate: same itemId should only appear once per player
 
         for _, drop in ipairs(lootTable) do
-            if self:PlayerNeedsItem(playerData, drop.itemId, drop.slot) then
+            if not seenItems[drop.itemId] and self:PlayerNeedsItem(playerData, drop.itemId, drop.slot) then
+                seenItems[drop.itemId] = true
                 table.insert(needed, {
                     itemId = drop.itemId,
                     slot = drop.slot,
