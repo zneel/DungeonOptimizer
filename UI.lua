@@ -374,7 +374,8 @@ function UI:CreateDungeonEntry(parent, rank, entry)
                 local capturedItemId = item.itemId
                 itemLabel:SetCallback("OnEnter", function(widget)
                     GameTooltip:SetOwner(widget.frame, "ANCHOR_RIGHT")
-                    GameTooltip:SetHyperlink("item:" .. capturedItemId .. "::::::::::::12806")
+                    -- Use SetItemByID for reliable tooltip display
+                    GameTooltip:SetItemByID(capturedItemId)
                     GameTooltip:Show()
                 end)
                 itemLabel:SetCallback("OnLeave", function()
