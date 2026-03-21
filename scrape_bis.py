@@ -184,55 +184,39 @@ def parse_slot_name(raw):
     return SLOT_MAP.get(clean)
 
 
-def parse_bis_table(soup: BeautifulSoup, table_index: int) -> dict:
-    """
-    Parse a BIS table from the page.
-    table_index: 0 = Overall, 1 = Mythic+, 2 = Raid
-    """
-    tables = soup.find_all("table")
-    if table_index >= len(tables):
-        return {}
-
-    table = tables[table_index]
-    rows = table.find_all("tr")
-
+def parse_table_element(table_el, warn_unknown_slots=False) -> dict:
+    """Parse a single HTML table element into a dict of slot_id -> item info."""
     items = {}
-    for row in rows:
+    for row in table_el.find_all("tr"):
         cells = row.find_all("td")
         if len(cells) < 2:
             continue
 
-        # Column 0: Slot name
         slot_text = cells[0].get_text(strip=True)
         slot_id = parse_slot_name(slot_text)
         if slot_id is None:
-            # Try removing bold tags
             for strong in cells[0].find_all("strong"):
                 slot_text = strong.get_text(strip=True)
             slot_id = parse_slot_name(slot_text)
         if slot_id is None:
-            print(f"  WARNING: Unknown slot '{slot_text}'", file=sys.stderr)
+            if warn_unknown_slots:
+                print(f"  WARNING: Unknown slot '{slot_text}'", file=sys.stderr)
             continue
 
-        # Column 1: Item (extract first item ID — the primary BIS item)
         cell_html = str(cells[1])
         item_id = extract_item_id(cell_html)
         if not item_id:
             continue
 
         item_name = extract_item_name(cells[1])
-
-        # Column 2: Source (if present)
         source = extract_source(cells[2]) if len(cells) > 2 else ""
 
-        # Don't overwrite if we already have this slot (first item wins)
         if slot_id not in items:
             items[slot_id] = {
                 "itemId": item_id,
                 "itemName": item_name,
                 "source": source,
             }
-
     return items
 
 
@@ -242,12 +226,9 @@ def parse_page(html: str) -> dict:
     Returns: { "overall": {slot: item}, "mythic": {...}, "raid": {...} }
     """
     soup = BeautifulSoup(html, "html.parser")
-
-    # Find section headers to identify which table is which
-    # Pattern: "Overall BiS" = first table, "Mythic+" = second, "Raid" = third
     result = {}
 
-    # Find all content divs with headings
+    # Find section headers to identify which table is which
     headings = soup.find_all(["h2", "h3"])
     table_sections = []
 
@@ -260,19 +241,16 @@ def parse_page(html: str) -> dict:
         elif "overall" in text and "bis" in text:
             table_sections.append(("overall", h))
         elif "bis list for" in text and "mythic" not in text and "raid" not in text:
-            # Section 2.1 "BiS List for <spec>" = Overall
             table_sections.append(("overall", h))
 
     # Map each section to its following table
     all_tables = soup.find_all("table")
 
     for section_name, heading in table_sections:
-        # Find the next table after this heading
         next_el = heading.parent
         while next_el:
             next_el = next_el.find_next_sibling()
             if not next_el:
-                # Go up to parent and try siblings
                 next_el = heading.parent.find_next_sibling()
                 break
             if next_el.name == "table":
@@ -283,71 +261,14 @@ def parse_page(html: str) -> dict:
                 break
 
         if next_el and next_el.name == "table":
-            items = {}
-            rows = next_el.find_all("tr")
-            for row in rows:
-                cells = row.find_all("td")
-                if len(cells) < 2:
-                    continue
-
-                slot_text = cells[0].get_text(strip=True)
-                slot_id = parse_slot_name(slot_text)
-                if slot_id is None:
-                    for strong in cells[0].find_all("strong"):
-                        slot_text = strong.get_text(strip=True)
-                    slot_id = parse_slot_name(slot_text)
-                if slot_id is None:
-                    continue
-
-                cell_html = str(cells[1])
-                item_id = extract_item_id(cell_html)
-                if not item_id:
-                    continue
-
-                item_name = extract_item_name(cells[1])
-                source = extract_source(cells[2]) if len(cells) > 2 else ""
-
-                if slot_id not in items:
-                    items[slot_id] = {
-                        "itemId": item_id,
-                        "itemName": item_name,
-                        "source": source,
-                    }
-
-            result[section_name] = items
+            result[section_name] = parse_table_element(next_el)
 
     # Fallback: if we didn't find section headers, use table order
     if not result and len(all_tables) >= 1:
         labels = ["overall", "mythic", "raid"]
-        for i, table in enumerate(all_tables[:3]):
-            items = {}
-            rows = table.find_all("tr")
-            for row in rows:
-                cells = row.find_all("td")
-                if len(cells) < 2:
-                    continue
-                slot_text = cells[0].get_text(strip=True)
-                slot_id = parse_slot_name(slot_text)
-                if slot_id is None:
-                    for strong in cells[0].find_all("strong"):
-                        slot_text = strong.get_text(strip=True)
-                    slot_id = parse_slot_name(slot_text)
-                if slot_id is None:
-                    continue
-                cell_html = str(cells[1])
-                item_id = extract_item_id(cell_html)
-                if not item_id:
-                    continue
-                item_name = extract_item_name(cells[1])
-                source = extract_source(cells[2]) if len(cells) > 2 else ""
-                if slot_id not in items:
-                    items[slot_id] = {
-                        "itemId": item_id,
-                        "itemName": item_name,
-                        "source": source,
-                    }
+        for i, table_el in enumerate(all_tables[:3]):
             if i < len(labels):
-                result[labels[i]] = items
+                result[labels[i]] = parse_table_element(table_el)
 
     return result
 
@@ -429,23 +350,11 @@ def generate_lua(all_data: dict) -> str:
 
     sections = []
 
-    # Overall
-    overall = {}
-    for spec, data in all_data.items():
-        overall[spec] = data.get("overall", {})
-    sections.append(format_bis_table("BIS_OVERALL", overall))
-
     # Mythic+
     mythic = {}
     for spec, data in all_data.items():
-        mythic[spec] = data.get("mythic", {})
+        mythic[spec] = data.get("mythic", data.get("overall", {}))
     sections.append(format_bis_table("BIS_MYTHIC", mythic))
-
-    # Raid
-    raid = {}
-    for spec, data in all_data.items():
-        raid[spec] = data.get("raid", {})
-    sections.append(format_bis_table("BIS_RAID", raid))
 
     return header + "\n\n".join(sections)
 
@@ -527,8 +436,8 @@ def main():
         if out_path.exists() and out_path.name == "Data.lua":
             existing = out_path.read_text(encoding="utf-8")
 
-            # Replace BIS_OVERALL, BIS_MYTHIC, BIS_RAID sections
-            for table_name in ["BIS_OVERALL", "BIS_MYTHIC", "BIS_RAID"]:
+            # Replace BIS_MYTHIC section
+            for table_name in ["BIS_MYTHIC"]:
                 pattern = rf"NS\.{table_name}\s*=\s*\{{.*?\n\}}"
                 if args.json:
                     continue

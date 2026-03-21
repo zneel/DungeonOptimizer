@@ -331,16 +331,7 @@ def main():
                         help="Delay between requests (seconds)")
     parser.add_argument("--json", action="store_true", help="JSON output")
 
-    # Also support the Wowhead loot-table.html format
-    parser.add_argument("--wowhead", type=str,
-                        help="Parse Wowhead M+ rewards HTML (loot-table.html)")
     args = parser.parse_args()
-
-    # Wowhead mode: use the existing loot-table.html parser
-    if args.wowhead:
-        from scrape_loot_wowhead import parse_loot_page_wowhead
-        # (This is handled by a separate import if needed)
-        pass
 
     all_loot = {}
     dungeon_filter = set(args.dungeons) if args.dungeons else None

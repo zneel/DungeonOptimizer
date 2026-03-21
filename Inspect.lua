@@ -138,8 +138,8 @@ function Inspect:OnGearMessage(message, sender)
     if not message or not sender then return end
 
     -- Don't process our own messages
-    local myName = UnitName("player")
-    if sender:find(myName) then return end
+    local myFullName = self:GetUnitFullName("player")
+    if myFullName and sender == myFullName then return end
 
     local specIDStr, class, gearStr = message:match("^(%d+)|(%u+)|(.+)$")
     if not specIDStr or not class or not gearStr then return end

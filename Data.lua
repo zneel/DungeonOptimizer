@@ -43,180 +43,6 @@ NS.DUNGEONS = {
     { id = "NEXUS_XENAS", name = "Nexus-Point Xenas", icon = "Interface\\Icons\\achievement_dungeon_nexus70" },
 }
 
--- ============================================================================
--- BIS LISTS - OVERALL (from Icy Veins, Midnight Season 1)
--- ============================================================================
-NS.BIS_OVERALL = {
-    DEATHKNIGHT_BLOOD = {
-        [16] = 251168, -- Liferipper's Cutlass (Maisara Caverns)
-        [15] = 260312, -- Defiant Defender's Drape (Magister's Terrace)
-        [10] = 151332, -- Voidclaw Gauntlets (Seat of the Triumvirate)
-        [6] = 49808, -- Bent Gold Belt (Pit of Saron)
-    },
-    DEATHKNIGHT_FROST = {
-        [3] = 50234, -- Shoulderplates of Frozen Blood (Pit of Saron)
-        [11] = 193708, -- Platinum Star Band (Algeth'ar Academy)
-    },
-    DEATHKNIGHT_UNHOLY = {
-        [3] = 50234, -- Shoulderplates of Frozen Blood (Pit of Saron)
-        [11] = 193708, -- Platinum Star Band (Algeth'ar Academy)
-    },
-    DEMONHUNTER_VENGEANCE = {
-        [15] = 260312, -- Defiant Defender's Drape (Magister's Terrace)
-        [5] = 251216, -- Maledict Vest (Nexus-Point Xenas)
-        [11] = 251217, -- Occlusion of Void (Nexus-Point Xenas)
-        [13] = 250256, -- Heart of Wind (Windrunner Spire)
-    
-        [16] = 251106, -- Resolute Runeglaive (Magister's Terrace)
-        [17] = 251162, -- Traitor's Talon (Maisara Caverns)
-    },
-    DRUID_BALANCE = {
-        [11] = 251217, -- Occlusion of Void (Nexus-Point Xenas)
-        [12] = 251093, -- Omission of Light (Nexus-Point Xenas)
-    },
-    DRUID_GUARDIAN = {
-        [1] = 151336, -- Voidlashed Hood (Seat of the Triumvirate)
-        [11] = 251217, -- Occlusion of Void (Nexus-Point Xenas)
-        [12] = 251093, -- Omission of Light (Nexus-Point Xenas)
-        [14] = 193701, -- Algeth'ar Puzzle Box (Algeth'ar Academy)
-    },
-    DRUID_RESTORATION = {
-        [5] = 251216, -- Maledict Vest (Nexus-Point Xenas)
-        [9] = 193714, -- Frenzyroot Cuffs (Algeth'ar Academy)
-        [8] = 251210, -- Eclipse Espadrilles (Nexus-Point Xenas)
-    },
-    EVOKER_AUGMENTATION = {
-        [6] = 49810, -- Scabrous Zombie Leather Belt (Pit of Saron)
-    },
-    EVOKER_DEVASTATION = {
-        [6] = 49810, -- Scabrous Zombie Leather Belt (Pit of Saron)
-    },
-    EVOKER_PRESERVATION = {
-        [16] = 258514, -- Umbral Spire of Zuraal (Seat of the Triumvirate)
-        [15] = 251206, -- Fluxweave Cloak (Nexus-Point Xenas)
-        [9] = 251079, -- Amberfrond Bracers (Windrunner Spire)
-    },
-    HUNTER_BEASTMASTERY = {
-        [3] = 151323, -- Pauldrons of the Void Hunter (Seat of the Triumvirate)
-        [14] = 193701, -- Algeth'ar Puzzle Box (Algeth'ar Academy)
-    },
-    HUNTER_MARKSMANSHIP = {
-        [3] = 151323, -- Pauldrons of the Void Hunter (Seat of the Triumvirate)
-        [14] = 193701, -- Algeth'ar Puzzle Box (Algeth'ar Academy)
-    },
-    HUNTER_SURVIVAL = {
-        [3] = 151323, -- Pauldrons of the Void Hunter (Seat of the Triumvirate)
-        [11] = 251217, -- Occlusion of Void (Nexus-Point Xenas)
-        [12] = 251093, -- Omission of Light (Nexus-Point Xenas)
-    },
-    MAGE_ARCANE = {
-        [16] = 258218, -- Skybreaker's Blade (The Great Vault / Skyreach)
-        [17] = 251094, -- Sigil of the Restless Heart (The Great Vault / Windrunner Spire)
-        [7] = 251090, -- Commander's Faded Breeches (The Great Vault / Windrunner Spire)
-    },
-    MAGE_FIRE = {
-        [13] = 250144, -- Emberwing Feather (The Great Vault / Windrunner Spire)
-    },
-    MAGE_FROST = {
-        [16] = 258218, -- Skybreaker's Blade (Skyreach)
-        [3] = 251085, -- Mantle of Dark Devotion (Windrunner Spire)
-        [15] = 258575, -- Rigid Scale Greatcloak (Skyreach)
-    },
-    MONK_BREWMASTER = {
-        [6] = 251082, -- Snapvine Cinch (Windrunner Spire)
-        [8] = 151317, -- Footpads of Seeping Dread (Seat of the Triumvirate)
-    },
-    MONK_MISTWEAVER = {
-        [16] = 258050, -- Arcanic of the High Sage (Skyreach)
-        [8] = 251210, -- Eclipse Espadrilles (Nexus-Point Xenas)
-        [14] = 250144, -- Emberwing Feather (Windrunner Spire)
-    },
-    MONK_WINDWALKER = {
-        [16] = 251162, -- Traitor's Talon (Maisara Caverns)
-        [6] = 251082, -- Snapvine Cinch (Windrunner Spire)
-        [14] = 193701, -- Algeth'ar Puzzle Box (Algeth'ar Academy)
-    },
-    PALADIN_HOLY = {
-        [17] = 258049, -- Viryx's Indomitable Bulwark (Skyreach)
-    },
-    PALADIN_PROTECTION = {
-        [2] = 251096, -- Pendant of Aching Grief (Windrunner Spire)
-        [10] = 151332, -- Voidclaw Gauntlets (Seat of the Triumvirate)
-        [11] = 251217, -- Occlusion of Void (Nexus-Point Xenas)
-        [14] = 193701, -- Algeth'ar Puzzle Box (Algeth'ar Academy)
-    },
-    PALADIN_RETRIBUTION = {
-        [10] = 151332, -- Voidclaw Gauntlets (Seat of the Triumvirate)
-        [13] = 193701, -- Algeth'ar Puzzle Box (Algeth'ar Academy)
-    },
-    PRIEST_DISCIPLINE = {
-        [8] = 258584, -- Lightbinder Treads (Skyreach)
-        [12] = 251093, -- Omission of Light (Nexus-Point Xenas)
-    },
-    PRIEST_HOLY = {
-        [8] = 251167, -- Nightprey Stalkers (Maisara Caverns)
-    },
-    PRIEST_SHADOW = {
-        [10] = 251172, -- Vilehex Bonds (Maisara Caverns)
-        [8] = 258584, -- Lightbinder Treads (Skyreach)
-    },
-    ROGUE_ASSASSINATION = {
-        [15] = 260312, -- Defiant Defender's Drape (Magister's Terrace)
-        [7] = 251087, -- Legwraps of Lingering Legacies (Windrunner Spire)
-        [13] = 193701, -- Algeth'ar Puzzle Box (Algeth'ar Academy)
-    },
-    ROGUE_OUTLAW = {
-        [1] = 151336, -- Voidlashed Hood (Seat of the Triumvirate)
-        [2] = 50228, -- Barbed Ymirheim Choker (Pit of Saron)
-        [9] = 50264, -- Chewed Leather Wristguards (Pit of Saron)
-    },
-    ROGUE_SUBTLETY = {
-        [15] = 258575, -- Rigid Scale Greatcloak (Skyreach)
-        [7] = 49817, -- Shaggy Wyrmleather Leggings (Pit of Saron)
-        [11] = 193708, -- Platinum Star Band (Algeth'ar Academy)
-        [12] = 251115, -- Bifurcation Band (Magister's Terrace)
-    },
-    SHAMAN_ELEMENTAL = {
-        [16] = 251083, -- Excavating Cudgel (Windrunner Spire)
-        [17] = 251105, -- Ward of the Spellbreaker (Magister's Terrace)
-        [7] = 251215, -- Greaves of the Divine Guile (Nexus-Point Xenas)
-        [11] = 193708, -- Platinum Star Band (Algeth'ar Academy)
-        [13] = 250144, -- Emberwing Feather (Windrunner Spire)
-    },
-    SHAMAN_RESTORATION = {
-        [11] = 151308, -- Eredath Seal of Nobility (Seat of the Triumvirate)
-    },
-    WARLOCK_AFFLICTION = {
-        [16] = 251111, -- Splitshroud Stinger (Magister's Terrace)
-        [6] = 251102, -- Clasp of Compliance (Magister's Terrace)
-        [12] = 251217, -- Occlusion of Void (Nexus-Point Xenas)
-        [13] = 250144, -- Emberwing Feather (Windrunner Spire)
-    },
-    WARLOCK_DEMONOLOGY = {
-        [16] = 258047, -- Spire of the Furious Construct (Skyreach)
-        [3] = 251085, -- Mantle of Dark Devotion (Windrunner Spire)
-        [13] = 250144, -- Emberwing Feather (Windrunner Spire)
-    },
-    WARLOCK_DESTRUCTION = {
-        [16] = 258047, -- Spire of the Furious Construct (Skyreach)
-        [3] = 251085, -- Mantle of Dark Devotion (Windrunner Spire)
-    },
-    WARRIOR_ARMS = {
-        [10] = 251081, -- Embergrove Grasps (Windrunner Spire)
-        [12] = 251217, -- Occlusion of Void (Nexus-Point Xenas)
-    },
-    WARRIOR_FURY = {
-        [15] = 258575, -- Rigid Scale Greatcloak (Skyreach)
-        [10] = 151332, -- Voidclaw Gauntlets (Seat of the Triumvirate)
-        [12] = 193708, -- Platinum Star Band (Algeth'ar Academy)
-    },
-    WARRIOR_PROTECTION = {
-        [17] = 251105, -- Ward of the Spellbreaker (Magister's Terrace)
-        [10] = 151332, -- Voidclaw Gauntlets (Seat of the Triumvirate)
-        [12] = 251217, -- Occlusion of Void (Nexus-Point Xenas)
-        [14] = 193701, -- Algeth'ar Puzzle Box (Algeth'ar Academy , only BiS if you can use it consistently.)
-    },
-}
 
 -- ============================================================================
 -- BIS LISTS - MYTHIC (from Icy Veins, Midnight Season 1)
@@ -778,7 +604,7 @@ NS.DUNGEON_LOOT = {
         { itemId = 251121, slot = 8, itemName = "Domanaar's Dire Treads", boss = "Degentrius" },
         { itemId = 250257, slot = 13, itemName = "Eye of the Drowning Void", boss = "Degentrius" },
         { itemId = 251117, slot = 16, itemName = "Whirling Voidcleaver", boss = "Degentrius" },
-        { itemId = 251122, slot = 16, itemName = "Shadowslash Slicer", boss = "Degentrius" },
+        { itemId = 251122, slot = 17, itemName = "Shadowslash Slicer", boss = "Degentrius" },
         { itemId = 251114, slot = 5, itemName = "Voidwarped Oozemail", boss = "Gemellus" },
         { itemId = 251112, slot = 6, itemName = "Shadowsplit Girdle", boss = "Gemellus" },
         { itemId = 251113, slot = 10, itemName = "Gloves of Viscous Goo", boss = "Gemellus" },
@@ -799,7 +625,7 @@ NS.DUNGEON_LOOT = {
         { itemId = 251166, slot = 6, itemName = "Falconer's Cinch", boss = "Muro'jin and Nekraxx" },
         { itemId = 251167, slot = 8, itemName = "Nightprey Stalkers", boss = "Muro'jin and Nekraxx" },
         { itemId = 263193, slot = 9, itemName = "Trollhunter's Bands", boss = "Muro'jin and Nekraxx" },
-        { itemId = 251162, slot = 16, itemName = "Traitor's Talon", boss = "Muro'jin and Nekraxx" },
+        { itemId = 251162, slot = 17, itemName = "Traitor's Talon", boss = "Muro'jin and Nekraxx" },
         { itemId = 251174, slot = 16, itemName = "Deceiver's Rotbow", boss = "Muro'jin and Nekraxx" },
         { itemId = 251177, slot = 1, itemName = "Fetid Vilecrown", boss = "Rak'tul, Vessel of Souls" },
         { itemId = 251164, slot = 3, itemName = "Amalgamation's Harness", boss = "Rak'tul, Vessel of Souls" },

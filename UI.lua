@@ -12,6 +12,16 @@ local UI = NS.UI
 UI.mainFrame = nil
 UI._wasShownBeforeRun = nil
 
+function UI:IsVisible()
+    return self.mainFrame and self.mainFrame:IsShown()
+end
+
+function UI:RefreshIfVisible()
+    if self:IsVisible() then
+        self:RefreshUI()
+    end
+end
+
 function UI:Toggle()
     if self.mainFrame and self.mainFrame:IsShown() then
         self.mainFrame:Hide()
@@ -133,18 +143,16 @@ function UI:RefreshUI()
     countLabel:SetWidth(100)
     topGroup:AddChild(countLabel)
 
-    local isLeader = NS.Core:IsSyncLeader()
-
     local resetBtn = AceGUI:Create("Button")
     resetBtn:SetText(NS.L["RESET_EXCLUSIONS"])
-    resetBtn:SetWidth(130)
-    resetBtn:SetDisabled(not isLeader)
+    resetBtn:SetWidth(150)
     resetBtn:SetCallback("OnClick", function()
-        if not NS.Core:IsSyncLeader() then return end
         wipe(NS.Core.db.profile.excludedDungeons)
+        local myName = NS.Inspect:GetUnitFullName("player")
+        if myName then NS.groupCompletions[myName] = {} end
         NS.Core.lastRanking = NS.Core:CalculateDungeonRanking()
         self:RefreshUI()
-        NS.Core:BroadcastExcluded()
+        NS.Core:BroadcastCompletions()
     end)
     topGroup:AddChild(resetBtn)
 
@@ -152,7 +160,7 @@ function UI:RefreshUI()
     syncBtn:SetText("Sync")
     syncBtn:SetWidth(80)
     syncBtn:SetCallback("OnClick", function()
-        NS.Core:BroadcastExcluded()
+        NS.Core:BroadcastCompletions()
         NS.Core:BroadcastKeystone()
         NS.Core:Print("Synced to group.")
     end)
@@ -305,13 +313,30 @@ function UI:RefreshUI()
                 local bisTable = NS.GetActiveBISTable()
                 local bisList = bisTable[capturedData.spec]
                 if bisList then
+                    -- Pre-count BIS and gear item occurrences for duplicate handling
+                    local bisItemCounts = {}
+                    for _, bid in pairs(bisList) do
+                        bisItemCounts[bid] = (bisItemCounts[bid] or 0) + 1
+                    end
+                    local gearItemCounts = {}
+                    for _, gid in pairs(capturedData.gear) do
+                        gearItemCounts[gid] = (gearItemCounts[gid] or 0) + 1
+                    end
+                    local accountedFor = {}
+
                     for slot, bisItemId in pairs(bisList) do
                         local slotName = NS.SLOT_NAMES[slot] or "?"
-                        local equipped = capturedData.gear[slot]
                         local itemName = GetItemInfo(bisItemId) or ("Item #" .. bisItemId)
+
+                        -- Check equipped: item found anywhere in gear, respecting duplicate counts
+                        accountedFor[bisItemId] = (accountedFor[bisItemId] or 0) + 1
+                        local needed = bisItemCounts[bisItemId] or 1
+                        local have = math.min(gearItemCounts[bisItemId] or 0, needed)
+                        local isEquipped = (have >= accountedFor[bisItemId])
+
                         local equippedIlvl = capturedData.ilvls and capturedData.ilvls[slot]
 
-                        if equipped == bisItemId then
+                        if isEquipped then
                             local ilvlStr = equippedIlvl and (" ilvl " .. equippedIlvl) or ""
                             GameTooltip:AddDoubleLine(
                                 slotName,
@@ -319,7 +344,6 @@ function UI:RefreshUI()
                                 0.6, 0.6, 0.6, 0, 1, 0
                             )
                         else
-                            -- #19: show ilvl gap
                             local ilvlStr = equippedIlvl and (" (equipped: " .. equippedIlvl .. ")") or ""
                             GameTooltip:AddDoubleLine(
                                 slotName,
@@ -350,7 +374,7 @@ function UI:RefreshUI()
         end
     end
 
-    -- === DUNGEON EXCLUSION CHECKBOXES ===
+    -- === DUNGEON COMPLETIONS ===
     local excludeHeading = AceGUI:Create("Heading")
     excludeHeading:SetText(NS.L["EXCLUDE_DUNGEONS"])
     excludeHeading:SetFullWidth(true)
@@ -361,26 +385,52 @@ function UI:RefreshUI()
     checkGroup:SetLayout("Flow")
     self.mainFrame:AddChild(checkGroup)
 
-    if not isLeader then
-        local lockLabel = AceGUI:Create("Label")
-        lockLabel:SetText("|cff888888Only the group leader can toggle exclusions.|r")
-        lockLabel:SetFullWidth(true)
-        checkGroup:AddChild(lockLabel)
-    end
-
     for _, dungeon in ipairs(NS.DUNGEONS) do
         local cb = AceGUI:Create("CheckBox")
-        cb:SetLabel(dungeon.name)
+
+        -- Build label with completer names
+        local completers = NS.Core:GetDungeonCompleters(dungeon.id)
+        local label = dungeon.name
+        if #completers > 0 then
+            local shortNames = {}
+            for _, fullName in ipairs(completers) do
+                table.insert(shortNames, fullName:match("^([^-]+)") or fullName)
+            end
+            label = label .. " |cff888888(" .. table.concat(shortNames, ", ") .. ")|r"
+        end
+        cb:SetLabel(label)
+
+        -- Checkbox reflects YOUR completion state
         cb:SetValue(NS.Core.db.profile.excludedDungeons[dungeon.id] or false)
-        cb:SetWidth(200)
-        cb:SetDisabled(not isLeader)
+        cb:SetWidth(280)
+
         cb:SetCallback("OnValueChanged", function(widget, event, value)
-            if not NS.Core:IsSyncLeader() then return end
             NS.Core.db.profile.excludedDungeons[dungeon.id] = value or nil
+            local myName = NS.Inspect:GetUnitFullName("player")
+            if myName then
+                NS.groupCompletions[myName] = NS.groupCompletions[myName] or {}
+                NS.groupCompletions[myName][dungeon.id] = value or nil
+            end
             NS.Core.lastRanking = NS.Core:CalculateDungeonRanking()
             self:RefreshUI()
-            NS.Core:BroadcastExcluded()
+            NS.Core:BroadcastCompletions()
         end)
+
+        -- Tooltip showing full Name-Realm of completers
+        local capturedDungeon = dungeon
+        cb:SetCallback("OnEnter", function(widget)
+            local tips = NS.Core:GetDungeonCompleters(capturedDungeon.id)
+            if #tips > 0 then
+                GameTooltip:SetOwner(widget.frame, "ANCHOR_RIGHT")
+                GameTooltip:AddLine(capturedDungeon.name .. " - " .. NS.L["COMPLETED_BY"])
+                for _, name in ipairs(tips) do
+                    GameTooltip:AddLine("  " .. name, 0.5, 1.0, 0.5)
+                end
+                GameTooltip:Show()
+            end
+        end)
+        cb:SetCallback("OnLeave", function() GameTooltip:Hide() end)
+
         checkGroup:AddChild(cb)
     end
 
@@ -461,83 +511,77 @@ function UI:CreateDungeonEntry(parent, rank, entry)
 
         local playerLabel = AceGUI:Create("Label")
         if pInfo.count == 0 then
-            -- Player doesn't need anything from this dungeon
             playerLabel:SetText(string.format(
                 "   |cff%s%s|r  -  |cff555555no upgrades needed|r",
                 classColor, pInfo.name
             ))
             playerLabel:SetFullWidth(true)
             dungeonGroup:AddChild(playerLabel)
-            -- Skip item listing for this player
         else
             playerLabel:SetText(string.format(
                 NS.L["BIS_ITEMS_NEEDED"], classColor, pInfo.name, pInfo.count
             ))
             playerLabel:SetFullWidth(true)
             dungeonGroup:AddChild(playerLabel)
-        end
 
-        if pInfo.count == 0 then
-            -- Already handled above, skip to next player
-        else
-        -- Group items by boss
-        local bosses, bossOrder = {}, {}
-        for _, item in ipairs(pInfo.needed) do
-            local boss = (item.boss and item.boss ~= "") and item.boss or "Other"
-            if not bosses[boss] then
-                bosses[boss] = {}
-                table.insert(bossOrder, boss)
-            end
-            table.insert(bosses[boss], item)
-        end
-
-        for _, bossName in ipairs(bossOrder) do
-            if bossName ~= "Other" or #bossOrder > 1 then
-                local bossLabel = AceGUI:Create("Label")
-                bossLabel:SetText(string.format("      |cffffcc00%s:|r", bossName))
-                bossLabel:SetFullWidth(true)
-                dungeonGroup:AddChild(bossLabel)
+            -- Group items by boss
+            local bosses, bossOrder = {}, {}
+            for _, item in ipairs(pInfo.needed) do
+                local boss = (item.boss and item.boss ~= "") and item.boss or "Other"
+                if not bosses[boss] then
+                    bosses[boss] = {}
+                    table.insert(bossOrder, boss)
+                end
+                table.insert(bosses[boss], item)
             end
 
-            for _, item in ipairs(bosses[bossName]) do
-                local itemLabel = AceGUI:Create("InteractiveLabel")
-
-                local displayName = GetItemInfo(item.itemId)
-                    or (item.itemName ~= "" and item.itemName)
-                    or ("Item #" .. item.itemId)
-
-                -- #25: Show min key level for upgrade
-                local minKeyStr = ""
-                local playerData = NS.groupData[playerEntry.name]
-                if playerData and playerData.ilvls then
-                    local equippedIlvl = playerData.ilvls[item.slot]
-                    if equippedIlvl then
-                        local minKey = NS.Core:GetMinKeyForUpgrade(equippedIlvl)
-                        if minKey then
-                            minKeyStr = string.format(" |cffaaaaaa(need +%d)|r", minKey)
-                        end
-                    end
+            for _, bossName in ipairs(bossOrder) do
+                if bossName ~= "Other" or #bossOrder > 1 then
+                    local bossLabel = AceGUI:Create("Label")
+                    bossLabel:SetText(string.format("      |cffffcc00%s:|r", bossName))
+                    bossLabel:SetFullWidth(true)
+                    dungeonGroup:AddChild(bossLabel)
                 end
 
-                local indent = (bossName ~= "Other" or #bossOrder > 1) and "         " or "      "
-                itemLabel:SetText(string.format(
-                    "%s|cffeda55f[%s]|r |cff69ccf0%s|r%s",
-                    indent, item.slotName, displayName, minKeyStr
-                ))
-                itemLabel:SetFullWidth(true)
+                for _, item in ipairs(bosses[bossName]) do
+                    local itemLabel = AceGUI:Create("InteractiveLabel")
 
-                local capturedItemId = item.itemId
-                itemLabel:SetCallback("OnEnter", function(widget)
-                    GameTooltip:SetOwner(widget.frame, "ANCHOR_RIGHT")
-                    GameTooltip:SetItemByID(capturedItemId)
-                    GameTooltip:Show()
-                end)
-                itemLabel:SetCallback("OnLeave", function() GameTooltip:Hide() end)
+                    local displayName = GetItemInfo(item.itemId)
+                        or (item.itemName ~= "" and item.itemName)
+                        or ("Item #" .. item.itemId)
 
-                dungeonGroup:AddChild(itemLabel)
+                    -- #25: Show min key level for upgrade
+                    local minKeyStr = ""
+                    local playerData = NS.groupData[playerEntry.name]
+                    if playerData and playerData.ilvls then
+                        local equippedIlvl = playerData.ilvls[item.slot]
+                        if equippedIlvl then
+                            local minKey = NS.Core:GetMinKeyForUpgrade(equippedIlvl)
+                            if minKey then
+                                minKeyStr = string.format(" |cffaaaaaa(need +%d)|r", minKey)
+                            end
+                        end
+                    end
+
+                    local indent = (bossName ~= "Other" or #bossOrder > 1) and "         " or "      "
+                    itemLabel:SetText(string.format(
+                        "%s|cffeda55f[%s]|r |cff69ccf0%s|r%s",
+                        indent, item.slotName, displayName, minKeyStr
+                    ))
+                    itemLabel:SetFullWidth(true)
+
+                    local capturedItemId = item.itemId
+                    itemLabel:SetCallback("OnEnter", function(widget)
+                        GameTooltip:SetOwner(widget.frame, "ANCHOR_RIGHT")
+                        GameTooltip:SetItemByID(capturedItemId)
+                        GameTooltip:Show()
+                    end)
+                    itemLabel:SetCallback("OnLeave", function() GameTooltip:Hide() end)
+
+                    dungeonGroup:AddChild(itemLabel)
+                end
             end
         end
-        end -- close else (pInfo.count > 0)
     end
 end
 

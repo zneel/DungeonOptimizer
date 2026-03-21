@@ -28,12 +28,85 @@ local defaults = {
     },
 }
 
-local ADDON_MSG_PREFIX = "DOptSync"
-local ADDON_MSG_PREFIX_KEY = "DOptKey" -- #21: keystone sync
+local ADDON_MSG_PREFIX = "DOptSync"       -- legacy exclusion sync
+local ADDON_MSG_PREFIX_KEY = "DOptKey"    -- #21: keystone sync
+local ADDON_MSG_PREFIX_COMP = "DOptComp"  -- per-player completion sync
+
+-- Per-player dungeon completions: { ["Name-Realm"] = { MAGISTER=true, ... } }
+NS.groupCompletions = {}
 
 -- Returns the BIS table (always Mythic+)
 function NS.GetActiveBISTable()
     return NS.BIS_MYTHIC
+end
+
+-- ============================================================================
+-- PER-PLAYER COMPLETION HELPERS
+-- ============================================================================
+
+-- Returns true if ANY group member has completed this dungeon
+function DungeonOptimizer:IsDungeonExcluded(dungeonId)
+    for _, completions in pairs(NS.groupCompletions) do
+        if completions[dungeonId] then return true end
+    end
+    return false
+end
+
+-- Returns list of "Name-Realm" who completed a dungeon
+function DungeonOptimizer:GetDungeonCompleters(dungeonId)
+    local names = {}
+    for playerName, completions in pairs(NS.groupCompletions) do
+        if completions[dungeonId] then
+            table.insert(names, playerName)
+        end
+    end
+    return names
+end
+
+-- Remove completion entries for players no longer in the group
+function DungeonOptimizer:PruneCompletions()
+    local myName = NS.Inspect:GetUnitFullName("player")
+    local groupNames = {}
+    if IsInGroup() and not IsInRaid() then
+        if myName then groupNames[myName] = true end
+        for i = 1, GetNumGroupMembers() - 1 do
+            local unit = "party" .. i
+            if UnitExists(unit) then
+                local name = NS.Inspect:GetUnitFullName(unit)
+                if name then groupNames[name] = true end
+            end
+        end
+    elseif not IsInGroup() then
+        if myName then groupNames[myName] = true end
+    end
+
+    for playerName in pairs(NS.groupCompletions) do
+        if not groupNames[playerName] then
+            NS.groupCompletions[playerName] = nil
+        end
+    end
+end
+
+-- Broadcast your own completions to the group
+function DungeonOptimizer:BroadcastCompletions()
+    if not IsInGroup() then return end
+    local parts = {}
+    for id, val in pairs(self.db.profile.excludedDungeons) do
+        if val then table.insert(parts, id) end
+    end
+    local data = "V2:" .. (#parts > 0 and table.concat(parts, ",") or "NONE")
+    local channel = IsInRaid() and "RAID" or "PARTY"
+    C_ChatInfo.SendAddonMessage(ADDON_MSG_PREFIX_COMP, data, channel)
+end
+
+-- Seed groupCompletions with the local player's saved data
+function DungeonOptimizer:SeedLocalCompletions()
+    local myName = NS.Inspect:GetUnitFullName("player")
+    if not myName then return end
+    NS.groupCompletions[myName] = {}
+    for id, val in pairs(self.db.profile.excludedDungeons) do
+        if val then NS.groupCompletions[myName][id] = true end
+    end
 end
 
 -- ============================================================================
@@ -86,6 +159,7 @@ function DungeonOptimizer:OnEnable()
 
     C_ChatInfo.RegisterAddonMessagePrefix(ADDON_MSG_PREFIX)
     C_ChatInfo.RegisterAddonMessagePrefix(ADDON_MSG_PREFIX_KEY)
+    C_ChatInfo.RegisterAddonMessagePrefix(ADDON_MSG_PREFIX_COMP)
     -- Register gear sync prefix
     NS.Inspect:RegisterSync()
 
@@ -93,6 +167,12 @@ function DungeonOptimizer:OnEnable()
     self:BuildDynamicDungeonList()
     -- Auto-detect completed dungeons
     self:AutoDetectCompletedDungeons()
+    -- Seed per-player completion data from saved variables
+    self:SeedLocalCompletions()
+    -- Broadcast completions to group after a short delay
+    if IsInGroup() then
+        self:ScheduleTimer(function() self:BroadcastCompletions() end, 2)
+    end
     -- #27: Request current affixes
     if C_MythicPlus and C_MythicPlus.RequestCurrentAffixes then
         C_MythicPlus.RequestCurrentAffixes()
@@ -161,46 +241,49 @@ function DungeonOptimizer:INSPECT_READY(event, guid)
 end
 
 function DungeonOptimizer:GET_ITEM_INFO_RECEIVED()
-    if NS.UI and NS.UI.mainFrame and NS.UI.mainFrame:IsShown() then
-        if self._itemInfoTimer then
-            self:CancelTimer(self._itemInfoTimer)
-        end
-        self._itemInfoTimer = self:ScheduleTimer(function()
-            NS.UI:RefreshUI()
-        end, 0.5)
+    if not NS.UI or not NS.UI:IsVisible() then return end
+    if self._itemInfoTimer then
+        self:CancelTimer(self._itemInfoTimer)
     end
+    self._itemInfoTimer = self:ScheduleTimer(function()
+        NS.UI:RefreshUI()
+    end, 0.5)
 end
 
 function DungeonOptimizer:GROUP_ROSTER_UPDATE()
     -- If we left a group or joined a raid, purge stale data immediately
     if not IsInGroup() or IsInRaid() then
         wipe(NS.groupData)
-        wipe(NS.skippedPlayers or {})
+        wipe(NS.skippedPlayers)
         if NS.keystones then wipe(NS.keystones) end
+        -- Keep only local player's completions
+        self:PruneCompletions()
         -- Re-scan just the player if solo
         if not IsInGroup() and not IsInRaid() then
             NS.Inspect:ScanGroup()
         end
-        if NS.UI and NS.UI.mainFrame and NS.UI.mainFrame:IsShown() then
-            NS.UI:RefreshUI()
-        end
+        if NS.UI then NS.UI:RefreshIfVisible() end
         return
     end
 
     -- Normal party: debounced re-scan
-    if NS.UI and NS.UI.mainFrame and NS.UI.mainFrame:IsShown() then
+    if NS.UI and NS.UI:IsVisible() then
         if self._rosterTimer then
             self:CancelTimer(self._rosterTimer)
         end
         self._rosterTimer = self:ScheduleTimer("ScanGroup", 1)
     end
-    -- #21: broadcast our keystone to new group members
-    self:ScheduleTimer(function() self:BroadcastKeystone() end, 2)
+    -- Prune departed members, broadcast completions + keystones to new members
+    self:ScheduleTimer(function()
+        self:PruneCompletions()
+        self:BroadcastCompletions()
+        self:BroadcastKeystone()
+    end, 2)
 end
 
 -- #26: Auto-hide during active M+ run
 function DungeonOptimizer:CHALLENGE_MODE_START()
-    if NS.UI and NS.UI.mainFrame and NS.UI.mainFrame:IsShown() then
+    if NS.UI and NS.UI:IsVisible() then
         NS.UI._wasShownBeforeRun = true
         NS.UI.mainFrame:Hide()
         self:Print("UI hidden for M+ run. Will restore after completion.")
@@ -214,7 +297,12 @@ function DungeonOptimizer:CHALLENGE_MODE_COMPLETED()
         local dungeonKey = NS.CHALLENGE_MODE_MAP[mapID]
         if dungeonKey then
             self.db.profile.excludedDungeons[dungeonKey] = true
-            self:BroadcastExcluded()
+            local myName = NS.Inspect:GetUnitFullName("player")
+            if myName then
+                NS.groupCompletions[myName] = NS.groupCompletions[myName] or {}
+                NS.groupCompletions[myName][dungeonKey] = true
+            end
+            self:BroadcastCompletions()
             self:Print(string.format("Auto-excluded |cff00ff00%s|r (just completed).", dungeonKey))
         end
     end
@@ -229,9 +317,7 @@ end
 -- #27: Affix update
 function DungeonOptimizer:MYTHIC_PLUS_CURRENT_AFFIX_UPDATE()
     NS.currentAffixes = nil -- clear cache, will be rebuilt on next UI refresh
-    if NS.UI and NS.UI.mainFrame and NS.UI.mainFrame:IsShown() then
-        NS.UI:RefreshUI()
-    end
+    if NS.UI then NS.UI:RefreshIfVisible() end
 end
 
 -- ============================================================================
@@ -366,7 +452,7 @@ function DungeonOptimizer:GetMinKeyForUpgrade(currentIlvl)
     end
     for keyLevel = 2, 20 do
         local rewardIlvl = C_MythicPlus.GetRewardLevelFromKeystoneLevel(keyLevel)
-        if rewardIlvl and rewardIlvl >= currentIlvl then
+        if rewardIlvl and rewardIlvl > currentIlvl then
             return keyLevel
         end
     end
@@ -396,27 +482,24 @@ function DungeonOptimizer:SlashCommand(input)
     if cmd == "scan" then
         self:ScanGroup()
     elseif cmd == "reset" then
-        if not self:IsSyncLeader() then
-            self:Print("|cffff8800Only the group leader can reset exclusions.|r")
-            return
-        end
         wipe(self.db.profile.excludedDungeons)
+        local myName = NS.Inspect:GetUnitFullName("player")
+        if myName then NS.groupCompletions[myName] = {} end
         self:Print(NS.L["EXCLUDED_RESET"])
-        self:BroadcastExcluded()
-        if NS.UI and NS.UI.mainFrame and NS.UI.mainFrame:IsShown() then
-            NS.UI:RefreshUI()
-        end
+        self.lastRanking = self:CalculateDungeonRanking()
+        self:BroadcastCompletions()
+        if NS.UI then NS.UI:RefreshIfVisible() end
     elseif cmd == "purge" then
         wipe(NS.groupData)
-        wipe(NS.skippedPlayers or {})
+        wipe(NS.skippedPlayers)
         if NS.keystones then wipe(NS.keystones) end
         wipe(self.db.profile.excludedDungeons)
+        local myName = NS.Inspect:GetUnitFullName("player")
+        if myName then NS.groupCompletions[myName] = {} end
         self.lastRanking = nil
         self:Print("|cff00ff00All data purged.|r Scanning fresh...")
         NS.Inspect:ScanGroup()
-        if NS.UI and NS.UI.mainFrame and NS.UI.mainFrame:IsShown() then
-            NS.UI:RefreshUI()
-        end
+        if NS.UI then NS.UI:RefreshIfVisible() end
     elseif cmd == "history" then
         -- #22: show season history
         NS.UI:ShowHistoryTab()
@@ -463,9 +546,7 @@ function DungeonOptimizer:OnScanComplete()
     end
 
     self.lastRanking = self:CalculateDungeonRanking()
-    if NS.UI and NS.UI.mainFrame and NS.UI.mainFrame:IsShown() then
-        NS.UI:RefreshUI()
-    end
+    if NS.UI then NS.UI:RefreshIfVisible() end
 end
 
 -- ============================================================================
@@ -478,30 +559,24 @@ function DungeonOptimizer:PlayerNeedsItem(playerData, itemId, slot)
     local bisList = bisTable[playerData.spec]
     if not bisList then return false end
 
-    local slotsToCheck = { slot }
-    if slot == 11 then slotsToCheck = { 11, 12 }
-    elseif slot == 12 then slotsToCheck = { 11, 12 }
-    elseif slot == 13 then slotsToCheck = { 13, 14 }
-    elseif slot == 14 then slotsToCheck = { 13, 14 }
+    -- Count how many times this item appears in BIS list (handles duplicate rings/trinkets/weapons)
+    local bisCount = 0
+    for _, bisItemId in pairs(bisList) do
+        if bisItemId == itemId then
+            bisCount = bisCount + 1
+        end
     end
+    if bisCount == 0 then return false end
 
-    for _, checkSlot in ipairs(slotsToCheck) do
-        local bisItemId = bisList[checkSlot]
-        if bisItemId and bisItemId == itemId then
-            local alreadyEquipped = false
-            for _, eqSlot in ipairs(slotsToCheck) do
-                if playerData.gear[eqSlot] == itemId then
-                    alreadyEquipped = true
-                    break
-                end
-            end
-            if not alreadyEquipped then
-                return true
-            end
+    -- Count how many copies the player already has equipped
+    local equippedCount = 0
+    for _, gearItemId in pairs(playerData.gear) do
+        if gearItemId == itemId then
+            equippedCount = equippedCount + 1
         end
     end
 
-    return false
+    return equippedCount < bisCount
 end
 
 function DungeonOptimizer:CountMissingBIS(playerData)
@@ -513,21 +588,35 @@ function DungeonOptimizer:CountMissingBIS(playerData)
 
     local total, missing, totalDungeon, missingDungeon = 0, 0, 0, 0
 
+    -- Pre-count how many times each itemId appears in BIS and in gear
+    local bisItemCounts = {}
+    for _, bisItemId in pairs(bisList) do
+        bisItemCounts[bisItemId] = (bisItemCounts[bisItemId] or 0) + 1
+    end
+
+    local gearItemCounts = {}
+    for _, gearItemId in pairs(playerData.gear) do
+        gearItemCounts[gearItemId] = (gearItemCounts[gearItemId] or 0) + 1
+    end
+
+    -- Track how many of each item we've already accounted for (for duplicates)
+    local accountedFor = {}
+
     for slot, bisItemId in pairs(bisList) do
-        local isPaired = (slot == 12 or slot == 14)
-        local pairSlot = isPaired and (slot - 1) or nil
+        total = total + 1
 
-        if isPaired and bisList[pairSlot] == bisItemId then
-            -- skip duplicate
-        else
-            total = total + 1
-            local isMissing = (playerData.gear[slot] ~= bisItemId)
-            if isMissing then missing = missing + 1 end
+        local needed = bisItemCounts[bisItemId] or 1
+        local have = math.min(gearItemCounts[bisItemId] or 0, needed)
+        accountedFor[bisItemId] = (accountedFor[bisItemId] or 0) + 1
 
-            if NS.IsFromDungeon(bisItemId) then
-                totalDungeon = totalDungeon + 1
-                if isMissing then missingDungeon = missingDungeon + 1 end
-            end
+        -- This BIS slot is missing if we don't have enough copies
+        local isMissing = (have < accountedFor[bisItemId])
+
+        if isMissing then missing = missing + 1 end
+
+        if NS.IsFromDungeon(bisItemId) then
+            totalDungeon = totalDungeon + 1
+            if isMissing then missingDungeon = missingDungeon + 1 end
         end
     end
 
@@ -578,7 +667,7 @@ function DungeonOptimizer:CalculateDungeonRanking()
     local ranking = {}
 
     for _, dungeon in ipairs(NS.DUNGEONS) do
-        if not self.db.profile.excludedDungeons[dungeon.id] then
+        if not self:IsDungeonExcluded(dungeon.id) then
             local score, details = self:ScoreDungeon(dungeon.id)
 
             -- #20: Score weighting by M+ rating opportunity
@@ -644,15 +733,7 @@ function NS.ColorByClass(text, class)
 end
 
 -- ============================================================================
--- SYNC LEADER: Only group/raid leader can modify exclusions
--- ============================================================================
-function DungeonOptimizer:IsSyncLeader()
-    if not IsInGroup() then return true end -- solo = always leader
-    return UnitIsGroupLeader("player") or UnitIsGroupAssistant("player")
-end
-
--- ============================================================================
--- DUNGEON COMPLETION SYNC
+-- DUNGEON COMPLETION DATA
 -- ============================================================================
 NS.CHALLENGE_MODE_MAP = {
     [2773] = "MAGISTER", [2774] = "MAISARA",
@@ -692,49 +773,6 @@ function DungeonOptimizer:AutoDetectCompletedDungeons()
     end
 end
 
-function DungeonOptimizer:SerializeExcluded()
-    local parts = {}
-    for id, val in pairs(self.db.profile.excludedDungeons) do
-        if val then table.insert(parts, id) end
-    end
-    return table.concat(parts, ",")
-end
-
-function DungeonOptimizer:ApplyExcludedState(data)
-    local newState = {}
-    if data ~= "RESET" then
-        for rawId in data:gmatch("[^,]+") do
-            local id = rawId:match("^%s*(.-)%s*$")
-            for _, dungeon in ipairs(NS.DUNGEONS) do
-                if dungeon.id == id then newState[id] = true end
-            end
-        end
-    end
-
-    local changed = false
-    for _, dungeon in ipairs(NS.DUNGEONS) do
-        if (self.db.profile.excludedDungeons[dungeon.id] or false) ~= (newState[dungeon.id] or false) then
-            changed = true
-            break
-        end
-    end
-
-    if changed then
-        wipe(self.db.profile.excludedDungeons)
-        for id, val in pairs(newState) do
-            self.db.profile.excludedDungeons[id] = val
-        end
-    end
-    return changed
-end
-
-function DungeonOptimizer:BroadcastExcluded()
-    if not IsInGroup() then return end
-    local data = self:SerializeExcluded()
-    if data == "" then data = "RESET" end
-    local channel = IsInRaid() and "RAID" or "PARTY"
-    C_ChatInfo.SendAddonMessage(ADDON_MSG_PREFIX, data, channel)
-end
 
 -- ============================================================================
 -- #21: PARTY KEYSTONE SYNC
@@ -766,15 +804,45 @@ end
 
 function DungeonOptimizer:CHAT_MSG_ADDON(event, prefix, message, channel, sender)
     if prefix == ADDON_MSG_PREFIX then
-        local myName = UnitName("player")
-        if sender and sender:find(myName) then return end
-        if self:ApplyExcludedState(message) then
-            self:Print(string.format("Synced exclusions from |cff00ff00%s|r.", sender or "group"))
+        local myFullName = NS.Inspect:GetUnitFullName("player")
+        if sender and myFullName and sender == myFullName then return end
+        -- Legacy compat: treat old-format sync as that sender's completions
+        if sender then
+            local completions = {}
+            if message ~= "RESET" then
+                for rawId in message:gmatch("[^,]+") do
+                    local id = rawId:match("^%s*(.-)%s*$")
+                    for _, dungeon in ipairs(NS.DUNGEONS) do
+                        if dungeon.id == id then completions[id] = true; break end
+                    end
+                end
+            end
+            NS.groupCompletions[sender] = completions
             self.lastRanking = self:CalculateDungeonRanking()
-            if NS.UI and NS.UI.mainFrame and NS.UI.mainFrame:IsShown() then
-                NS.UI:RefreshUI()
+            if NS.UI then NS.UI:RefreshIfVisible() end
+        end
+    elseif prefix == ADDON_MSG_PREFIX_COMP then
+        -- Per-player completion sync (new protocol)
+        if not sender then return end
+        local myFullName = NS.Inspect:GetUnitFullName("player")
+        if sender == myFullName then return end
+
+        local payload = message:match("^V2:(.+)$")
+        if not payload then return end
+
+        local completions = {}
+        if payload ~= "NONE" then
+            for rawId in payload:gmatch("[^,]+") do
+                local id = rawId:match("^%s*(.-)%s*$")
+                for _, dungeon in ipairs(NS.DUNGEONS) do
+                    if dungeon.id == id then completions[id] = true; break end
+                end
             end
         end
+
+        NS.groupCompletions[sender] = completions
+        self.lastRanking = self:CalculateDungeonRanking()
+        if NS.UI then NS.UI:RefreshIfVisible() end
     elseif prefix == ADDON_MSG_PREFIX_KEY then
         local mapID, level, dungeonName = message:match("^(%d+):(%d+):(.*)$")
         if mapID and level and sender then
@@ -783,19 +851,14 @@ function DungeonOptimizer:CHAT_MSG_ADDON(event, prefix, message, channel, sender
                 level = tonumber(level),
                 dungeonName = dungeonName or "",
             }
-            if NS.UI and NS.UI.mainFrame and NS.UI.mainFrame:IsShown() then
-                NS.UI:RefreshUI()
-            end
+            if NS.UI then NS.UI:RefreshIfVisible() end
         end
     elseif prefix == "DOptGear" then
         -- Gear sync: another addon user broadcasted their equipment
         if NS.Inspect:OnGearMessage(message, sender) then
             self:Print(string.format("Received gear from |cff00ff00%s|r (via addon sync).", sender or "?"))
-            -- Recalculate rankings with new data
             self.lastRanking = self:CalculateDungeonRanking()
-            if NS.UI and NS.UI.mainFrame and NS.UI.mainFrame:IsShown() then
-                NS.UI:RefreshUI()
-            end
+            if NS.UI then NS.UI:RefreshIfVisible() end
         end
     end
 end
