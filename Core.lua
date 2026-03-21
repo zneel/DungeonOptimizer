@@ -133,6 +133,7 @@ function DungeonOptimizer:SlashCommand(input)
     elseif cmd == "reset" then
         wipe(self.db.profile.excludedDungeons)
         self:Print(NS.L["EXCLUDED_RESET"])
+        self:BroadcastExcluded()
         if NS.UI and NS.UI.mainFrame and NS.UI.mainFrame:IsShown() then
             NS.UI:RefreshUI()
         end
@@ -410,27 +411,47 @@ function DungeonOptimizer:SerializeExcluded()
     return table.concat(parts, ",")
 end
 
--- Deserialize and merge excluded dungeons from a sync message
-function DungeonOptimizer:MergeExcluded(data)
-    local changed = false
-    for rawId in data:gmatch("[^,]+") do
-        local id = rawId:match("^%s*(.-)%s*$") -- trim
-        -- Validate it's a known dungeon
-        for _, dungeon in ipairs(NS.DUNGEONS) do
-            if dungeon.id == id and not self.db.profile.excludedDungeons[id] then
-                self.db.profile.excludedDungeons[id] = true
-                changed = true
+-- Apply a full exclusion state from a sync message (replaces local state)
+function DungeonOptimizer:ApplyExcludedState(data)
+    local newState = {}
+    if data ~= "RESET" then
+        for rawId in data:gmatch("[^,]+") do
+            local id = rawId:match("^%s*(.-)%s*$")
+            -- Validate it's a known dungeon
+            for _, dungeon in ipairs(NS.DUNGEONS) do
+                if dungeon.id == id then
+                    newState[id] = true
+                end
             end
         end
     end
+
+    -- Check if anything changed
+    local changed = false
+    for _, dungeon in ipairs(NS.DUNGEONS) do
+        local id = dungeon.id
+        if (self.db.profile.excludedDungeons[id] or false) ~= (newState[id] or false) then
+            changed = true
+            break
+        end
+    end
+
+    if changed then
+        wipe(self.db.profile.excludedDungeons)
+        for id, val in pairs(newState) do
+            self.db.profile.excludedDungeons[id] = val
+        end
+    end
+
     return changed
 end
 
--- Send our excluded dungeons to the group
+-- Send our full exclusion state to the group
 function DungeonOptimizer:BroadcastExcluded()
     if not IsInGroup() then return end
     local data = self:SerializeExcluded()
-    if data == "" then return end
+    -- Send "RESET" if nothing is excluded, so others clear their state too
+    if data == "" then data = "RESET" end
     local channel = IsInRaid() and "RAID" or "PARTY"
     C_ChatInfo.SendAddonMessage(ADDON_MSG_PREFIX, data, channel)
 end
@@ -442,8 +463,8 @@ function DungeonOptimizer:CHAT_MSG_ADDON(event, prefix, message, channel, sender
     local myName = UnitName("player")
     if sender and sender:find(myName) then return end
 
-    if self:MergeExcluded(message) then
-        self:Print(string.format("Synced completed dungeons from |cff00ff00%s|r.", sender or "group"))
+    if self:ApplyExcludedState(message) then
+        self:Print(string.format("Synced exclusions from |cff00ff00%s|r.", sender or "group"))
         self.lastRanking = self:CalculateDungeonRanking()
         if NS.UI and NS.UI.mainFrame and NS.UI.mainFrame:IsShown() then
             NS.UI:RefreshUI()

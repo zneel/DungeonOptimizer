@@ -90,6 +90,8 @@ function UI:RefreshUI()
         wipe(NS.Core.db.profile.excludedDungeons)
         NS.Core.lastRanking = NS.Core:CalculateDungeonRanking()
         self:RefreshUI()
+        -- Broadcast reset to group
+        NS.Core:BroadcastExcluded()
     end)
     topGroup:AddChild(resetBtn)
 
