@@ -530,15 +530,14 @@ function DungeonOptimizer:ScoreDungeon(dungeonId)
             end
         end
 
-        if #needed > 0 then
-            playerDetails[playerName] = {
-                needed = needed,
-                count = #needed,
-                class = playerData.class,
-                name = playerData.name,
-            }
-            totalScore = totalScore + #needed
-        end
+        -- Always include every group member (even with 0 needs)
+        playerDetails[playerName] = {
+            needed = needed,
+            count = #needed,
+            class = playerData.class,
+            name = playerData.name,
+        }
+        totalScore = totalScore + #needed
     end
 
     return totalScore, playerDetails

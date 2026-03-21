@@ -447,12 +447,26 @@ function UI:CreateDungeonEntry(parent, rank, entry)
         local classColor = NS.CLASS_COLORS[pInfo.class] or "ffffff"
 
         local playerLabel = AceGUI:Create("Label")
-        playerLabel:SetText(string.format(
-            NS.L["BIS_ITEMS_NEEDED"], classColor, pInfo.name, pInfo.count
-        ))
-        playerLabel:SetFullWidth(true)
-        dungeonGroup:AddChild(playerLabel)
+        if pInfo.count == 0 then
+            -- Player doesn't need anything from this dungeon
+            playerLabel:SetText(string.format(
+                "   |cff%s%s|r  -  |cff555555no upgrades needed|r",
+                classColor, pInfo.name
+            ))
+            playerLabel:SetFullWidth(true)
+            dungeonGroup:AddChild(playerLabel)
+            -- Skip item listing for this player
+        else
+            playerLabel:SetText(string.format(
+                NS.L["BIS_ITEMS_NEEDED"], classColor, pInfo.name, pInfo.count
+            ))
+            playerLabel:SetFullWidth(true)
+            dungeonGroup:AddChild(playerLabel)
+        end
 
+        if pInfo.count == 0 then
+            -- Already handled above, skip to next player
+        else
         -- Group items by boss
         local bosses, bossOrder = {}, {}
         for _, item in ipairs(pInfo.needed) do
@@ -510,6 +524,7 @@ function UI:CreateDungeonEntry(parent, rank, entry)
                 dungeonGroup:AddChild(itemLabel)
             end
         end
+        end -- close else (pInfo.count > 0)
     end
 end
 
