@@ -1,0 +1,77 @@
+name: Build & Package
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install SVN
+        run: sudo apt-get update && sudo apt-get install -y subversion
+
+      - name: Install libraries
+        run: chmod +x install_libs.sh && ./install_libs.sh
+
+      - name: Lua syntax check
+        run: |
+          sudo apt-get install -y lua5.4
+          for f in Core.lua Data.lua Inspect.lua UI.lua; do
+            echo "Checking $f..."
+            luac5.4 -p "$f"
+          done
+
+      - name: Package addon
+        run: |
+          ADDON_DIR="DungeonOptimizer"
+          mkdir -p build/$ADDON_DIR
+
+          # Copy source files
+          cp -r *.lua *.xml *.toc build/$ADDON_DIR/
+          cp -r Libs build/$ADDON_DIR/
+
+          # Clean SVN metadata from libs
+          find build/$ADDON_DIR/Libs -name ".svn" -type d -exec rm -rf {} + 2>/dev/null || true
+          # Clean test files
+          rm -rf build/$ADDON_DIR/Libs/LibStub/tests
+          rm -f build/$ADDON_DIR/Libs/LibStub/.pkgmeta
+          rm -f build/$ADDON_DIR/Libs/LibStub/LibStub.toc
+
+          # Create zip
+          cd build
+          zip -r ../DungeonOptimizer.zip $ADDON_DIR/
+          cd ..
+
+          echo "Package size: $(du -h DungeonOptimizer.zip | cut -f1)"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: DungeonOptimizer
+          path: DungeonOptimizer.zip
+
+  release:
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: DungeonOptimizer
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: DungeonOptimizer.zip
+          generate_release_notes: true
