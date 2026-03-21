@@ -1,8 +1,7 @@
 #!/bin/bash
 # ============================================================================
 # DungeonOptimizer - Library Installer
-# Downloads all dependencies from CurseForge SVN repos (same as .pkgmeta)
-# Requires: svn (brew install svn)
+# Downloads all dependencies from GitHub (no SVN needed)
 # ============================================================================
 
 set -e
@@ -13,85 +12,42 @@ mkdir -p "$LIBS_DIR"
 echo "=== Dungeon Optimizer - Installation des librairies ==="
 echo ""
 
-# Check for svn
-if ! command -v svn &> /dev/null; then
-    echo "ERROR: svn is required. Install it with: brew install svn"
-    exit 1
-fi
+# Ace3 - all modules from one repo
+ACE3_MODULES="AceAddon-3.0 AceConsole-3.0 AceDB-3.0 AceEvent-3.0 AceTimer-3.0 AceGUI-3.0"
+ACE3_URL="https://github.com/WoWUIDev/Ace3/archive/refs/heads/master.tar.gz"
 
-checkout() {
-    local name="$1"
-    local url="$2"
-    local dest="$LIBS_DIR/$name"
+echo "[1/4] Ace3 ($(echo $ACE3_MODULES | wc -w | tr -d ' ') modules)..."
+TMP=$(mktemp -d)
+curl -sL "$ACE3_URL" -o "$TMP/ace3.tar.gz"
+tar -xzf "$TMP/ace3.tar.gz" -C "$TMP"
+for mod in $ACE3_MODULES; do
+    rm -rf "$LIBS_DIR/$mod"
+    cp -r "$TMP/Ace3-master/$mod" "$LIBS_DIR/$mod"
+    echo "  - $mod"
+done
+# CallbackHandler is bundled with Ace3
+rm -rf "$LIBS_DIR/CallbackHandler-1.0"
+cp -r "$TMP/Ace3-master/CallbackHandler-1.0" "$LIBS_DIR/CallbackHandler-1.0"
+echo "  - CallbackHandler-1.0"
+rm -rf "$TMP"
 
-    if [ -d "$dest" ] && [ "$(ls -A "$dest" 2>/dev/null)" ]; then
-        echo "  [UPDATE] $name"
-        svn update "$dest" --quiet
-    else
-        echo "  [INSTALL] $name"
-        rm -rf "$dest"
-        svn checkout "$url" "$dest" --quiet
-    fi
-}
+echo "[2/4] LibStub..."
+mkdir -p "$LIBS_DIR/LibStub"
+curl -sL "https://raw.githubusercontent.com/WoWUIDev/LibStub/master/LibStub.lua" \
+    -o "$LIBS_DIR/LibStub/LibStub.lua"
 
-# Fallback for libs whose CurseForge SVN is broken (500 errors)
-download_single_file() {
-    local name="$1"
-    local url="$2"
-    local filename="$3"
-    local dest="$LIBS_DIR/$name"
+echo "[3/4] LibDataBroker-1.1..."
+mkdir -p "$LIBS_DIR/LibDataBroker-1.1"
+curl -sL "https://raw.githubusercontent.com/tekkub/libdatabroker-1-1/master/LibDataBroker-1.1.lua" \
+    -o "$LIBS_DIR/LibDataBroker-1.1/LibDataBroker-1.1.lua"
 
-    if [ -f "$dest/$filename" ] && [ -s "$dest/$filename" ]; then
-        echo "  [OK] $name (already present)"
-    else
-        echo "  [INSTALL] $name (GitHub fallback)"
-        mkdir -p "$dest"
-        curl -sL "$url" -o "$dest/$filename"
-        if [ ! -s "$dest/$filename" ]; then
-            echo "  [ERROR] Failed to download $name"
-            exit 1
-        fi
-    fi
-}
-
-echo "[1/10] LibStub..."
-checkout "LibStub" "https://repos.curseforge.com/wow/libstub/trunk"
-
-echo "[2/10] CallbackHandler-1.0..."
-checkout "CallbackHandler-1.0" "https://repos.curseforge.com/wow/callbackhandler/trunk/CallbackHandler-1.0"
-
-echo "[3/10] AceAddon-3.0..."
-checkout "AceAddon-3.0" "https://repos.curseforge.com/wow/ace3/trunk/AceAddon-3.0"
-
-echo "[4/10] AceConsole-3.0..."
-checkout "AceConsole-3.0" "https://repos.curseforge.com/wow/ace3/trunk/AceConsole-3.0"
-
-echo "[5/10] AceDB-3.0..."
-checkout "AceDB-3.0" "https://repos.curseforge.com/wow/ace3/trunk/AceDB-3.0"
-
-echo "[6/10] AceEvent-3.0..."
-checkout "AceEvent-3.0" "https://repos.curseforge.com/wow/ace3/trunk/AceEvent-3.0"
-
-echo "[7/10] AceTimer-3.0..."
-checkout "AceTimer-3.0" "https://repos.curseforge.com/wow/ace3/trunk/AceTimer-3.0"
-
-echo "[8/10] AceGUI-3.0..."
-checkout "AceGUI-3.0" "https://repos.curseforge.com/wow/ace3/trunk/AceGUI-3.0"
-
-echo "[9/10] LibDataBroker-1.1..."
-# CurseForge SVN returns 500 for this lib — use GitHub fallback
-download_single_file "LibDataBroker-1.1" \
-    "https://raw.githubusercontent.com/tekkub/libdatabroker-1-1/master/LibDataBroker-1.1.lua" \
-    "LibDataBroker-1.1.lua"
-
-echo "[10/10] LibDBIcon-1.0..."
-checkout "LibDBIcon-1.0" "https://repos.curseforge.com/wow/libdbicon-1-0/trunk/LibDBIcon-1.0"
+echo "[4/4] LibDBIcon-1.0..."
+mkdir -p "$LIBS_DIR/LibDBIcon-1.0"
+curl -sL "https://raw.githubusercontent.com/wowace-clone/LibDBIcon-1.0/master/LibDBIcon-1.0/LibDBIcon-1.0.lua" \
+    -o "$LIBS_DIR/LibDBIcon-1.0/LibDBIcon-1.0.lua"
+curl -sL "https://raw.githubusercontent.com/wowace-clone/LibDBIcon-1.0/master/LibDBIcon-1.0/lib.xml" \
+    -o "$LIBS_DIR/LibDBIcon-1.0/lib.xml"
 
 echo ""
-echo "=== Toutes les librairies sont installées ! ==="
-echo ""
-echo "Structure:"
-find "$LIBS_DIR" -maxdepth 2 -name "*.lua" -o -name "*.xml" | head -30
-echo ""
-echo "L'addon est prêt. Copie le dossier DungeonOptimizer/ dans :"
-echo "  World of Warcraft/_retail_/Interface/AddOns/"
+echo "=== Done ==="
+find "$LIBS_DIR" -maxdepth 2 -name "*.lua" | wc -l | xargs -I{} echo "{} Lua files installed"
