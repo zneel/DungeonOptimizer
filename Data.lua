@@ -9,11 +9,7 @@ local ADDON_NAME, NS = ...
 -- ============================================================================
 -- SLOT CONSTANTS
 -- ============================================================================
-NS.SLOT_IDS = {
-    HEAD = 1, NECK = 2, SHOULDER = 3, BACK = 15, CHEST = 5,
-    WRIST = 9, HANDS = 10, WAIST = 6, LEGS = 7, FEET = 8,
-    FINGER1 = 11, FINGER2 = 12, TRINKET1 = 13, TRINKET2 = 14,
-    MAINHAND = 16, OFFHAND = 17,
+NS.SLOT_IDS = { HEAD = 1, NECK = 2, SHOULDER = 3, BACK = 15, CHEST = 5, WRIST = 9, HANDS = 10, WAIST = 6, LEGS = 7, FEET = 8, FINGER1 = 11, FINGER2 = 12, TRINKET1 = 13, TRINKET2 = 14, MAINHAND = 16, OFFHAND = 17,
 }
 
 NS.SLOT_NAMES = {
@@ -208,63 +204,32 @@ NS.BIS_OVERALL = {
         [17] = 249922, --  (Chimaerus - Dreamrift)
     },
     EVOKER_AUGMENTATION = {
-        [16] = 193709, --  (Maisara Caverns
-            Magister's Terrace
-            Skyreach
-            Vorasius in The Voidspire
-            Algeth'ar Academy)
-        [1] = 49824, --  (Midnight Falls in March on Quel'Danas
-            
-            
-              Vorasius in The Voidspire
-            
-            
-              Pit of Saron)
-        [2] = 50228, --  (Fallen-King Salhadaar in The Voidspire
-            
-            
-              Pit of Saron)
-        [3] = 249995, --  (Matrix Catalyst, Fallen-King Salhadaar in
-          The Voidspire.)
+        [16] = 193709, -- (Maisara Caverns Magister's Terrace Skyreach Vorasius in The Voidspire Algeth'ar Academy)
+        [1] = 49824, -- (Midnight Falls in March on Quel'Danas Vorasius in The Voidspire Pit of Saron)
+        [2] = 50228, -- (Fallen-King Salhadaar in The Voidspire Pit of Saron)
+        [3] = 249995, -- (Matrix Catalyst, Fallen-King Salhadaar in The Voidspire.)
         [15] = 239656, --  (Crafted by Tailoring)
-        [5] = 250000, --  (Matrix Catalyst, or Chimaerus in
-          The Dreamrift)
+        [5] = 250000, -- (Matrix Catalyst, or Chimaerus in The Dreamrift)
         [9] = 244584, --  (Crafted by Leatherworking)
-        [10] = 249998, --  (Matrix Catalyst, or Vorasius in
-          The Voidspire)
+        [10] = 249998, -- (Matrix Catalyst, or Vorasius in The Voidspire)
         [6] = 49810, --  (Pit of Saron)
-        [7] = 249996, --  (Matrix Catalyst, or Vaelgor and Ezzorak in
-          The Voidspire)
-        [8] = 193715, --  (Belo'ren in March on Quel'Danas
-            
-            
-              Matrix Catalyst
-            
-            
-              Algeth'ar Academy)
-        [11] = 240949, --  (Nexus-Point Xenas
-            Midnight Falls in March on Quel'Danas
-            Pit of Saron
-            Crafted by Jewelcrafting)
-        [13] = 250223, --  (Midnight Falls in March on Quel'Danas
-            Vaelgor and Ezzorak in The Voidspire
-            Maisara Caverns)
+        [7] = 249996, -- (Matrix Catalyst, or Vaelgor and Ezzorak in The Voidspire)
+        [8] = 193715, -- (Belo'ren in March on Quel'Danas Matrix Catalyst Algeth'ar Academy)
+        [11] = 240949, -- (Nexus-Point Xenas Midnight Falls in March on Quel'Danas Pit of Saron Crafted by Jewelcrafting)
+        [13] = 250223, -- (Midnight Falls in March on Quel'Danas Vaelgor and Ezzorak in The Voidspire Maisara Caverns)
     },
     EVOKER_DEVASTATION = {
         [16] = 249294, --  (Lightblinded Vanguard in The Voidspire.)
         [17] = 249276, --  (Vorasius in The Voidspire.)
         [1] = 249997, --  (Matrix Catalyst, Lightblinded Vanguard in The Voidspire.)
         [2] = 250247, --  (Midnight Falls in March on Quel'Danas.)
-        [3] = 249995, --  (Matrix Catalyst, Fallen-King Salhadaar in
-          The Voidspire.)
+        [3] = 249995, -- (Matrix Catalyst, Fallen-King Salhadaar in The Voidspire.)
         [15] = 239656, --  (Crafted by Tailoring)
-        [5] = 250000, --  (Matrix Catalyst, or Chimaerus in
-          The Dreamrift)
+        [5] = 250000, -- (Matrix Catalyst, or Chimaerus in The Dreamrift)
         [9] = 244584, --  (Crafted by Leatherworking)
         [10] = 249325, --  (Crown of the Cosmos in The Voidspire)
         [6] = 49810, --  (Pit of Saron)
-        [7] = 249996, --  (Matrix Catalyst, or Vaelgor and Ezzorak in
-          The Voidspire)
+        [7] = 249996, -- (Matrix Catalyst, or Vaelgor and Ezzorak in The Voidspire)
         [8] = 249999, --  (Matrix Catalyst.)
         [11] = 249919, --  (Belo'ren in March on Quel'Danas.)
         [13] = 249809, --  (Crown of the Cosmos in The Voidspire.)
@@ -400,10 +365,7 @@ NS.BIS_OVERALL = {
         [8] = 151317, --  (Seat of the Triumvirate)
         [11] = 249336, --  (Vorasius (The Voidspire))
         [16] = 249302, --  (Vorasius (The Voidspire))
-        [13] = 151312, --  (Belo'ren (March on Quel'Danas)
- Chimaerus (The Dreamrift)
- Vaelgor and Ezzorak (The Voidspire)
- Seat of the Triumvirate)
+        [13] = 151312, -- (Belo'ren (March on Quel'Danas) Chimaerus (The Dreamrift) Vaelgor and Ezzorak (The Voidspire) Seat of the Triumvirate)
     },
     MONK_MISTWEAVER = {
         [16] = 258050, --  (Skyreach)
@@ -525,11 +487,7 @@ NS.BIS_OVERALL = {
         [16] = 245770, -- Aln'hara Cane (Inscription)
     },
     PRIEST_SHADOW = {
-        [16] = 249286, -- Belo'melorn, the Shattered Talon (1H)
- Tome of Alnscorned Regret (OH)
- Brazier of the Dissonant Dirge (2H) (Belo'ren in March on Quel'Danas
-Chimaerus in The Dreamrift
-Midnight Falls in March on Quel'Danas)
+        [16] = 249286, -- Belo'melorn, the Shattered Talon (1H) Tome of Alnscorned Regret (OH) Brazier of the Dissonant Dirge (2H) (Belo'ren in March on Quel'Danas Chimaerus in The Dreamrift Midnight Falls in March on Quel'Danas)
         [1] = 250051, -- Blind Oath's Winged Crest (TIER SET) (Lightblinded Vanguard in The Voidspire)
         [2] = 249368, -- Eternal Voidsong Chain (Crown of the Cosmos in The Voidspire)
         [3] = 250049, -- Blind Oath's Seraphguards (TIER SET) (Fallen-King Salhadaar in The Voidspire)
@@ -540,22 +498,11 @@ Midnight Falls in March on Quel'Danas)
         [6] = 249376, -- Whisper-Inscribed Sash (Belo'ren in March on Quel'Danas)
         [7] = 250050, -- Blind Oath's Leggings (TIER SET) (Vaelgor and Ezzorak in Voidspire)
         [8] = 258584, -- Lightbinder Treads (Skyreach)
-        [11] = 251115, -- Omission of Light
-         Eye of Midnight
-         Bifurcation Band (Nexus-Point Xenas
-        Midnight Falls in March on Quel'Danas
-        Magister's Terrace)
-        [13] = 249810, -- Gaze of the Alnseer
- Soulcatcher's Charm
- Vaelgor's Final Stare
- Shadow of the Empyrean Requiem (Chimaerus in The Dreamrift
-Maisara Caverns
-Vaelgor and Ezzorak in The Voidspire
-Midnight Falls in March on Quel'Danas)
+        [11] = 251115, -- Omission of Light Eye of Midnight Bifurcation Band (Nexus-Point Xenas Midnight Falls in March on Quel'Danas Magister's Terrace)
+        [13] = 249810, -- Gaze of the Alnseer Soulcatcher's Charm Vaelgor's Final Stare Shadow of the Empyrean Requiem (Chimaerus in The Dreamrift Maisara Caverns Vaelgor and Ezzorak in The Voidspire Midnight Falls in March on Quel'Danas)
     },
     ROGUE_ASSASSINATION = {
-        [16] = 249925, -- Your highest ilvl dagger.
-Best choice:  Hungering Victory (Vorasius in The Voidspire)
+        [16] = 249925, -- Your highest ilvl dagger. Best choice:  Hungering Victory (Vorasius in The Voidspire)
         [17] = 245876, -- Farstrider's Mercy (Crit/Haste) with  Darkmoon Sigil: Hunt (Crafted by Blacksmithing)
         [1] = 250006, -- Masquerade of the Grim Jest (Matrix Catalyst, or Lightblinded Vanguard in The Voidspire)
         [2] = 249337, -- Ribbon of Coiled Malice (Fallen-King Salhadaar in The Voidspire)
@@ -573,8 +520,7 @@ Best choice:  Hungering Victory (Vorasius in The Voidspire)
         [14] = 249343, -- Gaze of the Alnseer (Chimaerus in The Dreamrift)
     },
     ROGUE_OUTLAW = {
-        [16] = 260423, -- Your highest ilvl slow main-hand.
-Best choice:  Arator's Swift Remembrance (Crown of the Cosmos in The Voidspire)
+        [16] = 260423, -- Your highest ilvl slow main-hand. Best choice:  Arator's Swift Remembrance (Crown of the Cosmos in The Voidspire)
         [17] = 133491, -- Krick's Beetle Stabber (Pit of Saron)
         [1] = 151336, -- Voidlashed Hood (Seat of the Triumvirate)
         [2] = 50228, -- Barbed Ymirheim Choker (Pit of Saron)
@@ -592,8 +538,7 @@ Best choice:  Arator's Swift Remembrance (Crown of the Cosmos in The Voidspire)
         [14] = 249343, -- Gaze of the Alnseer (Chimaerus in The Dreamrift)
     },
     ROGUE_SUBTLETY = {
-        [16] = 249925, -- Your highest ilevel dagger.
-Best choice:  Hungering Victory (Vorasius in The Voidspire)
+        [16] = 249925, -- Your highest ilevel dagger. Best choice:  Hungering Victory (Vorasius in The Voidspire)
         [17] = 245876, -- Farstrider's Mercy with  Darkmoon Sigil: Hunt (Crafted by Blacksmithing)
         [1] = 250006, -- Masquerade of the Grim Jest (Matrix Catalyst, or Lightblinded Vanguard in The Voidspire)
         [2] = 249368, -- Eternal Voidsong Chain (Crown of the Cosmos in The Voidspire)
@@ -930,36 +875,19 @@ NS.BIS_MYTHIC = {
         [17] = 249922, --  (Chimaerus - Dreamrift)
     },
     EVOKER_AUGMENTATION = {
-        [16] = 193709, --  (Maisara Caverns
-            Magister's Terrace
-            Skyreach
-            Algeth'ar Academy)
+        [16] = 193709, -- (Maisara Caverns Magister's Terrace Skyreach Algeth'ar Academy)
         [1] = 49824, --  (Pit of Saron)
         [2] = 50228, --  (Pit of Saron)
         [3] = 249995, --  (Matrix Catalyst)
-        [15] = 260312, --  (Crafted by Tailoring
-            
-            
-              Magister's Terrace)
+        [15] = 260312, -- (Crafted by Tailoring Magister's Terrace)
         [5] = 250000, --  (Matrix Catalyst)
-        [9] = 151321, --  (Crafted by Leatherworking
-            
-            
-              Seat of the Triumvirate)
+        [9] = 151321, -- (Crafted by Leatherworking Seat of the Triumvirate)
         [10] = 249998, --  (Matrix Catalyst)
         [6] = 49810, --  (Pit of Saron)
         [7] = 249996, --  (Matrix Catalyst)
-        [8] = 249999, --  (Algeth'ar Academy
-            
-            
-              Matrix Catalyst)
-        [11] = 240949, --  (Nexus-Point Xenas
-            Pit of Saron
-            Crafted by Jewelcrafting)
-        [13] = 193718, --  (Maisara Caverns
-            Windrunner Spire
-            Magister's Terrace
-            Algeth'ar Academy)
+        [8] = 249999, -- (Algeth'ar Academy Matrix Catalyst)
+        [11] = 240949, -- (Nexus-Point Xenas Pit of Saron Crafted by Jewelcrafting)
+        [13] = 193718, -- (Maisara Caverns Windrunner Spire Magister's Terrace Algeth'ar Academy)
     },
     EVOKER_DEVASTATION = {
         [16] = 251201, --  ()
@@ -1107,10 +1035,7 @@ NS.BIS_MYTHIC = {
         [8] = 151317, --  (Seat of the Triumvirate)
         [11] = 151308, --  (Seat of the Triumvirate)
         [16] = 193723, --  (Algeth'ar Academy)
-        [13] = 151312, --  (Skyreach
- Seat of the Triumvirate
- Pit of Saron
- Seat of the Triumvirate)
+        [13] = 151312, -- (Skyreach Seat of the Triumvirate Pit of Saron Seat of the Triumvirate)
     },
     MONK_MISTWEAVER = {
         [16] = 258050, --  (Skyreach)
@@ -1229,22 +1154,10 @@ NS.BIS_MYTHIC = {
         [8] = 251167, -- Nightprey Stalkers (Maisara Caverns)
         [11] = 151308, -- Eredath Seal of Nobility (Seat of the Triumvirate)
         [13] = 193718, -- Emerald Coach's Whistle (Algeth'ar Academy)
-        [16] = 251094, -- Aln'hara Cane (Best Craft)
-             Surgeon's Needle (1H)
-             Wand of Saprish's Gaze (1H)
-             Sigil of the Restless Heart (OH) (Tailoring
-            Pit of Saron
-            Seat of the Triumvirate
-            Windrunner Spire)
+        [16] = 251094, -- Aln'hara Cane (Best Craft) Surgeon's Needle (1H) Wand of Saprish's Gaze (1H) Sigil of the Restless Heart (OH) (Tailoring Pit of Saron Seat of the Triumvirate Windrunner Spire)
     },
     PRIEST_SHADOW = {
-        [16] = 258047, -- Splitshroud Stinger (1H)
- Rukhran's Solar Reliquary (OH)
- Corespark Multitool (2H)
- Spire of the Furious Construct (2H) (Magister's Terrace
-Skyreach
-Nexus-Point Xenas
-Skyreach)
+        [16] = 258047, -- Splitshroud Stinger (1H) Rukhran's Solar Reliquary (OH) Corespark Multitool (2H) Spire of the Furious Construct (2H) (Magister's Terrace Skyreach Nexus-Point Xenas Skyreach)
         [1] = 250051, -- Blind Oath's Winged Crest (TIER SET) (Matrix Catalyst)
         [2] = 151309, -- Necklace of the Twisting Void (Seat of the Triumvirate)
         [3] = 250049, -- Blind Oath's Seraphguards (TIER SET) (Matrix Catalyst)
@@ -1255,20 +1168,11 @@ Skyreach)
         [6] = 151302, -- Cord of Unraveling Reality (Seat of the Triumvirate)
         [7] = 250050, -- Blind Oath's Leggings (TIER SET) (Matrix Catalyst)
         [8] = 258584, -- Lightbinder Treads (Skyreach)
-        [11] = 251115, -- Omission of Light
-         Bifurcation Band (Nexus-Point Xenas
-        Magister's Terrace)
-        [13] = 250256, -- Soulcatcher's Charm
- Vessel of Tortured Souls
- Emberwing Feather
- Heart of Wind (Maisara Caverns
-Maisara Caverns
-Windrunner Spire
-Windrunner Spire)
+        [11] = 251115, -- Omission of Light Bifurcation Band (Nexus-Point Xenas Magister's Terrace)
+        [13] = 250256, -- Soulcatcher's Charm Vessel of Tortured Souls Emberwing Feather Heart of Wind (Maisara Caverns Maisara Caverns Windrunner Spire Windrunner Spire)
     },
     ROGUE_ASSASSINATION = {
-        [16] = 258436, -- Your highest ilvl dagger.
-Best choice:  Edge of the Burning Sun (Skyreach)
+        [16] = 258436, -- Your highest ilvl dagger. Best choice:  Edge of the Burning Sun (Skyreach)
         [17] = 245876, -- Farstrider's Mercy (Crit/Haste) with  Darkmoon Sigil: Hunt (Crafted by Blacksmithing)
         [1] = 250006, -- Masquerade of the Grim Jest (Matrix Catalyst)
         [2] = 151309, -- Necklace of the Twisting Void (Seat of the Triumvirate)
@@ -1286,8 +1190,7 @@ Best choice:  Edge of the Burning Sun (Skyreach)
         [14] = 252420, -- Solarflare Prism (Skyreach)
     },
     ROGUE_OUTLAW = {
-        [16] = 251207, -- Your highest ilvl slow main-hand.
-Best choice:  Dreadflail Bludgeon (Nexus-Point Xenas)
+        [16] = 251207, -- Your highest ilvl slow main-hand. Best choice:  Dreadflail Bludgeon (Nexus-Point Xenas)
         [17] = 133491, -- Krick's Beetle Stabber (Pit of Saron)
         [1] = 151336, -- Voidlashed Hood (Seat of the Triumvirate)
         [2] = 50228, -- Barbed Ymirheim Choker (Pit of Saron)
@@ -1305,8 +1208,7 @@ Best choice:  Dreadflail Bludgeon (Nexus-Point Xenas)
         [14] = 252420, -- Solarflare Prism (Skyreach)
     },
     ROGUE_SUBTLETY = {
-        [16] = 258436, -- Your highest ilvl dagger.
-Best choice:  Edge of the Burning Sun (Skyreach)
+        [16] = 258436, -- Your highest ilvl dagger. Best choice:  Edge of the Burning Sun (Skyreach)
         [17] = 258436, -- Edge of the Burning Sun (Skyreach)
         [1] = 250006, -- Masquerade of the Grim Jest (Matrix Catalyst)
         [2] = 50228, -- Barbed Ymirheim Choker (Pit of Saron)
@@ -1641,54 +1543,32 @@ NS.BIS_RAID = {
         [16] = 193707, --  (Algeth'ar Academy)
     },
     EVOKER_AUGMENTATION = {
-        [16] = 249276, --  (Belo'ren in March on Quel'Danas
-            Lightblinded Vanguard in The Voidspire
-            Vorasius in The Voidspire)
-        [1] = 249317, --  (Midnight Falls in March on Quel'Danas
-            
-            
-              Vorasius in The Voidspire)
+        [16] = 249276, -- (Belo'ren in March on Quel'Danas Lightblinded Vanguard in The Voidspire Vorasius in The Voidspire)
+        [1] = 249317, -- (Midnight Falls in March on Quel'Danas Vorasius in The Voidspire)
         [2] = 249337, --  (Fallen-King Salhadaar in The Voidspire)
-        [3] = 249995, --  (Matrix Catalyst, Fallen-King Salhadaar in
-          The Voidspire.)
+        [3] = 249995, -- (Matrix Catalyst, Fallen-King Salhadaar in The Voidspire.)
         [15] = 239656, --  (Crafted by Tailoring)
-        [5] = 250000, --  (Matrix Catalyst, or Chimaerus in
-          The Dreamrift)
+        [5] = 250000, -- (Matrix Catalyst, or Chimaerus in The Dreamrift)
         [9] = 244584, --  (Crafted by Leatherworking)
-        [10] = 249998, --  (Matrix Catalyst, or Vorasius in
-          The Voidspire)
-        [6] = 249303, --  (Crafted by Leatherworking
-            
-            
-              Chimaerus in The Dreamrift
-            
-            
-              Lightblinded Vanguard in The Voidspire)
-        [7] = 249996, --  (Matrix Catalyst, or Vaelgor and Ezzorak in
-          The Voidspire)
+        [10] = 249998, -- (Matrix Catalyst, or Vorasius in The Voidspire)
+        [6] = 249303, -- (Crafted by Leatherworking Chimaerus in The Dreamrift Lightblinded Vanguard in The Voidspire)
+        [7] = 249996, -- (Matrix Catalyst, or Vaelgor and Ezzorak in The Voidspire)
         [8] = 249377, --  (Belo'ren in March on Quel'Danas)
-        [11] = 249919, --  (Midnight Falls in March on Quel'Danas
-            Crafted by Jewelcrafting
-            Lightblinded Vanguard in The Voidspire
-            Belo'ren in March on Quel'Danas)
-        [13] = 249346, --  (Midnight Falls in March on Quel'Danas
-            Vaelgor and Ezzorak in The Voidspire)
+        [11] = 249919, -- (Midnight Falls in March on Quel'Danas Crafted by Jewelcrafting Lightblinded Vanguard in The Voidspire Belo'ren in March on Quel'Danas)
+        [13] = 249346, -- (Midnight Falls in March on Quel'Danas Vaelgor and Ezzorak in The Voidspire)
     },
     EVOKER_DEVASTATION = {
         [16] = 249294, --  (Lightblinded Vanguard in The Voidspire.)
         [17] = 249276, --  (Vorasius in The Voidspire.)
         [1] = 249997, --  (Matrix Catalyst, Lightblinded Vanguard in The Voidspire.)
         [2] = 250247, --  (Midnight Falls in March on Quel'Danas.)
-        [3] = 249995, --  (Matrix Catalyst, Fallen-King Salhadaar in
-          The Voidspire.)
+        [3] = 249995, -- (Matrix Catalyst, Fallen-King Salhadaar in The Voidspire.)
         [15] = 239656, --  (Crafted by Tailoring)
-        [5] = 250000, --  (Matrix Catalyst, or Chimaerus in
-          The Dreamrift)
+        [5] = 250000, -- (Matrix Catalyst, or Chimaerus in The Dreamrift)
         [9] = 244584, --  (Crafted by Leatherworking)
         [10] = 249325, --  (Crown of the Cosmos in The Voidspire)
         [6] = 249371, --  (Chimaerus in The Dreamrift)
-        [7] = 249996, --  (Matrix Catalyst, or Vaelgor and Ezzorak in
-          The Voidspire)
+        [7] = 249996, -- (Matrix Catalyst, or Vaelgor and Ezzorak in The Voidspire)
         [8] = 249999, --  (Matrix Catalyst.)
         [11] = 249919, --  (Belo'ren in March on Quel'Danas.)
         [13] = 249809, --  (Crown of the Cosmos in The Voidspire.)
@@ -1822,10 +1702,7 @@ NS.BIS_RAID = {
         [8] = 249382, --  (Crown of the Cosmos (The Voidspire))
         [11] = 249336, --  (Vorasius (The Voidspire))
         [16] = 249302, --  (Vorasius (The Voidspire))
-        [13] = 249807, --  (Belo'ren (March on Quel'Danas)
- Chimaerus (The Dreamrift)
- Vaelgor and Ezzorak (The Voidspire)
- Belo'ren (March on Quel'Danas))
+        [13] = 249807, -- (Belo'ren (March on Quel'Danas) Chimaerus (The Dreamrift) Vaelgor and Ezzorak (The Voidspire) Belo'ren (March on Quel'Danas))
     },
     MONK_MISTWEAVER = {
         [16] = 249293, --  (Imperator Averzian in The Voidspire)
@@ -1933,9 +1810,7 @@ NS.BIS_RAID = {
     },
     PRIEST_HOLY = {
         [1] = 250051, -- Blind Oath's Winged Crest (TIER SET) (Lightblinded Vanguard in The Voidspire / Matrix Catalyst)
-        [2] = 250247, -- Ribbon of Coiled Malice
-             Amulet of the Abyssal Hymn (Fallen-King Salhadaar in The Voidspire
-            Midnight Falls in March on Quel'Danas)
+        [2] = 250247, -- Ribbon of Coiled Malice Amulet of the Abyssal Hymn (Fallen-King Salhadaar in The Voidspire Midnight Falls in March on Quel'Danas)
         [3] = 250049, -- Blind Oath's Seraphguards (TIER SET) (Fallen-King Salhadaar in The Voidspire / Matrix Catalyst)
         [15] = 249335, -- Imperator's Banner (Imperator Averzian in The Voidspire)
         [5] = 250054, -- Blind Oath's Raiment (TIER SET) (Chimaerus in The Dreamrift / Matrix Catalyst)
@@ -1946,17 +1821,11 @@ NS.BIS_RAID = {
         [8] = 249373, -- Dream-Scorched Striders (Chimaerus in The Dreamrift)
         [11] = 249336, -- Signet of the Starved Beast (Vorasius in The Voidspire)
         [13] = 249808, -- Litany of Lightblind Wrath (Lightblinded Vanguard in The Voidspire)
-        [16] = 249293, -- Aln'hara Cane (Best Craft)
-             Weight of Command (Tailoring
-            Imperator Averzian in The Voidspire)
+        [16] = 249293, -- Aln'hara Cane (Best Craft) Weight of Command (Tailoring Imperator Averzian in The Voidspire)
         [17] = 249276, -- Grimoire of the Eternal Light (Vorasius in The Voidspire)
     },
     PRIEST_SHADOW = {
-        [16] = 249286, -- Belo'melorn, the Shattered Talon (1H)
- Tome of Alnscorned Regret (OH)
- Brazier of the Dissonant Dirge (2H) (Belo'ren in March on Quel'Danas
-Chimaerus in The Dreamrift
-Midnight Falls in March on Quel'Danas)
+        [16] = 249286, -- Belo'melorn, the Shattered Talon (1H) Tome of Alnscorned Regret (OH) Brazier of the Dissonant Dirge (2H) (Belo'ren in March on Quel'Danas Chimaerus in The Dreamrift Midnight Falls in March on Quel'Danas)
         [1] = 250051, -- Blind Oath's Winged Crest (TIER SET) (Lightblinded Vanguard in The Voidspire)
         [2] = 249368, -- Eternal Voidsong Chain (Crown of the Cosmos in The Voidspire)
         [3] = 250049, -- Blind Oath's Seraphguards (TIER SET) (Fallen-King Salhadaar in The Voidspire)
@@ -1967,18 +1836,11 @@ Midnight Falls in March on Quel'Danas)
         [6] = 249376, -- Whisper-Inscribed Sash (Belo'ren in March on Quel'Danas)
         [7] = 250050, -- Blind Oath's Leggings (TIER SET) (Vaelgor and Ezzorak in Voidspire)
         [8] = 249373, -- Dream-Scorched Striders (Chimaerus in The Dreamrift)
-        [11] = 249369, -- Eye of Midnight
-         Bond of Light (Midnight Falls in March on Quel'Danas
-        Lightblinded Vanguard in Voidspire)
-        [13] = 249810, -- Gaze of the Alnseer
- Vaelgor's Final Stare
- Shadow of the Empyrean Requiem (Chimaerus in The Dreamrift
-Vaelgor and Ezzorak in The Voidspire
-Midnight Falls in March on Quel'Danas)
+        [11] = 249369, -- Eye of Midnight Bond of Light (Midnight Falls in March on Quel'Danas Lightblinded Vanguard in Voidspire)
+        [13] = 249810, -- Gaze of the Alnseer Vaelgor's Final Stare Shadow of the Empyrean Requiem (Chimaerus in The Dreamrift Vaelgor and Ezzorak in The Voidspire Midnight Falls in March on Quel'Danas)
     },
     ROGUE_ASSASSINATION = {
-        [16] = 249925, -- Your highest ilvl dagger.
-Best choice:  Hungering Victory (Vorasius in The Voidspire)
+        [16] = 249925, -- Your highest ilvl dagger. Best choice:  Hungering Victory (Vorasius in The Voidspire)
         [17] = 245876, -- Farstrider's Mercy (Crit/Haste) with  Darkmoon Sigil: Hunt (Crafted by Blacksmithing)
         [1] = 250006, -- Masquerade of the Grim Jest (Matrix Catalyst, or Lightblinded Vanguard in The Voidspire)
         [2] = 249337, -- Ribbon of Coiled Malice (Fallen-King Salhadaar in The Voidspire)
@@ -1996,8 +1858,7 @@ Best choice:  Hungering Victory (Vorasius in The Voidspire)
         [14] = 249343, -- Gaze of the Alnseer (Chimaerus in The Dreamrift)
     },
     ROGUE_OUTLAW = {
-        [16] = 260423, -- Your highest ilvl slow main-hand.
-Best choice:  Arator's Swift Remembrance (Crown of the Cosmos in The Voidspire)
+        [16] = 260423, -- Your highest ilvl slow main-hand. Best choice:  Arator's Swift Remembrance (Crown of the Cosmos in The Voidspire)
         [17] = 249284, -- Belo'ren's Swift Talon (Belo'ren in March on Quel'Danas)
         [1] = 249913, -- Mask of Darkest Intent (Midnight Falls in March on Quel'Danas)
         [2] = 249337, -- Ribbon of Coiled Malice (Fallen-King Salhadaar in The Voidspire)
@@ -2015,8 +1876,7 @@ Best choice:  Arator's Swift Remembrance (Crown of the Cosmos in The Voidspire)
         [14] = 249343, -- Gaze of the Alnseer (Chimaerus in The Dreamrift)
     },
     ROGUE_SUBTLETY = {
-        [16] = 249925, -- Your highest ilevel dagger.
-Best choice:  Hungering Victory (Vorasius in The Voidspire)
+        [16] = 249925, -- Your highest ilevel dagger. Best choice:  Hungering Victory (Vorasius in The Voidspire)
         [17] = 249925, -- Hungering Victory (Vorasius in The Voidspire)
         [1] = 250006, -- Masquerade of the Grim Jest (Matrix Catalyst, or Lightblinded Vanguard in The Voidspire)
         [2] = 249368, -- Eternal Voidsong Chain (Crown of the Cosmos in The Voidspire)
@@ -2406,3 +2266,4 @@ NS.SPEC_MAP = {
     [1468] = "EVOKER_PRESERVATION",
     [1473] = "EVOKER_AUGMENTATION",
 }
+
