@@ -87,11 +87,19 @@ function DungeonOptimizer:OnInitialize()
     self:Print(NS.L["ADDON_LOADED"])
 end
 
+local ADDON_MSG_PREFIX = "DOptSync"
+
 function DungeonOptimizer:OnEnable()
     -- Register for inspect events
     self:RegisterEvent("INSPECT_READY")
     self:RegisterEvent("GROUP_ROSTER_UPDATE")
     self:RegisterEvent("GET_ITEM_INFO_RECEIVED")
+    self:RegisterEvent("CHAT_MSG_ADDON")
+    -- Register addon message prefix for group sync
+    C_ChatInfo.RegisterAddonMessagePrefix(ADDON_MSG_PREFIX)
+
+    -- Auto-detect completed dungeons from this week's M+ history
+    self:AutoDetectCompletedDungeons()
 end
 
 function DungeonOptimizer:OnDisable()
@@ -220,17 +228,19 @@ function DungeonOptimizer:PlayerNeedsItem(playerData, itemId, slot)
     return false
 end
 
--- Count how many BIS items a player is missing overall
+-- Count how many BIS items a player is missing
+-- Returns: missing, total, missingFromDungeons, totalFromDungeons
 function DungeonOptimizer:CountMissingBIS(playerData)
-    if not playerData or not playerData.spec then return 0, 0 end
+    if not playerData or not playerData.spec then return 0, 0, 0, 0 end
 
     local bisTable = NS.GetActiveBISTable()
     local bisList = bisTable[playerData.spec]
-    if not bisList then return 0, 0 end
+    if not bisList then return 0, 0, 0, 0 end
 
     local total = 0
     local missing = 0
-    local seenBisItems = {} -- Avoid counting same item twice for ring/trinket pairs
+    local totalDungeon = 0
+    local missingDungeon = 0
 
     for slot, bisItemId in pairs(bisList) do
         -- For paired slots (rings 11/12, trinkets 13/14), only count unique items
@@ -241,13 +251,22 @@ function DungeonOptimizer:CountMissingBIS(playerData)
             -- Same item in both paired slots, already counted via slot 11/13
         else
             total = total + 1
-            if playerData.gear[slot] ~= bisItemId then
+            local isMissing = (playerData.gear[slot] ~= bisItemId)
+            if isMissing then
                 missing = missing + 1
+            end
+
+            -- Track dungeon-droppable items separately
+            if NS.IsFromDungeon(bisItemId) then
+                totalDungeon = totalDungeon + 1
+                if isMissing then
+                    missingDungeon = missingDungeon + 1
+                end
             end
         end
     end
 
-    return missing, total
+    return missing, total, missingDungeon, totalDungeon
 end
 
 -- ============================================================================
@@ -275,6 +294,7 @@ function DungeonOptimizer:ScoreDungeon(dungeonId)
                     slot = drop.slot,
                     itemName = drop.itemName or ("Item " .. drop.itemId),
                     slotName = NS.SLOT_NAMES[drop.slot] or "?",
+                    boss = drop.boss or "",
                 })
             end
         end
@@ -336,4 +356,111 @@ NS.CLASS_COLORS = {
 function NS.ColorByClass(text, class)
     local color = NS.CLASS_COLORS[class] or "ffffff"
     return string.format("|cff%s%s|r", color, text)
+end
+
+-- ============================================================================
+-- DUNGEON COMPLETION SYNC (#11)
+-- Auto-detect completed dungeons + sync between group members
+-- ============================================================================
+
+-- Map WoW dungeon mapChallengeModeID -> our dungeon key
+-- These IDs may need updating for Midnight
+NS.CHALLENGE_MODE_MAP = {
+    -- New Midnight dungeons (IDs are approximate — verify in-game)
+    [2773] = "MAGISTER",
+    [2774] = "MAISARA",
+    [2775] = "WINDRUNNER",
+    [2776] = "NEXUS_XENAS",
+    -- Legacy dungeons
+    [2286] = "ALGETHAR",
+    [2293] = "PIT_OF_SARON",
+    [2295] = "SEAT",
+    [2296] = "SKYREACH",
+}
+
+-- Also map by dungeon activity name (more reliable)
+NS.ACTIVITY_NAME_MAP = {
+    ["magisters' terrace"]    = "MAGISTER",
+    ["maisara caverns"]       = "MAISARA",
+    ["windrunner spire"]      = "WINDRUNNER",
+    ["nexus-point xenas"]     = "NEXUS_XENAS",
+    ["algeth'ar academy"]     = "ALGETHAR",
+    ["pit of saron"]          = "PIT_OF_SARON",
+    ["seat of the triumvirate"] = "SEAT",
+    ["the seat of the triumvirate"] = "SEAT",
+    ["skyreach"]              = "SKYREACH",
+}
+
+function DungeonOptimizer:AutoDetectCompletedDungeons()
+    -- Try to detect this week's completed M+ from C_MythicPlus
+    if not C_MythicPlus then return end
+
+    local runs = C_MythicPlus.GetRunHistory(false, true) -- thisWeek=true
+    if not runs then return end
+
+    local detected = 0
+    for _, run in ipairs(runs) do
+        local mapID = run.mapChallengeModeID
+        local dungeonKey = NS.CHALLENGE_MODE_MAP[mapID]
+        if dungeonKey and not self.db.profile.excludedDungeons[dungeonKey] then
+            self.db.profile.excludedDungeons[dungeonKey] = true
+            detected = detected + 1
+        end
+    end
+
+    if detected > 0 then
+        self:Print(string.format("Auto-detected |cff00ff00%d|r completed dungeon(s) this week.", detected))
+    end
+end
+
+-- Serialize excluded dungeons for sync
+function DungeonOptimizer:SerializeExcluded()
+    local parts = {}
+    for id, val in pairs(self.db.profile.excludedDungeons) do
+        if val then
+            table.insert(parts, id)
+        end
+    end
+    return table.concat(parts, ",")
+end
+
+-- Deserialize and merge excluded dungeons from a sync message
+function DungeonOptimizer:MergeExcluded(data)
+    local changed = false
+    for rawId in data:gmatch("[^,]+") do
+        local id = rawId:match("^%s*(.-)%s*$") -- trim
+        -- Validate it's a known dungeon
+        for _, dungeon in ipairs(NS.DUNGEONS) do
+            if dungeon.id == id and not self.db.profile.excludedDungeons[id] then
+                self.db.profile.excludedDungeons[id] = true
+                changed = true
+            end
+        end
+    end
+    return changed
+end
+
+-- Send our excluded dungeons to the group
+function DungeonOptimizer:BroadcastExcluded()
+    if not IsInGroup() then return end
+    local data = self:SerializeExcluded()
+    if data == "" then return end
+    local channel = IsInRaid() and "RAID" or "PARTY"
+    C_ChatInfo.SendAddonMessage(ADDON_MSG_PREFIX, data, channel)
+end
+
+-- Handle incoming sync messages
+function DungeonOptimizer:CHAT_MSG_ADDON(event, prefix, message, channel, sender)
+    if prefix ~= ADDON_MSG_PREFIX then return end
+    -- Don't process our own messages
+    local myName = UnitName("player")
+    if sender and sender:find(myName) then return end
+
+    if self:MergeExcluded(message) then
+        self:Print(string.format("Synced completed dungeons from |cff00ff00%s|r.", sender or "group"))
+        self.lastRanking = self:CalculateDungeonRanking()
+        if NS.UI and NS.UI.mainFrame and NS.UI.mainFrame:IsShown() then
+            NS.UI:RefreshUI()
+        end
+    end
 end

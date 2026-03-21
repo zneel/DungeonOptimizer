@@ -110,6 +110,16 @@ function UI:RefreshUI()
     end)
     topGroup:AddChild(resetBtn)
 
+    -- Sync button (#11)
+    local syncBtn = AceGUI:Create("Button")
+    syncBtn:SetText("Sync Group")
+    syncBtn:SetWidth(120)
+    syncBtn:SetCallback("OnClick", function()
+        NS.Core:BroadcastExcluded()
+        NS.Core:Print("Synced completed dungeons to group.")
+    end)
+    topGroup:AddChild(syncBtn)
+
     -- === GROUP SUMMARY ===
     if scanned > 0 then
         local summaryHeading = AceGUI:Create("Heading")
@@ -123,10 +133,14 @@ function UI:RefreshUI()
         self.mainFrame:AddChild(summaryGroup)
 
         for playerName, playerData in pairs(NS.groupData) do
-            local missing, total = NS.Core:CountMissingBIS(playerData)
+            local missing, total, missingDungeon, totalDungeon = NS.Core:CountMissingBIS(playerData)
             local pct = 0
             if total > 0 then
                 pct = math.floor(((total - missing) / total) * 100)
+            end
+            local dungeonPct = 0
+            if totalDungeon > 0 then
+                dungeonPct = math.floor(((totalDungeon - missingDungeon) / totalDungeon) * 100)
             end
             local classColor = NS.CLASS_COLORS[playerData.class] or "ffffff"
             local specLabel = playerData.spec or NS.L["UNKNOWN_SPEC"]
@@ -134,10 +148,12 @@ function UI:RefreshUI()
             -- Use InteractiveLabel for hover tooltip (#6)
             local pLabel = AceGUI:Create("InteractiveLabel")
             pLabel:SetText(string.format(
-                "|cff%s%s|r |cff888888(%s)|r : |cff00ff00%d|r/%d BIS (%d%%)",
-                classColor, playerData.name, specLabel, total - missing, total, pct
+                "|cff%s%s|r |cff888888(%s)|r : |cff00ff00%d|r/%d BIS (%d%%) - |cff69ccf0%d|r/%d dungeon (%d%%)",
+                classColor, playerData.name, specLabel,
+                total - missing, total, pct,
+                totalDungeon - missingDungeon, totalDungeon, dungeonPct
             ))
-            pLabel:SetWidth(370)
+            pLabel:SetWidth(500)
 
             -- Show BIS items on hover
             local capturedData = playerData
@@ -153,6 +169,7 @@ function UI:RefreshUI()
                         local slotName = NS.SLOT_NAMES[slot] or "?"
                         local equipped = capturedData.gear[slot]
                         local itemName = GetItemInfo(bisItemId) or ("Item #" .. bisItemId)
+                        local source = NS.IsFromDungeon(bisItemId) and "" or " |cff888888(crafted/raid)|r"
 
                         if equipped == bisItemId then
                             GameTooltip:AddDoubleLine(
@@ -163,7 +180,7 @@ function UI:RefreshUI()
                         else
                             GameTooltip:AddDoubleLine(
                                 slotName,
-                                "|cffff4444" .. itemName .. " " .. NS.L["MISSING"] .. "|r",
+                                "|cffff4444" .. itemName .. " " .. NS.L["MISSING"] .. "|r" .. source,
                                 0.6, 0.6, 0.6, 1, 0.27, 0.27
                             )
                         end
@@ -215,6 +232,8 @@ function UI:RefreshUI()
             NS.Core.db.profile.excludedDungeons[dungeon.id] = value or nil
             NS.Core.lastRanking = NS.Core:CalculateDungeonRanking()
             self:RefreshUI()
+            -- Auto-sync to group when toggling
+            NS.Core:BroadcastExcluded()
         end)
         checkGroup:AddChild(cb)
     end
@@ -293,7 +312,7 @@ function UI:CreateDungeonEntry(parent, rank, entry)
     end
     table.sort(sortedPlayers, function(a, b) return a.info.count > b.info.count end)
 
-    -- Show ALL players (no limit)
+    -- Show ALL players, items grouped by boss
     for _, playerEntry in ipairs(sortedPlayers) do
         local pInfo = playerEntry.info
         local classColor = NS.CLASS_COLORS[pInfo.class] or "ffffff"
@@ -308,40 +327,62 @@ function UI:CreateDungeonEntry(parent, rank, entry)
         playerLabel:SetFullWidth(true)
         dungeonGroup:AddChild(playerLabel)
 
-        -- Item details with tooltip on hover (#4)
+        -- Group items by boss (#14)
+        local bosses = {}
+        local bossOrder = {}
         for _, item in ipairs(pInfo.needed) do
-            local itemLabel = AceGUI:Create("InteractiveLabel")
+            local boss = item.boss or ""
+            if boss == "" then boss = "Other" end
+            if not bosses[boss] then
+                bosses[boss] = {}
+                table.insert(bossOrder, boss)
+            end
+            table.insert(bosses[boss], item)
+        end
 
-            -- Try to load item info from cache (GetItemInfo triggers async query on first call)
-            local displayName
-            local cachedName = GetItemInfo(item.itemId)
-            if cachedName then
-                displayName = cachedName
-            elseif item.itemName and item.itemName ~= "" then
-                displayName = item.itemName
-            else
-                displayName = "Item #" .. item.itemId
+        for _, bossName in ipairs(bossOrder) do
+            -- Boss sub-header
+            if bossName ~= "Other" or #bossOrder > 1 then
+                local bossLabel = AceGUI:Create("Label")
+                bossLabel:SetText(string.format("      |cffffcc00%s:|r", bossName))
+                bossLabel:SetFullWidth(true)
+                dungeonGroup:AddChild(bossLabel)
             end
 
-            local itemText = string.format(
-                "      |cffeda55f[%s]|r |cff69ccf0%s|r",
-                item.slotName, displayName
-            )
-            itemLabel:SetText(itemText)
-            itemLabel:SetFullWidth(true)
+            for _, item in ipairs(bosses[bossName]) do
+                local itemLabel = AceGUI:Create("InteractiveLabel")
 
-            -- Show WoW item tooltip on hover
-            local capturedItemId = item.itemId
-            itemLabel:SetCallback("OnEnter", function(widget)
-                GameTooltip:SetOwner(widget.frame, "ANCHOR_RIGHT")
-                GameTooltip:SetHyperlink("item:" .. capturedItemId)
-                GameTooltip:Show()
-            end)
-            itemLabel:SetCallback("OnLeave", function()
-                GameTooltip:Hide()
-            end)
+                local displayName
+                local cachedName = GetItemInfo(item.itemId)
+                if cachedName then
+                    displayName = cachedName
+                elseif item.itemName and item.itemName ~= "" then
+                    displayName = item.itemName
+                else
+                    displayName = "Item #" .. item.itemId
+                end
 
-            dungeonGroup:AddChild(itemLabel)
+                local indent = (bossName ~= "Other" or #bossOrder > 1) and "         " or "      "
+                local itemText = string.format(
+                    "%s|cffeda55f[%s]|r |cff69ccf0%s|r",
+                    indent, item.slotName, displayName
+                )
+                itemLabel:SetText(itemText)
+                itemLabel:SetFullWidth(true)
+
+                -- Show WoW item tooltip on hover at M+ ilvl
+                local capturedItemId = item.itemId
+                itemLabel:SetCallback("OnEnter", function(widget)
+                    GameTooltip:SetOwner(widget.frame, "ANCHOR_RIGHT")
+                    GameTooltip:SetHyperlink("item:" .. capturedItemId .. "::::::::::::12806")
+                    GameTooltip:Show()
+                end)
+                itemLabel:SetCallback("OnLeave", function()
+                    GameTooltip:Hide()
+                end)
+
+                dungeonGroup:AddChild(itemLabel)
+            end
         end
     end
 end

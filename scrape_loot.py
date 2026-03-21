@@ -152,29 +152,52 @@ def extract_item_name(element):
 def parse_dungeon_page(html):
     """
     Parse an Icy Veins dungeon guide page.
-    Returns list of {itemId, slot, itemName}.
+    Returns list of {itemId, slot, itemName, boss}.
+    Boss names are extracted from h3/h4 headings above each loot table.
     """
     soup = BeautifulSoup(html, "html.parser")
     items = []
     seen_ids = set()
+
+    # Build a mapping: table element -> boss name
+    # by finding h3/h4 headings that precede loot tables
+    table_boss_map = {}
+    for h in soup.find_all(["h3", "h4"]):
+        boss_name = h.get_text(strip=True)
+        # Skip non-boss headings
+        if any(skip in boss_name.lower() for skip in
+               ["overview", "talent", "route", "strategy", "abilities",
+                "tips", "mythic", "trash", "achievement", "loot"]):
+            continue
+        # Find the next table after this heading
+        el = h
+        for _ in range(15):
+            el = el.find_next()
+            if el is None:
+                break
+            if el.name in ["h2", "h3", "h4"]:
+                break
+            if el.name == "table":
+                rows = el.find_all("tr")
+                if len(rows) > 1:
+                    table_boss_map[id(el)] = boss_name
+                break
 
     for table in soup.find_all("table"):
         rows = table.find_all("tr")
         if len(rows) < 2:
             continue
 
-        # Check if this is a loot table (headers: Type, Item, Stats)
+        # Check if this is a loot table
         header_cells = rows[0].find_all(["th", "td"])
         headers = [c.get_text(strip=True).lower() for c in header_cells]
 
-        # Loot tables have "type" + "item" or similar
         is_loot = (
             len(headers) >= 2 and
             ("type" in headers or "slot" in headers) and
             ("item" in headers or "name" in headers)
         )
 
-        # Also accept tables where first data row has a recognizable type
         if not is_loot and len(rows) > 1:
             first_data = rows[1].find_all("td")
             if len(first_data) >= 2:
@@ -185,21 +208,20 @@ def parse_dungeon_page(html):
         if not is_loot:
             continue
 
+        boss_name = table_boss_map.get(id(table), "Unknown")
+
         for row in rows[1:]:
             cells = row.find_all("td")
             if len(cells) < 2:
                 continue
 
-            # Column 0: Type/Slot
             type_text = cells[0].get_text(strip=True)
             slot_id = resolve_slot(type_text)
             if slot_id is None:
                 continue
 
-            # Column 1: Item
             item_id = extract_item_id(cells[1])
             if not item_id:
-                # Try any cell
                 for cell in cells:
                     item_id = extract_item_id(cell)
                     if item_id:
@@ -209,7 +231,6 @@ def parse_dungeon_page(html):
 
             item_name = extract_item_name(cells[1])
 
-            # Deduplicate
             if item_id in seen_ids:
                 continue
             seen_ids.add(item_id)
@@ -218,9 +239,10 @@ def parse_dungeon_page(html):
                 "itemId": item_id,
                 "slot": slot_id,
                 "itemName": item_name,
+                "boss": boss_name,
             })
 
-    items.sort(key=lambda x: (x["slot"], x["itemId"]))
+    items.sort(key=lambda x: (x["boss"], x["slot"], x["itemId"]))
     return items
 
 
@@ -281,9 +303,10 @@ def format_dungeon_loot(all_loot):
 
         for item in items:
             name_str = json.dumps(item["itemName"]) if item["itemName"] else "nil"
+            boss_str = json.dumps(item.get("boss", "")) if item.get("boss") else "nil"
             lines.append(
                 f'        {{ itemId = {item["itemId"]}, slot = {item["slot"]}, '
-                f'itemName = {name_str} }},'
+                f'itemName = {name_str}, boss = {boss_str} }},'
             )
 
         lines.append("    },")
