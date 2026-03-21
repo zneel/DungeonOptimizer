@@ -1,17 +1,22 @@
 #!/usr/bin/env python3
 """
-Scrape Wowhead dungeon loot tables for WoW Midnight Season 1 M+ dungeons.
-Parses the zone drop pages and outputs DUNGEON_LOOT entries for Data.lua.
+Scrape dungeon loot tables from Icy Veins dungeon guide pages.
+Each dungeon page has boss loot tables with Type | Item | Stats columns.
 
 Usage:
     pip install beautifulsoup4 requests
-    python scrape_loot.py                    # Fetch live from Wowhead
-    python scrape_loot.py --from-files DIR   # Parse local HTML files
-    python scrape_loot.py --output Data.lua  # Write directly to Data.lua
+    python scrape_loot.py                          # Fetch all dungeons live
+    python scrape_loot.py --from-files DIR         # Parse saved HTML files
+    python scrape_loot.py --output Data.lua        # Write to Data.lua
+    python scrape_loot.py --json                   # JSON output
+
+The script expects Icy Veins dungeon guide pages. Save them as:
+    DIR/<slug>-dungeon-guide.html
+Example:
+    snapshots/loot/windrunner-spire-dungeon-guide.html
 """
 
 import re
-import os
 import sys
 import json
 import time
@@ -29,278 +34,207 @@ try:
 except ImportError:
     requests = None
 
+
 # ============================================================================
 # DUNGEON DEFINITIONS
-# Wowhead zone IDs for Midnight Season 1 M+ dungeons
 # ============================================================================
 DUNGEONS = {
     "MAGISTER": {
         "name": "Magisters' Terrace",
-        "zone_id": 15829,
-        "url_slug": "magisters-terrace",
+        "slug": "magisters-terrace",
     },
     "SEAT": {
         "name": "The Seat of the Triumvirate",
-        "zone_id": 8910,
-        "url_slug": "the-seat-of-the-triumvirate",
+        "slug": "seat-of-the-triumvirate",
     },
     "SKYREACH": {
         "name": "Skyreach",
-        "zone_id": 6988,
-        "url_slug": "skyreach",
+        "slug": "skyreach",
     },
     "ALGETHAR": {
         "name": "Algeth'ar Academy",
-        "zone_id": 14032,
-        "url_slug": "algethar-academy",
+        "slug": "algethar-academy",
     },
     "PIT_OF_SARON": {
         "name": "Pit of Saron",
-        "zone_id": 4813,
-        "url_slug": "pit-of-saron",
+        "slug": "pit-of-saron",
     },
     "WINDRUNNER": {
         "name": "Windrunner Spire",
-        "zone_id": 15808,
-        "url_slug": "windrunner-spire",
+        "slug": "windrunner-spire",
     },
     "MAISARA": {
         "name": "Maisara Caverns",
-        "zone_id": 16395,
-        "url_slug": "maisara-caverns",
+        "slug": "maisara-caverns",
     },
     "NEXUS_XENAS": {
         "name": "Nexus-Point Xenas",
-        "zone_id": 16573,
-        "url_slug": "nexus-point-xenas",
+        "slug": "nexus-point-xenas",
     },
 }
 
-# Wowhead slotbak -> WoW inventory slot ID
-# Wowhead uses its own slot numbering system
-WOWHEAD_SLOT_MAP = {
-    1: 1,    # Head
-    2: 2,    # Neck
-    3: 3,    # Shoulder
-    5: 5,    # Chest
-    6: 6,    # Waist
-    7: 7,    # Legs
-    8: 8,    # Feet
-    9: 9,    # Wrist
-    10: 10,  # Hands
-    11: 11,  # Ring (Finger 1)
-    12: 13,  # Trinket -> slot 13 (Trinket 1) — we'll handle dupes later
-    13: 16,  # One-Hand -> Main Hand
-    14: 17,  # Shield -> Off Hand
-    15: 15,  # Back/Cloak
-    16: 15,  # Back (alternate)
-    17: 16,  # Two-Hand -> Main Hand
-    20: 5,   # Robe -> Chest
-    21: 16,  # Main Hand (weapon)
-    22: 17,  # Off Hand
-    23: 17,  # Held in Off-Hand
-    25: 16,  # Ranged/Thrown -> Main Hand
-    26: 16,  # Ranged (gun/bow/crossbow)
-    28: 16,  # Relic -> treat as weapon
+# Type column text -> WoW inventory slot ID
+# Icy Veins format: "[ArmorType] SlotName" or "WeaponType"
+TYPE_TO_SLOT = {
+    # Armor slots (with optional armor class prefix)
+    "head": 1, "helm": 1, "helmet": 1,
+    "neck": 2, "necklace": 2, "amulet": 2,
+    "shoulder": 3, "shoulders": 3,
+    "chest": 5, "robe": 5,
+    "waist": 6, "belt": 6,
+    "legs": 7, "leggings": 7, "pants": 7,
+    "feet": 8, "boots": 8,
+    "wrist": 9, "bracers": 9,
+    "hands": 10, "gloves": 10,
+    "ring": 11, "finger": 11,
+    "trinket": 13,
+    "back": 15, "cloak": 15, "cape": 15,
+    # Weapons -> main hand by default
+    "1h sword": 16, "1h mace": 16, "1h axe": 16,
+    "dagger": 16, "fist weapon": 16, "fist": 16,
+    "warglaive": 16, "wand": 16,
+    "2h sword": 16, "2h mace": 16, "2h axe": 16,
+    "staff": 16, "polearm": 16,
+    "bow": 16, "crossbow": 16, "gun": 16,
+    # Off-hand
+    "off-hand": 17, "shield": 17, "held in off-hand": 17,
 }
 
-# Equipment slots we care about (skip non-equippable)
-VALID_SLOTS = set(WOWHEAD_SLOT_MAP.keys())
 
-# Item quality filter (3 = rare/blue, 4 = epic/purple)
-MIN_QUALITY = 3
+def resolve_slot(type_text):
+    """Convert Icy Veins 'Type' column to a slot ID."""
+    clean = type_text.strip().lower()
 
+    # Remove armor class prefixes: "Cloth Head" -> "head", "Plate Waist" -> "waist"
+    armor_classes = ["cloth", "leather", "mail", "plate"]
+    for ac in armor_classes:
+        if clean.startswith(ac + " "):
+            clean = clean[len(ac) + 1:]
+            break
 
-# ============================================================================
-# PARSING
-# ============================================================================
+    # Direct lookup
+    if clean in TYPE_TO_SLOT:
+        return TYPE_TO_SLOT[clean]
 
-def parse_gatherer_data(html):
-    """
-    Extract item data from WH.Gatherer.addData() JavaScript calls.
-    Returns a dict of {item_id: item_data}.
-    """
-    items = {}
+    # Partial match
+    for key, slot in TYPE_TO_SLOT.items():
+        if key in clean:
+            return slot
 
-    # Pattern: WH.Gatherer.addData(3, 1, {JSON})
-    # Type 3 = items
-    pattern = r'WH\.Gatherer\.addData\(\s*3\s*,\s*\d+\s*,\s*(\{.*?\})\s*\)'
-    matches = re.findall(pattern, html, re.DOTALL)
-
-    for match in matches:
-        try:
-            # The JSON uses unquoted keys, need to handle that
-            # Convert JS object to valid JSON
-            fixed = re.sub(r'(?<=[{,])\s*(\w+)\s*:', r'"\1":', match)
-            # Handle single quotes
-            fixed = fixed.replace("'", '"')
-            # Try parsing
-            data = json.loads(fixed)
-            for item_id_str, item_data in data.items():
-                try:
-                    item_id = int(item_id_str)
-                    items[item_id] = item_data
-                except (ValueError, TypeError):
-                    continue
-        except json.JSONDecodeError:
-            # Fallback: extract individual items with regex
-            item_pattern = r'"(\d+)":\s*\{([^}]+)\}'
-            for item_match in re.finditer(item_pattern, match):
-                item_id = int(item_match.group(1))
-                item_body = item_match.group(2)
-
-                item_info = {}
-                # Extract name
-                name_match = re.search(r'"name_enus"\s*:\s*"([^"]+)"', item_body)
-                if name_match:
-                    item_info["name_enus"] = name_match.group(1)
-
-                # Extract quality
-                quality_match = re.search(r'"quality"\s*:\s*(\d+)', item_body)
-                if quality_match:
-                    item_info["quality"] = int(quality_match.group(1))
-
-                # Extract jsonequip for slot
-                items[item_id] = item_info
-
-    return items
-
-
-def extract_items_from_listview(html):
-    """
-    Extract items from Wowhead listview data (alternative parsing method).
-    Looks for data arrays in listview initialization.
-    """
-    items = {}
-
-    # Pattern: new Listview({...data: [{...}, {...}]...})
-    # or: data: [{id: 123, ...}]
-    pattern = r'"data"\s*:\s*\[(\{.*?\}(?:\s*,\s*\{.*?\})*)\]'
-    matches = re.findall(pattern, html, re.DOTALL)
-
-    for match in matches:
-        item_pattern = r'\{[^}]*"id"\s*:\s*(\d+)[^}]*\}'
-        for item_match in re.finditer(item_pattern, match):
-            item_id = int(item_match.group(1))
-            item_body = item_match.group(0)
-
-            item_info = {}
-            name_match = re.search(r'"name"\s*:\s*"([^"]+)"', item_body)
-            if name_match:
-                item_info["name_enus"] = name_match.group(1)
-
-            slot_match = re.search(r'"slot"\s*:\s*(\d+)', item_body)
-            if slot_match:
-                item_info["slotbak"] = int(slot_match.group(1))
-
-            quality_match = re.search(r'"quality"\s*:\s*(\d+)', item_body)
-            if quality_match:
-                item_info["quality"] = int(quality_match.group(1))
-
-            items[item_id] = item_info
-
-    return items
-
-
-def extract_slot_from_jsonequip(html, item_id):
-    """Try to extract slotbak from jsonequip data for a specific item."""
-    # Look for the item's jsonequip block
-    pattern = rf'"{item_id}":\s*\{{[^}}]*"jsonequip"\s*:\s*\{{([^}}]+)\}}'
-    match = re.search(pattern, html, re.DOTALL)
-    if match:
-        equip_data = match.group(1)
-        slot_match = re.search(r'"slotbak"\s*:\s*(\d+)', equip_data)
-        if slot_match:
-            return int(slot_match.group(1))
     return None
 
 
-def parse_wowhead_item_links(html):
-    """
-    Extract item IDs from wowhead item links in the HTML.
-    Fallback method when JS data isn't parseable.
-    """
-    items = {}
-    # Pattern: item=XXXXX in links and data attributes
-    pattern = r'(?:href="[^"]*item=|data-wowhead="item=)(\d+)'
-    for match in re.finditer(pattern, html):
-        item_id = int(match.group(1))
-        items[item_id] = {}
-    return items
+def extract_item_id(element):
+    """Extract item ID from a BeautifulSoup element."""
+    for tag in [element] + element.find_all(True):
+        wh = tag.get("data-wowhead", "")
+        m = re.search(r'item=(\d+)', wh)
+        if m:
+            return int(m.group(1))
+        href = tag.get("href", "")
+        m = re.search(r'item[=/](\d+)', href)
+        if m:
+            return int(m.group(1))
+    return None
 
 
-def parse_zone_page(html, zone_id):
+def extract_item_name(element):
+    """Extract item name from element."""
+    for tag in element.find_all(["a", "span"], class_=re.compile(r"q[0-9]")):
+        text = tag.get_text(strip=True)
+        if text and len(text) > 2:
+            return text
+    # Fallback: plain text
+    text = element.get_text(strip=True)
+    return text if text else None
+
+
+def parse_dungeon_page(html):
     """
-    Parse a Wowhead zone page to extract dungeon loot.
-    Returns a list of {itemId, slot, itemName} dicts.
+    Parse an Icy Veins dungeon guide page.
+    Returns list of {itemId, slot, itemName}.
     """
-    loot = []
+    soup = BeautifulSoup(html, "html.parser")
+    items = []
     seen_ids = set()
 
-    # Method 1: Parse WH.Gatherer.addData
-    gatherer_items = parse_gatherer_data(html)
-
-    # Method 2: Parse listview data
-    listview_items = extract_items_from_listview(html)
-
-    # Merge
-    all_items = {}
-    all_items.update(listview_items)
-    all_items.update(gatherer_items)
-
-    if not all_items:
-        # Method 3: Extract from item links
-        all_items = parse_wowhead_item_links(html)
-
-    for item_id, item_data in all_items.items():
-        if item_id in seen_ids:
+    for table in soup.find_all("table"):
+        rows = table.find_all("tr")
+        if len(rows) < 2:
             continue
 
-        # Get quality
-        quality = item_data.get("quality", 0)
-        if quality < MIN_QUALITY:
+        # Check if this is a loot table (headers: Type, Item, Stats)
+        header_cells = rows[0].find_all(["th", "td"])
+        headers = [c.get_text(strip=True).lower() for c in header_cells]
+
+        # Loot tables have "type" + "item" or similar
+        is_loot = (
+            len(headers) >= 2 and
+            ("type" in headers or "slot" in headers) and
+            ("item" in headers or "name" in headers)
+        )
+
+        # Also accept tables where first data row has a recognizable type
+        if not is_loot and len(rows) > 1:
+            first_data = rows[1].find_all("td")
+            if len(first_data) >= 2:
+                first_type = first_data[0].get_text(strip=True).lower()
+                if resolve_slot(first_type) is not None:
+                    is_loot = True
+
+        if not is_loot:
             continue
 
-        # Get slot
-        slot_wh = item_data.get("slotbak")
-        if not slot_wh:
-            # Try extracting from jsonequip
-            slot_wh = extract_slot_from_jsonequip(html, item_id)
+        for row in rows[1:]:
+            cells = row.find_all("td")
+            if len(cells) < 2:
+                continue
 
-        if not slot_wh or slot_wh not in WOWHEAD_SLOT_MAP:
-            continue
+            # Column 0: Type/Slot
+            type_text = cells[0].get_text(strip=True)
+            slot_id = resolve_slot(type_text)
+            if slot_id is None:
+                continue
 
-        slot = WOWHEAD_SLOT_MAP[slot_wh]
+            # Column 1: Item
+            item_id = extract_item_id(cells[1])
+            if not item_id:
+                # Try any cell
+                for cell in cells:
+                    item_id = extract_item_id(cell)
+                    if item_id:
+                        break
+            if not item_id:
+                continue
 
-        # Get name
-        name = item_data.get("name_enus", "")
-        # Clean HTML entities
-        name = name.replace("&#39;", "'").replace("&amp;", "&").replace("&#45;", "-")
+            item_name = extract_item_name(cells[1])
 
-        seen_ids.add(item_id)
-        loot.append({
-            "itemId": item_id,
-            "slot": slot,
-            "itemName": name if name else None,
-        })
+            # Deduplicate
+            if item_id in seen_ids:
+                continue
+            seen_ids.add(item_id)
 
-    # Sort by slot then item ID for consistency
-    loot.sort(key=lambda x: (x["slot"], x["itemId"]))
+            items.append({
+                "itemId": item_id,
+                "slot": slot_id,
+                "itemName": item_name,
+            })
 
-    return loot
+    items.sort(key=lambda x: (x["slot"], x["itemId"]))
+    return items
 
 
 # ============================================================================
 # FETCHING
 # ============================================================================
 
-def fetch_zone_loot(zone_id, slug):
-    """Fetch a zone's loot page from Wowhead."""
+def fetch_dungeon_page(slug):
+    """Fetch a dungeon guide page from Icy Veins."""
     if requests is None:
-        print("ERROR: requests library required. Run: pip install requests")
+        print("ERROR: requests required. Run: pip install requests", file=sys.stderr)
         sys.exit(1)
 
-    url = f"https://www.wowhead.com/zone={zone_id}/{slug}#drops"
+    url = f"https://www.icy-veins.com/wow/{slug}-dungeon-guide"
     headers = {
         "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
         "Accept": "text/html,application/xhtml+xml",
@@ -311,6 +245,25 @@ def fetch_zone_loot(zone_id, slug):
     return resp.text
 
 
+def find_html_file(directory, slug):
+    """Try various filename patterns to find the saved HTML."""
+    patterns = [
+        f"{slug}-dungeon-guide.html",
+        f"{slug}.html",
+        f"{slug}-dungeon-guide-location-boss-strategies-and-trash.html",
+    ]
+    d = Path(directory)
+    for p in patterns:
+        path = d / p
+        if path.exists():
+            return path
+    # Glob fallback
+    matches = list(d.glob(f"*{slug}*"))
+    if matches:
+        return matches[0]
+    return None
+
+
 # ============================================================================
 # LUA OUTPUT
 # ============================================================================
@@ -319,15 +272,15 @@ def format_dungeon_loot(all_loot):
     """Format DUNGEON_LOOT table as Lua."""
     lines = ["NS.DUNGEON_LOOT = {"]
 
-    for dungeon_key in sorted(all_loot.keys()):
-        items = all_loot[dungeon_key]
-        dungeon_name = DUNGEONS[dungeon_key]["name"]
+    for key in sorted(all_loot.keys()):
+        items = all_loot[key]
+        name = DUNGEONS[key]["name"]
 
-        lines.append(f"    -- {dungeon_name}")
-        lines.append(f"    {dungeon_key} = {{")
+        lines.append(f"    -- {name} ({len(items)} items)")
+        lines.append(f"    {key} = {{")
 
         for item in items:
-            name_str = f'"{item["itemName"]}"' if item["itemName"] else "nil"
+            name_str = json.dumps(item["itemName"]) if item["itemName"] else "nil"
             lines.append(
                 f'        {{ itemId = {item["itemId"]}, slot = {item["slot"]}, '
                 f'itemName = {name_str} }},'
@@ -344,14 +297,27 @@ def format_dungeon_loot(all_loot):
 # ============================================================================
 
 def main():
-    parser = argparse.ArgumentParser(description="Scrape Wowhead dungeon loot tables")
-    parser.add_argument("--from-files", type=str, help="Directory with saved HTML files (dungeon-slug.html)")
+    parser = argparse.ArgumentParser(description="Scrape Icy Veins dungeon loot tables")
+    parser.add_argument("--from-files", type=str,
+                        help="Directory with saved HTML files")
     parser.add_argument("--output", type=str, help="Output file (default: stdout)")
-    parser.add_argument("--save-html", type=str, help="Save fetched HTML to this directory")
-    parser.add_argument("--dungeons", type=str, nargs="+", help="Only process these dungeon keys")
-    parser.add_argument("--delay", type=float, default=2.0, help="Delay between requests (seconds)")
-    parser.add_argument("--json", action="store_true", help="Output as JSON instead of Lua")
+    parser.add_argument("--save-html", type=str, help="Save fetched HTML here")
+    parser.add_argument("--dungeons", type=str, nargs="+",
+                        help="Only process these dungeon keys")
+    parser.add_argument("--delay", type=float, default=2.0,
+                        help="Delay between requests (seconds)")
+    parser.add_argument("--json", action="store_true", help="JSON output")
+
+    # Also support the Wowhead loot-table.html format
+    parser.add_argument("--wowhead", type=str,
+                        help="Parse Wowhead M+ rewards HTML (loot-table.html)")
     args = parser.parse_args()
+
+    # Wowhead mode: use the existing loot-table.html parser
+    if args.wowhead:
+        from scrape_loot_wowhead import parse_loot_page_wowhead
+        # (This is handled by a separate import if needed)
+        pass
 
     all_loot = {}
     dungeon_filter = set(args.dungeons) if args.dungeons else None
@@ -366,45 +332,43 @@ def main():
 
         # Try loading from file
         if args.from_files:
-            file_path = Path(args.from_files) / f"{info['url_slug']}.html"
-            if file_path.exists():
-                html = file_path.read_text(encoding="utf-8")
-                print(f"  Loaded from {file_path}", file=sys.stderr)
+            path = find_html_file(args.from_files, info["slug"])
+            if path:
+                html = path.read_text(encoding="utf-8")
+                print(f"  Loaded from {path}", file=sys.stderr)
             else:
-                file_path2 = Path(args.from_files) / f"{key}.html"
-                if file_path2.exists():
-                    html = file_path2.read_text(encoding="utf-8")
-                    print(f"  Loaded from {file_path2}", file=sys.stderr)
-                else:
-                    print(f"  WARNING: No file found, will fetch live", file=sys.stderr)
+                print(f"  WARNING: No file found for {info['slug']}", file=sys.stderr)
 
         # Fetch live
         if html is None:
             try:
-                html = fetch_zone_loot(info["zone_id"], info["url_slug"])
+                html = fetch_dungeon_page(info["slug"])
                 if args.save_html:
                     save_dir = Path(args.save_html)
                     save_dir.mkdir(parents=True, exist_ok=True)
-                    (save_dir / f"{info['url_slug']}.html").write_text(html, encoding="utf-8")
+                    (save_dir / f"{info['slug']}-dungeon-guide.html").write_text(
+                        html, encoding="utf-8")
                 time.sleep(args.delay)
             except Exception as e:
                 print(f"  ERROR: {e}", file=sys.stderr)
                 continue
 
         # Parse
-        loot = parse_zone_page(html, info["zone_id"])
-        if loot:
-            print(f"  Found {len(loot)} equippable items", file=sys.stderr)
-            all_loot[key] = loot
+        items = parse_dungeon_page(html)
+        if items:
+            print(f"  Found {len(items)} items", file=sys.stderr)
+            all_loot[key] = items
         else:
             print(f"  WARNING: No loot found!", file=sys.stderr)
 
-    print(f"\nProcessed {len(all_loot)} dungeons, "
-          f"{sum(len(v) for v in all_loot.values())} total items.", file=sys.stderr)
+    total = sum(len(v) for v in all_loot.values())
+    print(f"\nProcessed {len(all_loot)} dungeons, {total} total items.", file=sys.stderr)
+    for key in sorted(all_loot.keys()):
+        print(f"  {DUNGEONS[key]['name']}: {len(all_loot[key])} items", file=sys.stderr)
 
     # Output
     if args.json:
-        output = json.dumps(all_loot, indent=2, default=str)
+        output = json.dumps(all_loot, indent=2)
     else:
         output = format_dungeon_loot(all_loot)
 
@@ -412,19 +376,18 @@ def main():
         out_path = Path(args.output)
         if out_path.exists() and out_path.name == "Data.lua":
             existing = out_path.read_text(encoding="utf-8")
-            # Replace DUNGEON_LOOT section
             pattern = r'NS\.DUNGEON_LOOT\s*=\s*\{.*?\n\}'
-            new_match = re.search(r'NS\.DUNGEON_LOOT\s*=\s*\{.*?\n\}', output, re.DOTALL)
-            if new_match and re.search(pattern, existing, re.DOTALL):
-                existing = re.sub(pattern, new_match.group(0), existing, flags=re.DOTALL)
+            new_section = re.search(r'NS\.DUNGEON_LOOT\s*=\s*\{.*?\n\}', output, re.DOTALL)
+            if new_section and re.search(pattern, existing, re.DOTALL):
+                existing = re.sub(pattern, new_section.group(0), existing, flags=re.DOTALL)
                 out_path.write_text(existing, encoding="utf-8")
-                print(f"  Replaced DUNGEON_LOOT in {out_path}", file=sys.stderr)
+                print(f"\nReplaced DUNGEON_LOOT in {out_path}", file=sys.stderr)
             else:
-                print(f"  WARNING: Could not find DUNGEON_LOOT section to replace", file=sys.stderr)
-                out_path.write_text(output, encoding="utf-8")
+                print(f"\nWARNING: Could not find DUNGEON_LOOT to replace",
+                      file=sys.stderr)
         else:
             out_path.write_text(output, encoding="utf-8")
-        print(f"Written to {out_path}", file=sys.stderr)
+            print(f"\nWritten to {out_path}", file=sys.stderr)
     else:
         print(output)
 
