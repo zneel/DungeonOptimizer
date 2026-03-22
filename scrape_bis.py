@@ -221,9 +221,13 @@ def parse_slot_name(raw):
     # Remove leading "bis ->" prefix
     clean = re.sub(r"^bis\s*->\s*", "", clean)
 
-    # Skip tier-list headers and alternatives — not real slots
-    if re.match(r"^[a-f] tier$|^s tier$|^alt|^trinket alt|^trinket 2 \(|^ring 2 —|^ring 2 alt|^bracers alt|^two-handed weapon \(alt|^weapon \(alt", clean):
-        return None
+    # Skip tier-list headers, alternatives, and malformed slot names
+    if re.match(r"^[a-f] tier$|^s tier$", clean):
+        return "SKIP"
+    if re.search(r"\balt\b|\balternative\b|\(alt|trinket #?\d\s*\(", clean):
+        return "SKIP"
+    if "/td>" in clean:
+        return "SKIP"
 
     # Direct match (single-slot)
     result = SLOT_MAP.get(clean)
@@ -269,7 +273,7 @@ def _extract_all_item_names(cell):
     return names
 
 
-def parse_table_element(table_el, warn_unknown_slots=False) -> dict:
+def parse_table_element(table_el, warn_unknown_slots=True) -> dict:
     """Parse a single HTML table element into a dict of slot_id -> item info."""
     items = {}
     for row in table_el.find_all("tr"):
@@ -282,7 +286,11 @@ def parse_table_element(table_el, warn_unknown_slots=False) -> dict:
         if slot_result is None:
             for strong in cells[0].find_all("strong"):
                 slot_text = strong.get_text(strip=True)
-            slot_result = parse_slot_name(slot_text)
+                slot_result = parse_slot_name(slot_text)
+                if slot_result is not None:
+                    break
+        if slot_result == "SKIP":
+            continue
         if slot_result is None:
             if warn_unknown_slots:
                 print(f"  WARNING: Unknown slot '{slot_text}'", file=sys.stderr)
@@ -327,7 +335,7 @@ def parse_table_element(table_el, warn_unknown_slots=False) -> dict:
     return items
 
 
-def parse_page(html: str) -> dict:
+def parse_page(html: str, quiet: bool = False) -> dict:
     """
     Parse a full Icy Veins BIS page.
     Returns: { "overall": {slot: item}, "mythic": {...}, "raid": {...} }
@@ -368,14 +376,14 @@ def parse_page(html: str) -> dict:
                 break
 
         if next_el and next_el.name == "table":
-            result[section_name] = parse_table_element(next_el)
+            result[section_name] = parse_table_element(next_el, warn_unknown_slots=not quiet)
 
     # Fallback: if we didn't find section headers, use table order
     if not result and len(all_tables) >= 1:
         labels = ["overall", "mythic", "raid"]
         for i, table_el in enumerate(all_tables[:3]):
             if i < len(labels):
-                result[labels[i]] = parse_table_element(table_el)
+                result[labels[i]] = parse_table_element(table_el, warn_unknown_slots=not quiet)
 
     return result
 
@@ -485,6 +493,7 @@ def main():
     parser.add_argument("--specs", type=str, nargs="+", help="Only process these spec keys")
     parser.add_argument("--delay", type=float, default=2.0, help="Delay between requests (seconds)")
     parser.add_argument("--json", action="store_true", help="Output as JSON instead of Lua")
+    parser.add_argument("--quiet", action="store_true", help="Suppress warnings about unknown slot names")
     args = parser.parse_args()
 
     all_data = {}
@@ -528,7 +537,7 @@ def main():
                 continue
 
         # Parse
-        data = parse_page(html)
+        data = parse_page(html, quiet=args.quiet)
         if data:
             for mode, items in data.items():
                 print(f"  {mode}: {len(items)} items", file=sys.stderr)

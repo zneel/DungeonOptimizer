@@ -29,6 +29,9 @@ NS.SLOT_NAMES = setmetatable({}, {
     end,
 })
 
+-- Canonical slot display order: weapons first, then top-to-bottom armor, jewelry
+NS.SLOT_DISPLAY_ORDER = {16, 17, 1, 2, 3, 15, 5, 9, 10, 6, 7, 8, 11, 12, 13, 14}
+
 -- ============================================================================
 -- DUNGEON LIST - Midnight Season 1 M+ Pool
 -- ============================================================================

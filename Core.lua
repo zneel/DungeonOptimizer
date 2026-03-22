@@ -564,7 +564,7 @@ end
 -- BIS COMPARISON ENGINE
 -- ============================================================================
 function DungeonOptimizer:PlayerNeedsItem(playerData, itemId)
-    if not playerData or not playerData.spec then return false end
+    if not playerData or not playerData.spec or not playerData.gear then return false end
 
     local bisTable = NS.GetActiveBISTable()
     local bisList = bisTable[playerData.spec]
@@ -596,6 +596,7 @@ function DungeonOptimizer:CountMissingBIS(playerData)
     local bisTable = NS.GetActiveBISTable()
     local bisList = bisTable[playerData.spec]
     if not bisList then return 0, 0, 0, 0 end
+    if not playerData.gear then return 0, 0, 0, 0 end
 
     local total, missing, totalDungeon, missingDungeon = 0, 0, 0, 0
 

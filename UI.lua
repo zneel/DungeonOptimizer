@@ -336,32 +336,35 @@ function UI:RefreshUI()
                     end
                     local accountedFor = {}
 
-                    for slot, bisItemId in pairs(bisList) do
-                        local slotName = NS.SLOT_NAMES[slot] or "?"
-                        local itemName = GetItemInfo(bisItemId) or ("Item #" .. bisItemId)
+                    for _, slot in ipairs(NS.SLOT_DISPLAY_ORDER) do
+                        local bisItemId = bisList[slot]
+                        if bisItemId then
+                            local slotName = NS.SLOT_NAMES[slot] or "?"
+                            local itemName = GetItemInfo(bisItemId) or ("Item #" .. bisItemId)
 
-                        -- Check equipped: item found anywhere in gear, respecting duplicate counts
-                        accountedFor[bisItemId] = (accountedFor[bisItemId] or 0) + 1
-                        local needed = bisItemCounts[bisItemId] or 1
-                        local have = math.min(gearItemCounts[bisItemId] or 0, needed)
-                        local isEquipped = (have >= accountedFor[bisItemId])
+                            -- Check equipped: item found anywhere in gear, respecting duplicate counts
+                            accountedFor[bisItemId] = (accountedFor[bisItemId] or 0) + 1
+                            local needed = bisItemCounts[bisItemId] or 1
+                            local have = math.min(gearItemCounts[bisItemId] or 0, needed)
+                            local isEquipped = (have >= accountedFor[bisItemId])
 
-                        local equippedIlvl = capturedData.ilvls and capturedData.ilvls[slot]
+                            local equippedIlvl = capturedData.ilvls and capturedData.ilvls[slot]
 
-                        if isEquipped then
-                            local ilvlStr = equippedIlvl and (" ilvl " .. equippedIlvl) or ""
-                            GameTooltip:AddDoubleLine(
-                                slotName,
-                                "|cff00ff00" .. itemName .. ilvlStr .. " " .. NS.L["EQUIPPED"] .. "|r",
-                                0.6, 0.6, 0.6, 0, 1, 0
-                            )
-                        else
-                            local ilvlStr = equippedIlvl and (" (equipped: " .. equippedIlvl .. ")") or ""
-                            GameTooltip:AddDoubleLine(
-                                slotName,
-                                "|cffff4444" .. itemName .. " " .. NS.L["MISSING"] .. "|r" .. ilvlStr,
-                                0.6, 0.6, 0.6, 1, 0.27, 0.27
-                            )
+                            if isEquipped then
+                                local ilvlStr = equippedIlvl and (" ilvl " .. equippedIlvl) or ""
+                                GameTooltip:AddDoubleLine(
+                                    slotName,
+                                    "|cff00ff00" .. itemName .. ilvlStr .. " " .. NS.L["EQUIPPED"] .. "|r",
+                                    0.6, 0.6, 0.6, 0, 1, 0
+                                )
+                            else
+                                local ilvlStr = equippedIlvl and (" (equipped: " .. equippedIlvl .. ")") or ""
+                                GameTooltip:AddDoubleLine(
+                                    slotName,
+                                    "|cffff4444" .. itemName .. " " .. NS.L["MISSING"] .. "|r" .. ilvlStr,
+                                    0.6, 0.6, 0.6, 1, 0.27, 0.27
+                                )
+                            end
                         end
                     end
                 else
