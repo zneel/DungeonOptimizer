@@ -90,16 +90,34 @@ SPECS = {
 }
 
 # Icy Veins slot name -> our slot ID
+# Single-item slots only.  Plural rows ("rings", "trinkets", "weapons") are
+# handled separately in parse_table_element via PLURAL_SLOT_MAP.
 SLOT_MAP = {
-    # Weapons
+    # Weapons — single slot
     "2h weapon": 16,
     "weapon": 16,
     "main hand": 16,
     "main-hand": 16,
+    "main hand weapon": 16,
     "mainhand": 16,
+    "mainhand weapon": 16,
+    "mainhand 1h weapon": 16,
+    "1h weapon": 16,  # NOTE: second occurrence becomes OH — see parse_table_element
+    "one-handed weapon": 16,
+    "weapon main-hand": 16,
+    "weapon (2h)": 16,
+    "weapon (staff)": 16,
+    "weapon (two-hand)": 16,
+    "weapon (main-hand/off-hand)": 16,
+    "two-handed weapon": 16,
     "off hand": 17,
     "off-hand": 17,
     "offhand": 17,
+    "offhand weapon": 17,
+    "off hand weapon": 17,
+    "off-hand weapon": 17,
+    "offhand 1h weapon": 17,
+    "weapon off-hand": 17,
     "shield": 17,
     "held in off-hand": 17,
     # Armor
@@ -139,6 +157,22 @@ SLOT_MAP = {
     "trinket": 13,
 }
 
+# Plural rows — a single table row that contains multiple items for a pair of
+# slots.  The scraper will extract the first two item IDs and assign them to
+# the two slot IDs in order.
+PLURAL_SLOT_MAP = {
+    "rings": (11, 12),
+    "trinkets": (13, 14),
+    "top trinkets": (13, 14),
+    "defensive trinkets": (13, 14),
+    "weapons": (16, 17),
+    "weapons (dual wield)": (16, 17),
+}
+
+# Known hero-spec prefixes that Icy Veins glues to slot names (e.g.
+# "SentinelWeapon" → "weapon", "Pack LeaderMain Hand" → "main hand").
+HERO_PREFIXES = ["sentinel", "pack leader", "dark ranger"]
+
 # ============================================================================
 # HTML PARSING
 # ============================================================================
@@ -174,14 +208,65 @@ def extract_source(cell) -> str:
 
 
 def parse_slot_name(raw):
-    """Convert Icy Veins slot text to our slot ID."""
+    """Convert Icy Veins slot text to our slot ID.
+
+    Returns:
+        int           — a single slot ID, OR
+        tuple(int,int) — a pair of slot IDs for plural rows, OR
+        None          — if the slot name is unrecognised.
+    """
     clean = raw.strip().lower()
     # Remove bold markers and extra whitespace
     clean = re.sub(r"[*#]", "", clean).strip()
     # Remove leading "bis ->" prefix
     clean = re.sub(r"^bis\s*->\s*", "", clean)
 
-    return SLOT_MAP.get(clean)
+    # Skip tier-list headers and alternatives — not real slots
+    if re.match(r"^[a-f] tier$|^s tier$|^alt|^trinket alt|^trinket 2 \(|^ring 2 —|^ring 2 alt|^bracers alt|^two-handed weapon \(alt|^weapon \(alt", clean):
+        return None
+
+    # Direct match (single-slot)
+    result = SLOT_MAP.get(clean)
+    if result is not None:
+        return result
+
+    # Plural match (multi-item row)
+    result = PLURAL_SLOT_MAP.get(clean)
+    if result is not None:
+        return result
+
+    # Strip hero-spec prefixes (e.g. "sentinelweapon" → "weapon",
+    # "pack leadermain hand" → "main hand")
+    for prefix in HERO_PREFIXES:
+        if clean.startswith(prefix):
+            stripped = clean[len(prefix):].strip()
+            result = SLOT_MAP.get(stripped)
+            if result is not None:
+                return result
+
+    # Strip em-dash prefixed hero-spec labels (e.g. "bracers —pack leader" → "bracers")
+    if "\u2014" in clean:
+        base = clean.split("\u2014")[0].strip()
+        result = SLOT_MAP.get(base)
+        if result is not None:
+            return result
+
+    return None
+
+
+def _extract_all_item_ids(cell_html):
+    """Extract ALL item IDs from a table cell (for plural rows)."""
+    return [int(m) for m in re.findall(r'item=(\d+)', cell_html)]
+
+
+def _extract_all_item_names(cell):
+    """Extract ALL item names from a table cell (for plural rows)."""
+    names = []
+    for tag in cell.find_all(["span", "a"], class_=re.compile(r"q[0-9]")):
+        text = tag.get_text(strip=True)
+        if text and len(text) > 2:
+            names.append(text)
+    return names
 
 
 def parse_table_element(table_el, warn_unknown_slots=False) -> dict:
@@ -193,30 +278,52 @@ def parse_table_element(table_el, warn_unknown_slots=False) -> dict:
             continue
 
         slot_text = cells[0].get_text(strip=True)
-        slot_id = parse_slot_name(slot_text)
-        if slot_id is None:
+        slot_result = parse_slot_name(slot_text)
+        if slot_result is None:
             for strong in cells[0].find_all("strong"):
                 slot_text = strong.get_text(strip=True)
-            slot_id = parse_slot_name(slot_text)
-        if slot_id is None:
+            slot_result = parse_slot_name(slot_text)
+        if slot_result is None:
             if warn_unknown_slots:
                 print(f"  WARNING: Unknown slot '{slot_text}'", file=sys.stderr)
             continue
 
         cell_html = str(cells[1])
-        item_id = extract_item_id(cell_html)
-        if not item_id:
-            continue
-
-        item_name = extract_item_name(cells[1])
         source = extract_source(cells[2]) if len(cells) > 2 else ""
 
-        if slot_id not in items:
-            items[slot_id] = {
-                "itemId": item_id,
-                "itemName": item_name,
-                "source": source,
-            }
+        # Plural row: tuple of slot IDs — extract first two items
+        if isinstance(slot_result, tuple):
+            all_ids = _extract_all_item_ids(cell_html)
+            all_names = _extract_all_item_names(cells[1])
+            for i, slot_id in enumerate(slot_result):
+                if i < len(all_ids) and slot_id not in items:
+                    items[slot_id] = {
+                        "itemId": all_ids[i],
+                        "itemName": all_names[i] if i < len(all_names) else None,
+                        "source": source,
+                    }
+        else:
+            # Single-slot row
+            item_id = extract_item_id(cell_html)
+            if not item_id:
+                continue
+
+            item_name = extract_item_name(cells[1])
+
+            if slot_result not in items:
+                items[slot_result] = {
+                    "itemId": item_id,
+                    "itemName": item_name,
+                    "source": source,
+                }
+            elif slot_result == 16 and 17 not in items:
+                # Duplicate mainhand row (e.g. two "1H Weapon" rows for
+                # dual-wield specs) — promote the second one to offhand.
+                items[17] = {
+                    "itemId": item_id,
+                    "itemName": item_name,
+                    "source": source,
+                }
     return items
 
 
@@ -350,10 +457,17 @@ def generate_lua(all_data: dict) -> str:
 
     sections = []
 
-    # Mythic+
+    # Mythic+  (with backfill from overall/raid for missing slots)
     mythic = {}
     for spec, data in all_data.items():
-        mythic[spec] = data.get("mythic", data.get("overall", {}))
+        primary = dict(data.get("mythic", data.get("overall", {})))
+        # Backfill missing slots from other tables (overall > raid)
+        for fallback_key in ["overall", "raid"]:
+            fallback = data.get(fallback_key, {})
+            for slot_id, item in fallback.items():
+                if slot_id not in primary:
+                    primary[slot_id] = item
+        mythic[spec] = primary
     sections.append(format_bis_table("BIS_MYTHIC", mythic))
 
     return header + "\n\n".join(sections)
