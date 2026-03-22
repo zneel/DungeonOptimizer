@@ -478,6 +478,19 @@ def generate_lua(all_data: dict) -> str:
         mythic[spec] = primary
     sections.append(format_bis_table("BIS_MYTHIC", mythic))
 
+    # Raid BIS (with backfill from overall/mythic for missing slots)
+    raid = {}
+    for spec, data in all_data.items():
+        primary = dict(data.get("raid", data.get("overall", {})))
+        # Backfill missing slots from other tables (overall > mythic)
+        for fallback_key in ["overall", "mythic"]:
+            fallback = data.get(fallback_key, {})
+            for slot_id, item in fallback.items():
+                if slot_id not in primary:
+                    primary[slot_id] = item
+        raid[spec] = primary
+    sections.append(format_bis_table("BIS_RAID", raid))
+
     return header + "\n\n".join(sections)
 
 
@@ -559,16 +572,22 @@ def main():
         if out_path.exists() and out_path.name == "Data.lua":
             existing = out_path.read_text(encoding="utf-8")
 
-            # Replace BIS_MYTHIC section
-            for table_name in ["BIS_MYTHIC"]:
+            # Replace BIS_MYTHIC and BIS_RAID sections
+            for table_name in ["BIS_MYTHIC", "BIS_RAID"]:
                 pattern = rf"NS\.{table_name}\s*=\s*\{{.*?\n\}}"
                 if args.json:
                     continue
                 # Find the new section
                 new_match = re.search(rf"NS\.{table_name}\s*=\s*\{{.*?\n\}}", output, re.DOTALL)
-                if new_match and re.search(pattern, existing, re.DOTALL):
+                if not new_match:
+                    continue
+                if re.search(pattern, existing, re.DOTALL):
                     existing = re.sub(pattern, new_match.group(0), existing, flags=re.DOTALL)
                     print(f"  Replaced {table_name} in {out_path}", file=sys.stderr)
+                else:
+                    # Append new section if it doesn't exist yet
+                    existing = existing.rstrip() + "\n\n" + new_match.group(0) + "\n"
+                    print(f"  Appended {table_name} to {out_path}", file=sys.stderr)
 
             out_path.write_text(existing, encoding="utf-8")
         else:

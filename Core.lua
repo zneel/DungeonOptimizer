@@ -26,6 +26,7 @@ local defaults = {
         showTooltips = true,
         weightByScore = true, -- #20: factor M+ score into recommendations
         offSpec = nil, -- off-spec key (e.g. "WARRIOR_FURY"), nil if disabled
+        activeTab = "mplus", -- "mplus" or "raid"
     },
 }
 
@@ -37,14 +38,19 @@ local ADDON_MSG_PREFIX_OFFSPEC = "DOptOff" -- off-spec sync
 -- Per-player dungeon completions: { ["Name-Realm"] = { MAGISTER=true, ... } }
 NS.groupCompletions = {}
 
--- Returns the BIS table (always Mythic+)
+-- Returns the M+ BIS table
 function NS.GetActiveBISTable()
     return NS.BIS_MYTHIC
 end
 
+-- Returns the Raid BIS table
+function NS.GetRaidBISTable()
+    return NS.BIS_RAID
+end
+
 -- Find which BIS slot an item maps to for a given spec
-function NS.FindBISSlot(spec, itemId)
-    local bisTable = NS.GetActiveBISTable()
+function NS.FindBISSlot(spec, itemId, bisTable)
+    bisTable = bisTable or NS.GetActiveBISTable()
     local bisList = bisTable[spec]
     if not bisList then return nil end
     for slot, bisItemId in pairs(bisList) do
@@ -329,7 +335,7 @@ function DungeonOptimizer:CHALLENGE_MODE_COMPLETED()
     -- Restore UI if it was hidden
     if NS.UI and NS.UI._wasShownBeforeRun then
         NS.UI._wasShownBeforeRun = nil
-        self.lastRanking = self:CalculateDungeonRanking()
+        self:RecalculateAllRankings()
         NS.UI:Show()
     end
 end
@@ -506,7 +512,7 @@ function DungeonOptimizer:SlashCommand(input)
         local myName = NS.Inspect:GetUnitFullName("player")
         if myName then NS.groupCompletions[myName] = {} end
         self:Print(NS.L["EXCLUDED_RESET"])
-        self.lastRanking = self:CalculateDungeonRanking()
+        self:RecalculateAllRankings()
         self:BroadcastCompletions()
         if NS.UI then NS.UI:RefreshIfVisible() end
     elseif cmd == "purge" then
@@ -568,7 +574,8 @@ function DungeonOptimizer:OnScanComplete()
     -- Seed local player's off-spec into groupData
     self:SeedLocalOffSpec()
 
-    self.lastRanking = self:CalculateDungeonRanking()
+    self:RecalculateAllRankings()
+    self.lastRaidRanking = self:CalculateRaidRanking()
     if NS.UI then NS.UI:RefreshIfVisible() end
 end
 
@@ -597,7 +604,7 @@ function DungeonOptimizer:PLAYER_SPECIALIZATION_CHANGED()
         self:Print(NS.L["OFF_SPEC_RESET"] or "Off-spec reset (now your active spec).")
         self:SeedLocalOffSpec()
         self:BroadcastOffSpec()
-        self.lastRanking = self:CalculateDungeonRanking()
+        self:RecalculateAllRankings()
         if NS.UI then NS.UI:RefreshIfVisible() end
     end
 end
@@ -605,10 +612,10 @@ end
 -- ============================================================================
 -- BIS COMPARISON ENGINE
 -- ============================================================================
-function DungeonOptimizer:PlayerNeedsItem(playerData, itemId)
+function DungeonOptimizer:PlayerNeedsItem(playerData, itemId, bisTable)
     if not playerData or not playerData.spec or not playerData.gear then return false end
 
-    local bisTable = NS.GetActiveBISTable()
+    bisTable = bisTable or NS.GetActiveBISTable()
     local bisList = bisTable[playerData.spec]
     if not bisList then return false end
 
@@ -635,10 +642,10 @@ end
 -- Check if a player needs an item for their off-spec BIS list
 -- Since we don't know off-spec gear, all off-spec BIS items are considered missing
 -- except those already equipped in main-spec (same itemId)
-function DungeonOptimizer:PlayerNeedsItemForOffSpec(playerData, itemId)
+function DungeonOptimizer:PlayerNeedsItemForOffSpec(playerData, itemId, bisTable)
     if not playerData or not playerData.offSpec then return false end
 
-    local bisTable = NS.GetActiveBISTable()
+    bisTable = bisTable or NS.GetActiveBISTable()
     local bisList = bisTable[playerData.offSpec]
     if not bisList then return false end
 
@@ -665,10 +672,10 @@ function DungeonOptimizer:PlayerNeedsItemForOffSpec(playerData, itemId)
     return true
 end
 
-function DungeonOptimizer:CountMissingBIS(playerData)
+function DungeonOptimizer:CountMissingBIS(playerData, bisTable)
     if not playerData or not playerData.spec then return 0, 0, 0, 0 end
 
-    local bisTable = NS.GetActiveBISTable()
+    bisTable = bisTable or NS.GetActiveBISTable()
     local bisList = bisTable[playerData.spec]
     if not bisList then return 0, 0, 0, 0 end
     if not playerData.gear then return 0, 0, 0, 0 end
@@ -701,7 +708,8 @@ function DungeonOptimizer:CountMissingBIS(playerData)
 
         if isMissing then missing = missing + 1 end
 
-        if NS.IsFromDungeon(bisItemId) then
+        -- Check if item comes from farmable content (dungeon or raid)
+        if NS.IsFromContent(bisItemId) then
             totalDungeon = totalDungeon + 1
             if isMissing then missingDungeon = missingDungeon + 1 end
         end
@@ -823,6 +831,99 @@ function DungeonOptimizer:CalculateDungeonRanking()
     return ranking
 end
 
+-- Recalculate both dungeon and raid rankings
+function DungeonOptimizer:RecalculateAllRankings()
+    self:RecalculateAllRankings()
+    self.lastRaidRanking = self:CalculateRaidRanking()
+end
+
+-- ============================================================================
+-- RAID SCORING & RANKING
+-- ============================================================================
+function DungeonOptimizer:ScoreRaid(raidId)
+    local lootTable = NS.RAID_LOOT[raidId]
+    if not lootTable then return 0, {} end
+
+    local raidBIS = NS.GetRaidBISTable()
+    local totalScore = 0
+    local playerDetails = {}
+
+    for playerName, playerData in pairs(NS.groupData) do
+        local needed = {}
+        local seenItems = {}
+        local offSpecCount = 0
+
+        -- Main-spec items (using raid BIS table)
+        for _, drop in ipairs(lootTable) do
+            if not seenItems[drop.itemId] and self:PlayerNeedsItem(playerData, drop.itemId, raidBIS) then
+                seenItems[drop.itemId] = true
+                local bisSlot = NS.FindBISSlot(playerData.spec, drop.itemId, raidBIS)
+                table.insert(needed, {
+                    itemId = drop.itemId,
+                    slot = bisSlot,
+                    itemName = drop.itemName or ("Item " .. drop.itemId),
+                    slotName = NS.SLOT_NAMES[bisSlot] or "?",
+                    boss = drop.boss or "",
+                })
+            end
+        end
+
+        -- Off-spec items (using raid BIS table)
+        if playerData.offSpec then
+            for _, drop in ipairs(lootTable) do
+                if not seenItems[drop.itemId] and self:PlayerNeedsItemForOffSpec(playerData, drop.itemId, raidBIS) then
+                    seenItems[drop.itemId] = true
+                    local bisSlot = NS.FindBISSlot(playerData.offSpec, drop.itemId, raidBIS)
+                    table.insert(needed, {
+                        itemId = drop.itemId,
+                        slot = bisSlot,
+                        itemName = drop.itemName or ("Item " .. drop.itemId),
+                        slotName = NS.SLOT_NAMES[bisSlot] or "?",
+                        boss = drop.boss or "",
+                        isOffSpec = true,
+                    })
+                    offSpecCount = offSpecCount + 1
+                end
+            end
+        end
+
+        local mainSpecCount = #needed - offSpecCount
+
+        playerDetails[playerName] = {
+            needed = needed,
+            count = #needed,
+            mainSpecCount = mainSpecCount,
+            offSpecCount = offSpecCount,
+            class = playerData.class,
+            name = playerData.name,
+            offSpec = playerData.offSpec,
+        }
+        totalScore = totalScore + mainSpecCount + (offSpecCount * 0.5)
+    end
+
+    return totalScore, playerDetails
+end
+
+function DungeonOptimizer:CalculateRaidRanking()
+    local ranking = {}
+
+    for _, raid in ipairs(NS.RAIDS) do
+        local score, details = self:ScoreRaid(raid.id)
+
+        table.insert(ranking, {
+            dungeon = raid, -- reuse "dungeon" field name for UI compatibility
+            score = score,
+            bisScore = score,
+            ratingBonus = 0, -- raids don't have M+ rating bonus
+            details = details,
+            isRaid = true,
+        })
+    end
+
+    table.sort(ranking, function(a, b) return a.score > b.score end)
+    return ranking
+end
+
 -- ============================================================================
 -- UTILITY: Get class color
 -- ============================================================================
@@ -933,7 +1034,7 @@ function DungeonOptimizer:CHAT_MSG_ADDON(event, prefix, message, channel, sender
                 end
             end
             NS.groupCompletions[sender] = completions
-            self.lastRanking = self:CalculateDungeonRanking()
+            self:RecalculateAllRankings()
             if NS.UI then NS.UI:RefreshIfVisible() end
         end
     elseif prefix == ADDON_MSG_PREFIX_COMP then
@@ -956,7 +1057,7 @@ function DungeonOptimizer:CHAT_MSG_ADDON(event, prefix, message, channel, sender
         end
 
         NS.groupCompletions[sender] = completions
-        self.lastRanking = self:CalculateDungeonRanking()
+        self:RecalculateAllRankings()
         if NS.UI then NS.UI:RefreshIfVisible() end
     elseif prefix == ADDON_MSG_PREFIX_KEY then
         local mapID, level, dungeonName = message:match("^(%d+):(%d+):(.*)$")
@@ -976,14 +1077,14 @@ function DungeonOptimizer:CHAT_MSG_ADDON(event, prefix, message, channel, sender
 
         if NS.groupData[sender] then
             NS.groupData[sender].offSpec = (message ~= "NONE") and message or nil
-            self.lastRanking = self:CalculateDungeonRanking()
+            self:RecalculateAllRankings()
             if NS.UI then NS.UI:RefreshIfVisible() end
         end
     elseif prefix == "DOptGear" then
         -- Gear sync: another addon user broadcasted their equipment
         if NS.Inspect:OnGearMessage(message, sender) then
             self:Print(string.format("Received gear from |cff00ff00%s|r (via addon sync).", sender or "?"))
-            self.lastRanking = self:CalculateDungeonRanking()
+            self:RecalculateAllRankings()
             if NS.UI then NS.UI:RefreshIfVisible() end
         end
     end

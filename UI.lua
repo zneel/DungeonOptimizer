@@ -152,7 +152,7 @@ function UI:RefreshUI()
         wipe(NS.Core.db.profile.excludedDungeons)
         local myName = NS.Inspect:GetUnitFullName("player")
         if myName then NS.groupCompletions[myName] = {} end
-        NS.Core.lastRanking = NS.Core:CalculateDungeonRanking()
+        NS.Core:RecalculateAllRankings()
         self:RefreshUI()
         NS.Core:BroadcastCompletions()
     end)
@@ -182,7 +182,7 @@ function UI:RefreshUI()
     scoreToggle:SetWidth(110)
     scoreToggle:SetCallback("OnValueChanged", function(_, _, val)
         NS.Core.db.profile.weightByScore = val
-        NS.Core.lastRanking = NS.Core:CalculateDungeonRanking()
+        NS.Core:RecalculateAllRankings()
         self:RefreshUI()
     end)
     topGroup:AddChild(scoreToggle)
@@ -210,7 +210,7 @@ function UI:RefreshUI()
             NS.Core.db.profile.offSpec = (val ~= "NONE") and val or nil
             NS.Core:SeedLocalOffSpec()
             NS.Core:BroadcastOffSpec()
-            NS.Core.lastRanking = NS.Core:CalculateDungeonRanking()
+            NS.Core:RecalculateAllRankings()
             self:RefreshUI()
         end)
         topGroup:AddChild(offSpecDropdown)
@@ -450,16 +450,44 @@ function UI:RefreshUI()
         end
     end
 
+    -- === TAB GROUP (M+ / Raid) ===
+    local tabGroup = AceGUI:Create("TabGroup")
+    tabGroup:SetFullWidth(true)
+    tabGroup:SetFullHeight(true)
+    tabGroup:SetLayout("Flow")
+    tabGroup:SetTabs({
+        { text = NS.L["TAB_MPLUS"], value = "mplus" },
+        { text = NS.L["TAB_RAID"], value = "raid" },
+    })
+
+    tabGroup:SetCallback("OnGroupSelected", function(container, event, group)
+        container:ReleaseChildren()
+        NS.Core.db.profile.activeTab = group
+        if group == "mplus" then
+            self:RenderMPlusContent(container)
+        elseif group == "raid" then
+            self:RenderRaidContent(container)
+        end
+    end)
+
+    self.mainFrame:AddChild(tabGroup)
+    tabGroup:SelectTab(NS.Core.db.profile.activeTab or "mplus")
+end
+
+-- ============================================================================
+-- M+ TAB CONTENT
+-- ============================================================================
+function UI:RenderMPlusContent(parent)
     -- === DUNGEON COMPLETIONS ===
     local excludeHeading = AceGUI:Create("Heading")
     excludeHeading:SetText(NS.L["EXCLUDE_DUNGEONS"])
     excludeHeading:SetFullWidth(true)
-    self.mainFrame:AddChild(excludeHeading)
+    parent:AddChild(excludeHeading)
 
     local checkGroup = AceGUI:Create("SimpleGroup")
     checkGroup:SetFullWidth(true)
     checkGroup:SetLayout("Flow")
-    self.mainFrame:AddChild(checkGroup)
+    parent:AddChild(checkGroup)
 
     for _, dungeon in ipairs(NS.DUNGEONS) do
         local cb = AceGUI:Create("CheckBox")
@@ -487,7 +515,7 @@ function UI:RefreshUI()
                 NS.groupCompletions[myName] = NS.groupCompletions[myName] or {}
                 NS.groupCompletions[myName][dungeon.id] = value or nil
             end
-            NS.Core.lastRanking = NS.Core:CalculateDungeonRanking()
+            NS.Core:RecalculateAllRankings()
             self:RefreshUI()
             NS.Core:BroadcastCompletions()
         end)
@@ -514,7 +542,7 @@ function UI:RefreshUI()
     local rankHeading = AceGUI:Create("Heading")
     rankHeading:SetText(string.format(NS.L["DUNGEON_RANKING"], "Mythic+"))
     rankHeading:SetFullWidth(true)
-    self.mainFrame:AddChild(rankHeading)
+    parent:AddChild(rankHeading)
 
     local ranking = NS.Core.lastRanking or NS.Core:CalculateDungeonRanking()
 
@@ -522,7 +550,7 @@ function UI:RefreshUI()
         local noData = AceGUI:Create("Label")
         noData:SetText(NS.L["NO_DUNGEONS"])
         noData:SetFullWidth(true)
-        self.mainFrame:AddChild(noData)
+        parent:AddChild(noData)
         return
     end
 
@@ -530,7 +558,37 @@ function UI:RefreshUI()
     scroll:SetFullWidth(true)
     scroll:SetFullHeight(true)
     scroll:SetLayout("Flow")
-    self.mainFrame:AddChild(scroll)
+    parent:AddChild(scroll)
+
+    for rank, entry in ipairs(ranking) do
+        self:CreateDungeonEntry(scroll, rank, entry)
+    end
+end
+
+-- ============================================================================
+-- RAID TAB CONTENT
+-- ============================================================================
+function UI:RenderRaidContent(parent)
+    local rankHeading = AceGUI:Create("Heading")
+    rankHeading:SetText(string.format(NS.L["RAID_RANKING"] or NS.L["DUNGEON_RANKING"], "Raid"))
+    rankHeading:SetFullWidth(true)
+    parent:AddChild(rankHeading)
+
+    local ranking = NS.Core.lastRaidRanking or NS.Core:CalculateRaidRanking()
+
+    if #ranking == 0 or (ranking[1] and ranking[1].score == 0 and not next(NS.RAID_LOOT)) then
+        local noData = AceGUI:Create("Label")
+        noData:SetText(NS.L["NO_RAIDS"])
+        noData:SetFullWidth(true)
+        parent:AddChild(noData)
+        return
+    end
+
+    local scroll = AceGUI:Create("ScrollFrame")
+    scroll:SetFullWidth(true)
+    scroll:SetFullHeight(true)
+    scroll:SetLayout("Flow")
+    parent:AddChild(scroll)
 
     for rank, entry in ipairs(ranking) do
         self:CreateDungeonEntry(scroll, rank, entry)

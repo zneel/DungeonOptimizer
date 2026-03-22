@@ -53,6 +53,12 @@ local L = {
     ["OFF_SPEC_TAG"] = "[OS]",
     ["OFF_SPEC_RESET"] = "Off-spec reset (now your active spec).",
 
+    -- Tabs
+    ["TAB_MPLUS"] = "Mythic+",
+    ["TAB_RAID"] = "Raid",
+    ["RAID_RANKING"] = "Raid Ranking - %s (best to worst)",
+    ["NO_RAIDS"] = "|cffff0000No raid data available. Populate raid loot tables first.|r",
+
     -- Slot names
     ["SLOT_HEAD"] = "Head",
     ["SLOT_NECK"] = "Neck",
@@ -112,6 +118,11 @@ local frFR = {
     ["OFF_SPEC_NONE"] = "Aucune",
     ["OFF_SPEC_TAG"] = "[OS]",
     ["OFF_SPEC_RESET"] = "Off-spec r\195\169initialis\195\169e (c'est maintenant votre spec active).",
+
+    ["TAB_MPLUS"] = "Mythic+",
+    ["TAB_RAID"] = "Raid",
+    ["RAID_RANKING"] = "Classement du raid - %s (du meilleur au pire)",
+    ["NO_RAIDS"] = "|cffff0000Aucune donn\195\169e de raid disponible.|r",
 
     ["SLOT_HEAD"] = "T\195\170te",
     ["SLOT_NECK"] = "Cou",

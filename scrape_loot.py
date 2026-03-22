@@ -1,19 +1,22 @@
 #!/usr/bin/env python3
 """
-Scrape dungeon loot tables from Icy Veins dungeon guide pages.
-Each dungeon page has boss loot tables with Type | Item | Stats columns.
+Scrape dungeon and raid loot tables from Icy Veins guide pages.
+Each page has boss loot tables with Type | Item | Stats columns.
 
 Usage:
     pip install beautifulsoup4 requests
     python scrape_loot.py                          # Fetch all dungeons live
+    python scrape_loot.py --raids                  # Fetch raid loot tables
     python scrape_loot.py --from-files DIR         # Parse saved HTML files
     python scrape_loot.py --output Data.lua        # Write to Data.lua
     python scrape_loot.py --json                   # JSON output
 
-The script expects Icy Veins dungeon guide pages. Save them as:
-    DIR/<slug>-dungeon-guide.html
+The script expects Icy Veins guide pages. Save them as:
+    DIR/<slug>-dungeon-guide.html  (dungeons)
+    DIR/<slug>-loot.html           (raids)
 Example:
     snapshots/loot/windrunner-spire-dungeon-guide.html
+    snapshots/loot/liberation-of-undermine-loot.html
 """
 
 import re
@@ -70,6 +73,16 @@ DUNGEONS = {
     "NEXUS_XENAS": {
         "name": "Nexus-Point Xenas",
         "slug": "nexus-point-xenas",
+    },
+}
+
+# ============================================================================
+# RAID DEFINITIONS
+# ============================================================================
+RAIDS = {
+    "LIBERATION_OF_UNDERMINE": {
+        "name": "Liberation of Undermine",
+        "slug": "liberation-of-undermine",
     },
 }
 
@@ -266,13 +279,37 @@ def fetch_dungeon_page(slug):
     return resp.text
 
 
-def find_html_file(directory, slug):
+def fetch_raid_page(slug):
+    """Fetch a raid loot page from Icy Veins."""
+    if requests is None:
+        print("ERROR: requests required. Run: pip install requests", file=sys.stderr)
+        sys.exit(1)
+
+    url = f"https://www.icy-veins.com/wow/{slug}-loot"
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
+        "Accept": "text/html,application/xhtml+xml",
+    }
+    print(f"  Fetching {url}...", file=sys.stderr)
+    resp = requests.get(url, headers=headers, timeout=30)
+    resp.raise_for_status()
+    return resp.text
+
+
+def find_html_file(directory, slug, content_type="dungeon"):
     """Try various filename patterns to find the saved HTML."""
-    patterns = [
-        f"{slug}-dungeon-guide.html",
-        f"{slug}.html",
-        f"{slug}-dungeon-guide-location-boss-strategies-and-trash.html",
-    ]
+    if content_type == "raid":
+        patterns = [
+            f"{slug}-loot.html",
+            f"{slug}-raid-loot.html",
+            f"{slug}.html",
+        ]
+    else:
+        patterns = [
+            f"{slug}-dungeon-guide.html",
+            f"{slug}.html",
+            f"{slug}-dungeon-guide-location-boss-strategies-and-trash.html",
+        ]
     d = Path(directory)
     for p in patterns:
         path = d / p
@@ -289,13 +326,13 @@ def find_html_file(directory, slug):
 # LUA OUTPUT
 # ============================================================================
 
-def format_dungeon_loot(all_loot):
-    """Format DUNGEON_LOOT table as Lua."""
-    lines = ["NS.DUNGEON_LOOT = {"]
+def format_loot_table(table_name, definitions, all_loot):
+    """Format a loot table (dungeon or raid) as Lua."""
+    lines = [f"NS.{table_name} = {{"]
 
     for key in sorted(all_loot.keys()):
         items = all_loot[key]
-        name = DUNGEONS[key]["name"]
+        name = definitions[key]["name"]
 
         lines.append(f"    -- {name} ({len(items)} items)")
         lines.append(f"    {key} = {{")
@@ -314,38 +351,39 @@ def format_dungeon_loot(all_loot):
     return "\n".join(lines)
 
 
+def format_dungeon_loot(all_loot):
+    """Format DUNGEON_LOOT table as Lua."""
+    return format_loot_table("DUNGEON_LOOT", DUNGEONS, all_loot)
+
+
+def format_raid_loot(all_loot):
+    """Format RAID_LOOT table as Lua."""
+    return format_loot_table("RAID_LOOT", RAIDS, all_loot)
+
+
 # ============================================================================
 # MAIN
 # ============================================================================
 
-def main():
-    parser = argparse.ArgumentParser(description="Scrape Icy Veins dungeon loot tables")
-    parser.add_argument("--from-files", type=str,
-                        help="Directory with saved HTML files")
-    parser.add_argument("--output", type=str, help="Output file (default: stdout)")
-    parser.add_argument("--save-html", type=str, help="Save fetched HTML here")
-    parser.add_argument("--dungeons", type=str, nargs="+",
-                        help="Only process these dungeon keys")
-    parser.add_argument("--delay", type=float, default=2.0,
-                        help="Delay between requests (seconds)")
-    parser.add_argument("--json", action="store_true", help="JSON output")
+def scrape_content(definitions, content_type, args):
+    """Scrape loot tables for dungeons or raids.
 
-    args = parser.parse_args()
-
+    Returns dict of key -> list of items.
+    """
     all_loot = {}
-    dungeon_filter = set(args.dungeons) if args.dungeons else None
+    key_filter = set(args.keys) if args.keys else None
 
-    for key, info in sorted(DUNGEONS.items()):
-        if dungeon_filter and key not in dungeon_filter:
+    for key, info in sorted(definitions.items()):
+        if key_filter and key not in key_filter:
             continue
 
-        print(f"[{len(all_loot)+1}/{len(DUNGEONS)}] {info['name']}...", file=sys.stderr)
+        print(f"[{len(all_loot)+1}/{len(definitions)}] {info['name']}...", file=sys.stderr)
 
         html = None
 
         # Try loading from file
         if args.from_files:
-            path = find_html_file(args.from_files, info["slug"])
+            path = find_html_file(args.from_files, info["slug"], content_type)
             if path:
                 html = path.read_text(encoding="utf-8")
                 print(f"  Loaded from {path}", file=sys.stderr)
@@ -355,18 +393,22 @@ def main():
         # Fetch live
         if html is None:
             try:
-                html = fetch_dungeon_page(info["slug"])
+                if content_type == "raid":
+                    html = fetch_raid_page(info["slug"])
+                    save_suffix = f"{info['slug']}-loot.html"
+                else:
+                    html = fetch_dungeon_page(info["slug"])
+                    save_suffix = f"{info['slug']}-dungeon-guide.html"
                 if args.save_html:
                     save_dir = Path(args.save_html)
                     save_dir.mkdir(parents=True, exist_ok=True)
-                    (save_dir / f"{info['slug']}-dungeon-guide.html").write_text(
-                        html, encoding="utf-8")
+                    (save_dir / save_suffix).write_text(html, encoding="utf-8")
                 time.sleep(args.delay)
             except Exception as e:
                 print(f"  ERROR: {e}", file=sys.stderr)
                 continue
 
-        # Parse
+        # Parse (same parser works for both dungeon and raid pages)
         items = parse_dungeon_page(html)
         if items:
             print(f"  Found {len(items)} items", file=sys.stderr)
@@ -374,35 +416,82 @@ def main():
         else:
             print(f"  WARNING: No loot found!", file=sys.stderr)
 
+    label = "raids" if content_type == "raid" else "dungeons"
     total = sum(len(v) for v in all_loot.values())
-    print(f"\nProcessed {len(all_loot)} dungeons, {total} total items.", file=sys.stderr)
+    print(f"\nProcessed {len(all_loot)} {label}, {total} total items.", file=sys.stderr)
     for key in sorted(all_loot.keys()):
-        print(f"  {DUNGEONS[key]['name']}: {len(all_loot[key])} items", file=sys.stderr)
+        print(f"  {definitions[key]['name']}: {len(all_loot[key])} items", file=sys.stderr)
 
-    # Output
-    if args.json:
-        output = json.dumps(all_loot, indent=2)
-    else:
-        output = format_dungeon_loot(all_loot)
+    return all_loot
 
+
+def write_output(output, table_name, args):
+    """Write Lua or JSON output to file or stdout."""
     if args.output:
         out_path = Path(args.output)
         if out_path.exists() and out_path.name == "Data.lua":
             existing = out_path.read_text(encoding="utf-8")
-            pattern = r'NS\.DUNGEON_LOOT\s*=\s*\{.*?\n\}'
-            new_section = re.search(r'NS\.DUNGEON_LOOT\s*=\s*\{.*?\n\}', output, re.DOTALL)
+            pattern = rf'NS\.{table_name}\s*=\s*\{{.*?\n\}}'
+            new_section = re.search(pattern, output, re.DOTALL)
             if new_section and re.search(pattern, existing, re.DOTALL):
                 existing = re.sub(pattern, new_section.group(0), existing, flags=re.DOTALL)
                 out_path.write_text(existing, encoding="utf-8")
-                print(f"\nReplaced DUNGEON_LOOT in {out_path}", file=sys.stderr)
+                print(f"\nReplaced {table_name} in {out_path}", file=sys.stderr)
             else:
-                print(f"\nWARNING: Could not find DUNGEON_LOOT to replace",
-                      file=sys.stderr)
+                # Append if section doesn't exist yet
+                existing = existing.rstrip() + "\n\n" + output + "\n"
+                out_path.write_text(existing, encoding="utf-8")
+                print(f"\nAppended {table_name} to {out_path}", file=sys.stderr)
         else:
             out_path.write_text(output, encoding="utf-8")
             print(f"\nWritten to {out_path}", file=sys.stderr)
     else:
         print(output)
+
+
+def main():
+    parser = argparse.ArgumentParser(description="Scrape Icy Veins loot tables")
+    parser.add_argument("--from-files", type=str,
+                        help="Directory with saved HTML files")
+    parser.add_argument("--output", type=str, help="Output file (default: stdout)")
+    parser.add_argument("--save-html", type=str, help="Save fetched HTML here")
+    parser.add_argument("--keys", type=str, nargs="+",
+                        help="Only process these keys (dungeon or raid)")
+    parser.add_argument("--dungeons", type=str, nargs="+",
+                        help="Only process these dungeon keys (alias for --keys)")
+    parser.add_argument("--raids", action="store_true",
+                        help="Scrape raid loot tables instead of dungeons")
+    parser.add_argument("--delay", type=float, default=2.0,
+                        help="Delay between requests (seconds)")
+    parser.add_argument("--json", action="store_true", help="JSON output")
+
+    args = parser.parse_args()
+
+    # Backward compat: --dungeons is an alias for --keys
+    if args.dungeons and not args.keys:
+        args.keys = args.dungeons
+
+    if args.raids:
+        definitions = RAIDS
+        content_type = "raid"
+        table_name = "RAID_LOOT"
+    else:
+        definitions = DUNGEONS
+        content_type = "dungeon"
+        table_name = "DUNGEON_LOOT"
+
+    all_loot = scrape_content(definitions, content_type, args)
+
+    # Output
+    if args.json:
+        output = json.dumps(all_loot, indent=2)
+    else:
+        if args.raids:
+            output = format_raid_loot(all_loot)
+        else:
+            output = format_dungeon_loot(all_loot)
+
+    write_output(output, table_name, args)
 
 
 if __name__ == "__main__":

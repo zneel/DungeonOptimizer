@@ -46,6 +46,13 @@ NS.DUNGEONS = {
     { id = "NEXUS_XENAS", name = "Nexus-Point Xenas", icon = "Interface\\Icons\\achievement_dungeon_nexus70" },
 }
 
+-- ============================================================================
+-- RAID LIST - Midnight Season 1
+-- ============================================================================
+NS.RAIDS = {
+    { id = "LIBERATION_OF_UNDERMINE", name = "Liberation of Undermine", icon = "Interface\\Icons\\achievement_raid_liberationofundermine" },
+}
+
 
 -- ============================================================================
 -- BIS LISTS - MYTHIC (from Icy Veins, Midnight Season 1)
@@ -856,6 +863,14 @@ NS.BIS_RAID = {
 }
 
 -- ============================================================================
+-- BIS LISTS - RAID (from Icy Veins, Midnight Season 1)
+-- Populated by: python scrape_bis.py --output Data.lua
+-- ============================================================================
+NS.BIS_RAID = {
+    -- Placeholder: will be populated when scrape_bis.py runs with raid data
+}
+
+-- ============================================================================
 -- DUNGEON LOOT TABLES
 -- Extracted from BIS lists: items whose source is a M+ dungeon
 -- ============================================================================
@@ -1083,6 +1098,14 @@ NS.DUNGEON_LOOT = {
 }
 
 -- ============================================================================
+-- RAID LOOT TABLES
+-- Populated by: python scrape_loot.py --raids --output Data.lua
+-- ============================================================================
+NS.RAID_LOOT = {
+    -- Placeholder: will be populated when scrape_loot.py --raids runs
+}
+
+-- ============================================================================
 -- SPEC ID MAPPING (WoW API specID -> our key format)
 -- ============================================================================
 NS.SPEC_MAP = {
@@ -1180,5 +1203,35 @@ end
 -- Returns true if an item drops from any dungeon
 function NS.IsFromDungeon(itemId)
     return NS.ITEM_TO_DUNGEONS[itemId] ~= nil
+end
+
+-- ============================================================================
+-- BUILD RAID ITEM INDEX (computed at load time)
+-- Maps itemId -> list of raid keys where it drops
+-- ============================================================================
+NS.ITEM_TO_RAIDS = {}
+for raidKey, lootTable in pairs(NS.RAID_LOOT) do
+    for _, drop in ipairs(lootTable) do
+        if not NS.ITEM_TO_RAIDS[drop.itemId] then
+            NS.ITEM_TO_RAIDS[drop.itemId] = {}
+        end
+        local found = false
+        for _, rk in ipairs(NS.ITEM_TO_RAIDS[drop.itemId]) do
+            if rk == raidKey then found = true; break end
+        end
+        if not found then
+            table.insert(NS.ITEM_TO_RAIDS[drop.itemId], raidKey)
+        end
+    end
+end
+
+-- Returns true if an item drops from any raid
+function NS.IsFromRaid(itemId)
+    return NS.ITEM_TO_RAIDS[itemId] ~= nil
+end
+
+-- Returns true if an item drops from any content (dungeon or raid)
+function NS.IsFromContent(itemId)
+    return NS.ITEM_TO_DUNGEONS[itemId] ~= nil or NS.ITEM_TO_RAIDS[itemId] ~= nil
 end
 
