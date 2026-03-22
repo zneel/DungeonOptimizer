@@ -55,6 +55,40 @@ NS.RAIDS = {
 
 
 -- ============================================================================
+-- #39: AFFIX STRATEGY TIPS
+-- Tips per affix ID, with optional per-dungeon overrides
+-- Affix IDs: https://wowpedia.fandom.com/wiki/Mythic%2B#Affixes
+-- ============================================================================
+NS.AFFIX_TIPS = {
+    -- Fortified (affix ID 10)
+    [10] = {
+        general = "Trash hits harder. Use cooldowns on large pulls.",
+        dungeons = {
+            MAGISTER = "Watch the big arcane packs before second boss.",
+            WINDRUNNER = "Ranger packs need interrupts; save CDs for hallway pulls.",
+            PIT_OF_SARON = "Frostborn patrols hit very hard; pull carefully.",
+        },
+    },
+    -- Tyrannical (affix ID 9)
+    [9] = {
+        general = "Bosses hit harder and have more HP. Save CDs for boss fights.",
+        dungeons = {
+            SEAT = "Last boss has extended phases; plan healer CDs.",
+            SKYREACH = "Ranjit's wind phases are longer; stay mobile.",
+            NEXUS_XENAS = "Final boss soft enrage is tight; lust early.",
+        },
+    },
+    -- Xal'atath's Bargain: Ascendant (affix ID 148)
+    [148] = {
+        general = "Void orbs spawn during combat. Dodge them or they explode.",
+    },
+    -- Challenger's Peril (affix ID 152)
+    [152] = {
+        general = "Deaths remove time from the timer. Play safe.",
+    },
+}
+
+-- ============================================================================
 -- BIS LISTS - MYTHIC (from Icy Veins, Midnight Season 1)
 -- ============================================================================
 NS.BIS_MYTHIC = {

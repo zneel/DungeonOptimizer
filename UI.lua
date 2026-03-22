@@ -311,6 +311,26 @@ function UI:RefreshUI()
             keyLabel:SetWidth(350)
             keyGroup:AddChild(keyLabel)
         end
+        -- #38: Key Route suggestion
+        local keyRoute = NS.Core:CalculateKeyRoute()
+        if #keyRoute > 1 then
+            local routeLabel = AceGUI:Create("Label")
+            local routeText = "  |cffffcc00Suggested order:|r "
+            for i, key in ipairs(keyRoute) do
+                if i > 1 then routeText = routeText .. " > " end
+                local color = key.ownerClass and NS.CLASS_COLORS[key.ownerClass] or "aaaaaa"
+                routeText = routeText .. string.format(
+                    "|cff%s%s|r's %s +%d",
+                    color, key.ownerShort, key.dungeonName, key.level
+                )
+                if key.bisScore > 0 then
+                    routeText = routeText .. string.format(" |cff00ff00(%d BIS)|r", key.bisScore)
+                end
+            end
+            routeLabel:SetText(routeText)
+            routeLabel:SetFullWidth(true)
+            keyGroup:AddChild(routeLabel)
+        end
     end
 
     -- === GROUP SUMMARY ===
@@ -634,10 +654,38 @@ function UI:CreateDungeonEntry(parent, rank, entry)
     if entry.ratingBonus and entry.ratingBonus > 0 then
         bonusText = string.format(" |cff69ccf0+%d rating|r", entry.ratingBonus)
     end
-    local title = string.format("|cff%s#%d|r  %s  -  %s%s", rankColor, rank, dungeon.name, upgradeText, bonusText)
+    -- #40: Timer prediction
+    local timerText = ""
+    if not entry.isRaid then
+        local prediction = NS.Core:GetDungeonTimerPrediction(dungeon.id)
+        if prediction then
+            timerText = string.format(" |cff%s[%d%% %s]|r", prediction.color, prediction.confidence, prediction.tag)
+        end
+    end
+
+    local title = string.format("|cff%s#%d|r  %s  -  %s%s%s", rankColor, rank, dungeon.name, upgradeText, bonusText, timerText)
     dungeonGroup:SetTitle(title)
     dungeonGroup:SetLayout("Flow")
     parent:AddChild(dungeonGroup)
+
+    -- #39: Affix strategy tip
+    if not entry.isRaid then
+        local affixes = NS.Core:GetCurrentAffixes()
+        if affixes then
+            for _, affix in ipairs(affixes) do
+                local tipData = NS.AFFIX_TIPS[affix.id]
+                if tipData then
+                    local tip = (tipData.dungeons and tipData.dungeons[dungeon.id]) or tipData.general
+                    if tip then
+                        local tipLabel = AceGUI:Create("Label")
+                        tipLabel:SetText(string.format("   |cffaaaaaa%s: %s|r", affix.name, tip))
+                        tipLabel:SetFullWidth(true)
+                        dungeonGroup:AddChild(tipLabel)
+                    end
+                end
+            end
+        end
+    end
 
     if (entry.bisScore or score) == 0 and (entry.ratingBonus or 0) == 0 then
         local noUpgrade = AceGUI:Create("Label")

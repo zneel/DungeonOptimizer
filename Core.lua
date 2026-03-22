@@ -1102,6 +1102,154 @@ function DungeonOptimizer:CalculateRaidRanking()
 end
 
 -- ============================================================================
+-- #40: TIMER PREDICTIONS
+-- Estimate likelihood of timing a key based on run history
+-- ============================================================================
+function DungeonOptimizer:PredictTimerSuccess(mapID, targetLevel)
+    if not C_MythicPlus or not C_MythicPlus.GetRunHistory then return nil end
+
+    local runs = C_MythicPlus.GetRunHistory(false, false) -- all season runs
+    if not runs then return nil end
+
+    -- Filter runs for this dungeon at similar key levels (targetLevel ± 2)
+    local timed = 0
+    local total = 0
+    for _, run in ipairs(runs) do
+        if run.mapChallengeModeID == mapID then
+            local levelDiff = math.abs((run.level or 0) - (targetLevel or 0))
+            if levelDiff <= 2 then
+                total = total + 1
+                if run.completed then
+                    timed = timed + 1
+                end
+            end
+        end
+    end
+
+    -- Need at least 3 runs for a meaningful prediction
+    if total < 3 then return nil end
+
+    local confidence = math.floor((timed / total) * 100)
+    local tag, color
+    if confidence >= 80 then
+        tag = "Likely"
+        color = "00ff00"
+    elseif confidence >= 50 then
+        tag = "Moderate"
+        color = "ffff00"
+    else
+        tag = "Unlikely"
+        color = "ff4444"
+    end
+
+    return {
+        confidence = confidence,
+        tag = tag,
+        color = color,
+        timed = timed,
+        total = total,
+    }
+end
+
+-- Get timer prediction for a dungeon key (convenience wrapper)
+function DungeonOptimizer:GetDungeonTimerPrediction(dungeonKey)
+    if not NS.CHALLENGE_MODE_MAP then return nil end
+
+    -- Find the mapID for this dungeon key
+    local mapID = nil
+    for mid, dk in pairs(NS.CHALLENGE_MODE_MAP) do
+        if dk == dungeonKey then
+            mapID = mid
+            break
+        end
+    end
+    if not mapID then return nil end
+
+    -- Use the group's average key level as target, or fallback to 10
+    local targetLevel = 10
+    local myKey = self:GetOwnKeystone()
+    if myKey then targetLevel = myKey.level end
+
+    return self:PredictTimerSuccess(mapID, targetLevel)
+end
+
+-- ============================================================================
+-- #38: KEY ROUTING OPTIMIZER
+-- Suggest optimal run order based on available group keystones
+-- ============================================================================
+function DungeonOptimizer:CalculateKeyRoute()
+    local allKeys = {}
+
+    -- Collect own keystone
+    local myKey = self:GetOwnKeystone()
+    local myName = NS.Inspect:GetUnitFullName("player")
+    if myKey and myName then
+        table.insert(allKeys, {
+            owner = myName,
+            ownerShort = myName:match("^([^-]+)") or myName,
+            ownerClass = NS.groupData[myName] and NS.groupData[myName].class or nil,
+            mapID = myKey.mapID,
+            level = myKey.level,
+            dungeonName = myKey.dungeonName,
+        })
+    end
+
+    -- Collect party keystones
+    for sender, keyData in pairs(NS.partyKeystones) do
+        table.insert(allKeys, {
+            owner = sender,
+            ownerShort = sender:match("^([^-]+)") or sender,
+            ownerClass = NS.groupData[sender] and NS.groupData[sender].class or nil,
+            mapID = keyData.mapID,
+            level = keyData.level,
+            dungeonName = keyData.dungeonName,
+        })
+    end
+
+    if #allKeys == 0 then return {} end
+
+    -- Score each available key
+    for _, key in ipairs(allKeys) do
+        -- Find the matching dungeon key from our map
+        local dungeonKey = NS.CHALLENGE_MODE_MAP and NS.CHALLENGE_MODE_MAP[key.mapID]
+            or (NS.MAP_ID_TO_DUNGEON and NS.MAP_ID_TO_DUNGEON[key.mapID])
+
+        -- BIS upgrade score from dungeon ranking
+        local bisScore = 0
+        if dungeonKey then
+            bisScore = select(1, self:ScoreDungeon(dungeonKey))
+        end
+
+        -- Rating opportunity bonus
+        local ratingBonus = 0
+        if self.db.profile.weightByScore and key.mapID then
+            local scoreData = self:GetDungeonScoreData(key.mapID)
+            if scoreData then
+                local seasonLevel = scoreData.seasonBest and scoreData.seasonBest.level or 0
+                if seasonLevel < 5 then
+                    ratingBonus = 3
+                elseif seasonLevel < 10 then
+                    ratingBonus = 2
+                elseif seasonLevel < 15 then
+                    ratingBonus = 1
+                end
+            else
+                ratingBonus = 3
+            end
+        end
+
+        key.dungeonKey = dungeonKey
+        key.bisScore = bisScore
+        key.ratingBonus = ratingBonus
+        key.totalScore = bisScore + ratingBonus
+    end
+
+    -- Sort by total score descending
+    table.sort(allKeys, function(a, b) return a.totalScore > b.totalScore end)
+    return allKeys
+end
+
+-- ============================================================================
 -- #36: UPGRADE PRIORITY SYSTEM
 -- Rank who benefits most from a specific item drop
 -- ============================================================================
