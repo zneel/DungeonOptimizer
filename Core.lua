@@ -88,8 +88,16 @@ end
 function DungeonOptimizer:PruneCompletions()
     local myName = NS.Inspect:GetUnitFullName("player")
     local groupNames = {}
-    if IsInGroup() and not IsInRaid() then
-        if myName then groupNames[myName] = true end
+    if myName then groupNames[myName] = true end
+    if IsInRaid() then
+        for i = 1, GetNumGroupMembers() do
+            local unit = "raid" .. i
+            if UnitExists(unit) then
+                local name = NS.Inspect:GetUnitFullName(unit)
+                if name then groupNames[name] = true end
+            end
+        end
+    elseif IsInGroup() then
         for i = 1, GetNumGroupMembers() - 1 do
             local unit = "party" .. i
             if UnitExists(unit) then
@@ -97,8 +105,6 @@ function DungeonOptimizer:PruneCompletions()
                 if name then groupNames[name] = true end
             end
         end
-    elseif not IsInGroup() then
-        if myName then groupNames[myName] = true end
     end
 
     for playerName in pairs(NS.groupCompletions) do
@@ -286,7 +292,7 @@ function DungeonOptimizer:GROUP_ROSTER_UPDATE()
     if not IsInGroup() or IsInRaid() then
         wipe(NS.groupData)
         wipe(NS.skippedPlayers)
-        if NS.keystones then wipe(NS.keystones) end
+        wipe(NS.partyKeystones)
         -- Keep only local player's completions
         self:PruneCompletions()
         -- Re-scan just the player if solo
@@ -316,6 +322,10 @@ end
 
 -- #26: Auto-hide during active M+ run
 function DungeonOptimizer:CHALLENGE_MODE_START()
+    -- Cache the active challenge map ID so it's available after completion
+    if C_ChallengeMode and C_ChallengeMode.GetActiveChallengeMapID then
+        self._activeChallengeMapID = C_ChallengeMode.GetActiveChallengeMapID()
+    end
     if NS.UI and NS.UI:IsVisible() then
         NS.UI._wasShownBeforeRun = true
         NS.UI.mainFrame:Hide()
@@ -324,9 +334,10 @@ function DungeonOptimizer:CHALLENGE_MODE_START()
 end
 
 function DungeonOptimizer:CHALLENGE_MODE_COMPLETED()
-    -- Auto-exclude the completed dungeon
-    if C_ChallengeMode and C_ChallengeMode.GetActiveChallengeMapID then
-        local mapID = C_ChallengeMode.GetActiveChallengeMapID()
+    -- Auto-exclude the completed dungeon (use cached mapID since active challenge is over)
+    if C_ChallengeMode then
+        local mapID = self._activeChallengeMapID
+        self._activeChallengeMapID = nil
         local dungeonKey = NS.CHALLENGE_MODE_MAP[mapID]
         if dungeonKey then
             self.db.profile.excludedDungeons[dungeonKey] = true
@@ -399,12 +410,16 @@ function DungeonOptimizer:CHAT_MSG_LOOT(event, message, ...)
     local itemId = tonumber(itemLink:match("item:(%d+)"))
     if not itemId then return end
 
-    -- Extract looter name from message
-    -- Format: "PlayerName receives loot: [Item]" or "You receive loot: [Item]"
-    local looterName = message:match("^(.+) receives? loot")
+    -- Extract looter name from message using WoW locale-aware globals
+    -- LOOT_ITEM = "%s receives loot: %s", LOOT_ITEM_SELF = "You receive loot: %s"
+    local looterName
+    local lootPatternOther = LOOT_ITEM and LOOT_ITEM:gsub("%%s", "(.+)", 1):gsub("%%s", ".+") or nil
+    local lootPatternSelf = LOOT_ITEM_SELF and LOOT_ITEM_SELF:gsub("%%s", ".+") or nil
+    if lootPatternOther then
+        looterName = message:match("^" .. lootPatternOther)
+    end
     if not looterName or looterName == "" then
-        -- Check if it's the player themselves
-        if message:match("^You receive") then
+        if lootPatternSelf and message:match("^" .. lootPatternSelf) then
             looterName = NS.Inspect:GetUnitFullName("player")
         end
     end
@@ -413,7 +428,7 @@ function DungeonOptimizer:CHAT_MSG_LOOT(event, message, ...)
     -- Resolve full Name-Realm if needed
     if not looterName:find("-") then
         for fullName, _ in pairs(NS.groupData) do
-            if fullName:match("^" .. looterName .. "%-") then
+            if fullName:sub(1, #looterName + 1) == looterName .. "-" then
                 looterName = fullName
                 break
             end
@@ -442,13 +457,9 @@ function DungeonOptimizer:CHAT_MSG_LOOT(event, message, ...)
         end
     end
 
-    -- Check tradeability: item is tradeable if looter has equal or higher ilvl in that slot
-    local isTradeable = false
-    if itemSlot and looterData.ilvls and looterData.ilvls[itemSlot] then
-        -- Looter doesn't need it as BIS = likely tradeable
-        isTradeable = not self:PlayerNeedsItem(looterData, itemId)
-    end
-
+    -- Check tradeability: item is tradeable if the looter doesn't need it as BIS
+    if not itemSlot then return end
+    local isTradeable = not self:PlayerNeedsItem(looterData, itemId)
     if not isTradeable then return end
 
     -- Find candidates who need this item
@@ -629,7 +640,7 @@ function DungeonOptimizer:SlashCommand(input)
     elseif cmd == "purge" then
         wipe(NS.groupData)
         wipe(NS.skippedPlayers)
-        if NS.keystones then wipe(NS.keystones) end
+        wipe(NS.partyKeystones)
         wipe(self.db.profile.excludedDungeons)
         local myName = NS.Inspect:GetUnitFullName("player")
         if myName then NS.groupCompletions[myName] = {} end
@@ -690,7 +701,6 @@ function DungeonOptimizer:OnScanComplete()
     self:SeedLocalOffSpec()
 
     self:RecalculateAllRankings()
-    self.lastRaidRanking = self:CalculateRaidRanking()
     if NS.UI then NS.UI:RefreshIfVisible() end
 end
 
@@ -821,15 +831,18 @@ function DungeonOptimizer:PerformReadyCheck()
     self:Print(NS.L["READYCHECK_SCANNING"])
 
     local results = {}
-    local units = { "player" }
-    if IsInGroup() and not IsInRaid() then
-        for i = 1, GetNumGroupMembers() - 1 do
-            table.insert(units, "party" .. i)
-        end
-    elseif IsInRaid() then
+    local units = {}
+    if IsInRaid() then
         for i = 1, GetNumGroupMembers() do
             table.insert(units, "raid" .. i)
         end
+    elseif IsInGroup() then
+        table.insert(units, "player")
+        for i = 1, GetNumGroupMembers() - 1 do
+            table.insert(units, "party" .. i)
+        end
+    else
+        table.insert(units, "player")
     end
 
     for _, unit in ipairs(units) do
@@ -1130,7 +1143,7 @@ end
 
 -- Recalculate both dungeon and raid rankings
 function DungeonOptimizer:RecalculateAllRankings()
-    self:RecalculateAllRankings()
+    self.lastRanking = self:CalculateDungeonRanking()
     self.lastRaidRanking = self:CalculateRaidRanking()
 end
 
@@ -1588,7 +1601,8 @@ function DungeonOptimizer:CHAT_MSG_ADDON(event, prefix, message, channel, sender
         if sender == myFullName then return end
 
         if NS.groupData[sender] then
-            NS.groupData[sender].offSpec = (message ~= "NONE") and message or nil
+            local validOffSpec = (message ~= "NONE") and NS.GetActiveBISTable()[message] and message or nil
+            NS.groupData[sender].offSpec = validOffSpec
             self:RecalculateAllRankings()
             if NS.UI then NS.UI:RefreshIfVisible() end
         end

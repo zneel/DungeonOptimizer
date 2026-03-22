@@ -264,7 +264,9 @@ NS.BIS_MYTHIC = {
         [7] = 250023, -- Phloemwraps of the Luminous Bloom (Vaelgor and Ezzorak - The Voidspire)
         [8] = 251121, -- Domanaar's Dire Treads (Magister's Terrace)
         [11] = 251093, -- Omission of Light (Nexus-Point Xenas)
+        [12] = 251217, -- Occlusion of Void (Nexus-Point Xenas)
         [13] = 193718, -- Emerald Coach's Whistle (Algeth'ar Academy)
+        [14] = 193701, -- Algeth'ar Puzzle Box (Algeth'ar Academy)
     },
     EVOKER_AUGMENTATION = {
         [16] = 251178, -- Ceremonial Hexblade (Maisara Caverns Magister's Terrace Skyreach Algeth'ar Academy)
@@ -906,13 +908,8 @@ NS.TIER_SET_SLOTS = { 1, 3, 5, 10, 7 } -- head, shoulders, chest, hands, legs
 -- Update this for each season as needed
 NS.CATALYST_CURRENCY_ID = 2813
 
--- ============================================================================
--- BIS LISTS - RAID (from Icy Veins, Midnight Season 1)
+-- Note: NS.BIS_RAID is defined above with actual data.
 -- Populated by: python scrape_bis.py --output Data.lua
--- ============================================================================
-NS.BIS_RAID = {
-    -- Placeholder: will be populated when scrape_bis.py runs with raid data
-}
 
 -- ============================================================================
 -- DUNGEON LOOT TABLES
