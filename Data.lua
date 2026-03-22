@@ -863,6 +863,16 @@ NS.BIS_RAID = {
 }
 
 -- ============================================================================
+-- #37: TIER SET CONSTANTS
+-- Standard 5 tier set slots: Head, Shoulders, Chest, Hands, Legs
+-- ============================================================================
+NS.TIER_SET_SLOTS = { 1, 3, 5, 10, 7 } -- head, shoulders, chest, hands, legs
+
+-- Catalyst currency ID (Renascent Shadowflame for Midnight Season 1)
+-- Update this for each season as needed
+NS.CATALYST_CURRENCY_ID = 2813
+
+-- ============================================================================
 -- BIS LISTS - RAID (from Icy Veins, Midnight Season 1)
 -- Populated by: python scrape_bis.py --output Data.lua
 -- ============================================================================

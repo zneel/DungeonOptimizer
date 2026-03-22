@@ -27,6 +27,7 @@ local defaults = {
         weightByScore = true, -- #20: factor M+ score into recommendations
         offSpec = nil, -- off-spec key (e.g. "WARRIOR_FURY"), nil if disabled
         activeTab = "mplus", -- "mplus" or "raid"
+        lootAlertEnabled = true, -- #35: show loot trade notifications
     },
 }
 
@@ -34,6 +35,7 @@ local ADDON_MSG_PREFIX = "DOptSync"       -- legacy exclusion sync
 local ADDON_MSG_PREFIX_KEY = "DOptKey"    -- #21: keystone sync
 local ADDON_MSG_PREFIX_COMP = "DOptComp"  -- per-player completion sync
 local ADDON_MSG_PREFIX_OFFSPEC = "DOptOff" -- off-spec sync
+local ADDON_MSG_PREFIX_CATALYST = "DOptCat" -- #37: catalyst sync
 
 -- Per-player dungeon completions: { ["Name-Realm"] = { MAGISTER=true, ... } }
 NS.groupCompletions = {}
@@ -175,11 +177,14 @@ function DungeonOptimizer:OnEnable()
     self:RegisterEvent("CHALLENGE_MODE_COMPLETED")
     -- #27: affix updates
     self:RegisterEvent("MYTHIC_PLUS_CURRENT_AFFIX_UPDATE")
+    -- #34: loot trading detection
+    self:RegisterEvent("CHAT_MSG_LOOT")
 
     C_ChatInfo.RegisterAddonMessagePrefix(ADDON_MSG_PREFIX)
     C_ChatInfo.RegisterAddonMessagePrefix(ADDON_MSG_PREFIX_KEY)
     C_ChatInfo.RegisterAddonMessagePrefix(ADDON_MSG_PREFIX_COMP)
     C_ChatInfo.RegisterAddonMessagePrefix(ADDON_MSG_PREFIX_OFFSPEC)
+    C_ChatInfo.RegisterAddonMessagePrefix(ADDON_MSG_PREFIX_CATALYST)
     -- Register gear sync prefix
     NS.Inspect:RegisterSync()
     -- Off-spec: listen for spec changes to auto-reset
@@ -196,6 +201,7 @@ function DungeonOptimizer:OnEnable()
         self:ScheduleTimer(function()
             self:BroadcastCompletions()
             self:BroadcastOffSpec()
+            self:BroadcastCatalyst()
         end, 2)
     end
     -- #27: Request current affixes
@@ -304,6 +310,7 @@ function DungeonOptimizer:GROUP_ROSTER_UPDATE()
         self:BroadcastCompletions()
         self:BroadcastKeystone()
         self:BroadcastOffSpec()
+        self:BroadcastCatalyst()
     end, 2)
 end
 
@@ -374,6 +381,110 @@ function DungeonOptimizer:GetCurrentAffixes()
 
     NS.currentAffixes = result
     return result
+end
+
+-- ============================================================================
+-- #34: LOOT TRADING DETECTION
+-- ============================================================================
+NS.tradeableLoot = {} -- recent tradeable loot events
+
+function DungeonOptimizer:CHAT_MSG_LOOT(event, message, ...)
+    if not IsInGroup() then return end
+
+    -- Extract item link from loot message
+    local itemLink = message:match("|c%x+|Hitem:[^|]+|h%[.-%]|h|r")
+    if not itemLink then return end
+
+    -- Extract item ID from link
+    local itemId = tonumber(itemLink:match("item:(%d+)"))
+    if not itemId then return end
+
+    -- Extract looter name from message
+    -- Format: "PlayerName receives loot: [Item]" or "You receive loot: [Item]"
+    local looterName = message:match("^(.+) receives? loot")
+    if not looterName or looterName == "" then
+        -- Check if it's the player themselves
+        if message:match("^You receive") then
+            looterName = NS.Inspect:GetUnitFullName("player")
+        end
+    end
+    if not looterName then return end
+
+    -- Resolve full Name-Realm if needed
+    if not looterName:find("-") then
+        for fullName, _ in pairs(NS.groupData) do
+            if fullName:match("^" .. looterName .. "%-") then
+                looterName = fullName
+                break
+            end
+        end
+    end
+
+    local looterData = NS.groupData[looterName]
+    if not looterData then return end
+
+    -- Determine item slot from BIS data or loot tables
+    local itemSlot = NS.FindBISSlot(looterData.spec, itemId) or nil
+    -- Try to find slot from dungeon loot tables
+    if not itemSlot then
+        for _, lootTable in pairs(NS.DUNGEON_LOOT) do
+            for _, drop in ipairs(lootTable) do
+                if drop.itemId == itemId then
+                    -- slot not stored in loot table, try BIS for any spec
+                    for _, specKey in pairs(NS.SPEC_MAP) do
+                        itemSlot = NS.FindBISSlot(specKey, itemId)
+                        if itemSlot then break end
+                    end
+                    break
+                end
+            end
+            if itemSlot then break end
+        end
+    end
+
+    -- Check tradeability: item is tradeable if looter has equal or higher ilvl in that slot
+    local isTradeable = false
+    if itemSlot and looterData.ilvls and looterData.ilvls[itemSlot] then
+        -- Looter doesn't need it as BIS = likely tradeable
+        isTradeable = not self:PlayerNeedsItem(looterData, itemId)
+    end
+
+    if not isTradeable then return end
+
+    -- Find candidates who need this item
+    local candidates = self:GetItemCandidates(itemId, itemSlot)
+
+    -- Remove the looter from candidates
+    local filteredCandidates = {}
+    for _, c in ipairs(candidates) do
+        if c.playerName ~= looterName then
+            table.insert(filteredCandidates, c)
+        end
+    end
+
+    if #filteredCandidates == 0 then return end
+
+    -- Store the tradeable loot event
+    local lootEvent = {
+        itemId = itemId,
+        itemLink = itemLink,
+        itemSlot = itemSlot,
+        looter = looterName,
+        looterClass = looterData.class,
+        candidates = filteredCandidates,
+        timestamp = time(),
+    }
+    table.insert(NS.tradeableLoot, lootEvent)
+
+    -- Keep only last 10 events
+    while #NS.tradeableLoot > 10 do
+        table.remove(NS.tradeableLoot, 1)
+    end
+
+    -- Notify UI
+    if NS.UI then
+        NS.UI:OnTradeableLoot(lootEvent)
+    end
 end
 
 -- ============================================================================
@@ -606,6 +717,72 @@ function DungeonOptimizer:PLAYER_SPECIALIZATION_CHANGED()
         self:BroadcastOffSpec()
         self:RecalculateAllRankings()
         if NS.UI then NS.UI:RefreshIfVisible() end
+    end
+end
+
+-- ============================================================================
+-- #37: CATALYST TRACKING
+-- ============================================================================
+NS.groupCatalyst = {} -- { "Name-Realm" = { charges=N, tierCount=N } }
+
+function DungeonOptimizer:GetCatalystCharges()
+    if not C_CurrencyInfo or not C_CurrencyInfo.GetCurrencyInfo then return 0 end
+    local info = C_CurrencyInfo.GetCurrencyInfo(NS.CATALYST_CURRENCY_ID)
+    if info then return info.quantity or 0 end
+    return 0
+end
+
+function DungeonOptimizer:GetTierSetCount(playerData)
+    if not playerData or not playerData.spec or not playerData.gear then return 0 end
+
+    local bisTable = NS.GetActiveBISTable()
+    local bisList = bisTable[playerData.spec]
+    if not bisList then return 0 end
+
+    local count = 0
+    for _, slotId in ipairs(NS.TIER_SET_SLOTS) do
+        local bisItemId = bisList[slotId]
+        if bisItemId and playerData.gear[slotId] == bisItemId then
+            count = count + 1
+        end
+    end
+    return count
+end
+
+function DungeonOptimizer:GetCatalystSuggestion(playerData)
+    if not playerData or not playerData.spec or not playerData.gear then return nil end
+
+    local bisTable = NS.GetActiveBISTable()
+    local bisList = bisTable[playerData.spec]
+    if not bisList then return nil end
+
+    -- Find tier slots where the player doesn't have the BIS tier piece
+    for _, slotId in ipairs(NS.TIER_SET_SLOTS) do
+        local bisItemId = bisList[slotId]
+        if bisItemId and playerData.gear[slotId] ~= bisItemId then
+            local slotName = NS.SLOT_NAMES[slotId] or "?"
+            local itemName = GetItemInfo(bisItemId) or ("Item #" .. bisItemId)
+            return { slotId = slotId, slotName = slotName, itemId = bisItemId, itemName = itemName }
+        end
+    end
+    return nil -- all tier slots filled
+end
+
+function DungeonOptimizer:BroadcastCatalyst()
+    if not IsInGroup() then return end
+    local myName = NS.Inspect:GetUnitFullName("player")
+    local myData = myName and NS.groupData[myName]
+
+    local charges = self:GetCatalystCharges()
+    local tierCount = myData and self:GetTierSetCount(myData) or 0
+
+    local data = string.format("%d:%d", charges, tierCount)
+    local channel = IsInRaid() and "RAID" or "PARTY"
+    C_ChatInfo.SendAddonMessage(ADDON_MSG_PREFIX_CATALYST, data, channel)
+
+    -- Also store locally
+    if myName then
+        NS.groupCatalyst[myName] = { charges = charges, tierCount = tierCount }
     end
 end
 
@@ -925,6 +1102,73 @@ function DungeonOptimizer:CalculateRaidRanking()
 end
 
 -- ============================================================================
+-- #36: UPGRADE PRIORITY SYSTEM
+-- Rank who benefits most from a specific item drop
+-- ============================================================================
+
+-- Priority tags returned alongside scores
+NS.PRIORITY_TAGS = {
+    BIS_MAIN = "BIS Main",
+    BIS_OFF = "BIS Off-Spec",
+    UPGRADE = "Upgrade",
+    NO_UPGRADE = "No Upgrade",
+}
+
+--- Calculate how much a player would benefit from a specific item.
+--- Returns: score (number), tag (string), ilvlDelta (number or nil)
+function DungeonOptimizer:CalculateItemPriority(playerData, itemId, itemSlot)
+    if not playerData or not playerData.spec then
+        return 0, NS.PRIORITY_TAGS.NO_UPGRADE, nil
+    end
+
+    local ilvlDelta = 0
+    if playerData.ilvls and itemSlot and playerData.ilvls[itemSlot] then
+        -- We don't know the drop ilvl without more context, so delta is based
+        -- on the fact that a BIS item in that slot is an upgrade path
+        ilvlDelta = 1 -- placeholder: any BIS item is at least +1 priority
+    end
+
+    -- Check main-spec BIS
+    local isBISMain = self:PlayerNeedsItem(playerData, itemId)
+    if isBISMain then
+        -- Fewer remaining BIS items → each item is more impactful
+        local missing, total = self:CountMissingBIS(playerData)
+        local completionBonus = total > 0 and ((total - missing) / total) * 10 or 0
+        return 100 + completionBonus, NS.PRIORITY_TAGS.BIS_MAIN, ilvlDelta
+    end
+
+    -- Check off-spec BIS
+    local isBISOff = self:PlayerNeedsItemForOffSpec(playerData, itemId)
+    if isBISOff then
+        return 50, NS.PRIORITY_TAGS.BIS_OFF, ilvlDelta
+    end
+
+    return 0, NS.PRIORITY_TAGS.NO_UPGRADE, nil
+end
+
+--- Get a sorted list of candidates for a specific item.
+--- Returns: { {playerName, playerData, score, tag, ilvlDelta}, ... }
+function DungeonOptimizer:GetItemCandidates(itemId, itemSlot)
+    local candidates = {}
+
+    for playerName, playerData in pairs(NS.groupData) do
+        local score, tag, ilvlDelta = self:CalculateItemPriority(playerData, itemId, itemSlot)
+        if score > 0 then
+            table.insert(candidates, {
+                playerName = playerName,
+                playerData = playerData,
+                score = score,
+                tag = tag,
+                ilvlDelta = ilvlDelta,
+            })
+        end
+    end
+
+    table.sort(candidates, function(a, b) return a.score > b.score end)
+    return candidates
+end
+
+-- ============================================================================
 -- UTILITY: Get class color
 -- ============================================================================
 NS.CLASS_COLORS = {
@@ -1078,6 +1322,20 @@ function DungeonOptimizer:CHAT_MSG_ADDON(event, prefix, message, channel, sender
         if NS.groupData[sender] then
             NS.groupData[sender].offSpec = (message ~= "NONE") and message or nil
             self:RecalculateAllRankings()
+            if NS.UI then NS.UI:RefreshIfVisible() end
+        end
+    elseif prefix == ADDON_MSG_PREFIX_CATALYST then
+        -- #37: Catalyst sync
+        if not sender then return end
+        local myFullName = NS.Inspect:GetUnitFullName("player")
+        if sender == myFullName then return end
+
+        local charges, tierCount = message:match("^(%d+):(%d+)$")
+        if charges and tierCount then
+            NS.groupCatalyst[sender] = {
+                charges = tonumber(charges),
+                tierCount = tonumber(tierCount),
+            }
             if NS.UI then NS.UI:RefreshIfVisible() end
         end
     elseif prefix == "DOptGear" then

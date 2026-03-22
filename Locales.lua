@@ -59,6 +59,16 @@ local L = {
     ["RAID_RANKING"] = "Raid Ranking - %s (best to worst)",
     ["NO_RAIDS"] = "|cffff0000No raid data available. Populate raid loot tables first.|r",
 
+    -- Loot Trading
+    ["LOOT_TRADEABLE"] = "Tradeable BIS item detected!",
+    ["LOOT_LOOTED_BY"] = "Looted by:",
+    ["LOOT_COULD_BENEFIT"] = "Could benefit:",
+    ["LOOT_ALERTS"] = "Loot Alerts",
+    ["LOOT_NO_ALERTS"] = "|cff888888No recent tradeable loot detected.|r",
+
+    -- Catalyst
+    ["CATALYST_SUGGEST"] = "Catalyst suggestion: convert %s (%s)",
+
     -- Slot names
     ["SLOT_HEAD"] = "Head",
     ["SLOT_NECK"] = "Neck",
@@ -123,6 +133,14 @@ local frFR = {
     ["TAB_RAID"] = "Raid",
     ["RAID_RANKING"] = "Classement du raid - %s (du meilleur au pire)",
     ["NO_RAIDS"] = "|cffff0000Aucune donn\195\169e de raid disponible.|r",
+
+    ["LOOT_TRADEABLE"] = "Item BIS \195\169changeable d\195\169tect\195\169 !",
+    ["LOOT_LOOTED_BY"] = "Loot\195\169 par :",
+    ["LOOT_COULD_BENEFIT"] = "Pourrait b\195\169n\195\169ficier \195\160 :",
+    ["LOOT_ALERTS"] = "Alertes de loot",
+    ["LOOT_NO_ALERTS"] = "|cff888888Aucun loot \195\169changeable d\195\169tect\195\169 r\195\169cemment.|r",
+
+    ["CATALYST_SUGGEST"] = "Suggestion catalyst : convertir %s (%s)",
 
     ["SLOT_HEAD"] = "T\195\170te",
     ["SLOT_NECK"] = "Cou",

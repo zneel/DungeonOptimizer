@@ -343,12 +343,25 @@ function UI:RefreshUI()
                 offSpecTag = string.format(" |cffcc88ff+%s|r", osName or playerData.offSpec)
             end
 
+            -- #37: Catalyst/tier info
+            local tierTag = ""
+            local catalystData = NS.groupCatalyst[playerName]
+            if catalystData then
+                tierTag = string.format(" |cffeda55f[%d/5 tier, %d charge(s)]|r",
+                    catalystData.tierCount, catalystData.charges)
+            else
+                local tierCount = NS.Core:GetTierSetCount(playerData)
+                if tierCount > 0 then
+                    tierTag = string.format(" |cffeda55f[%d/5 tier]|r", tierCount)
+                end
+            end
+
             local pLabel = AceGUI:Create("InteractiveLabel")
             pLabel:SetText(string.format(
-                "|cff%s%s|r |cff888888(%s%s)|r : |cff00ff00%d|r/%d BIS (%d%%)%s",
+                "|cff%s%s|r |cff888888(%s%s)|r : |cff00ff00%d|r/%d BIS (%d%%)%s%s",
                 classColor, playerData.name, specLabel, offSpecTag,
                 totalDungeon - missingDungeon, totalDungeon, dungeonPct,
-                sourceTag
+                tierTag, sourceTag
             ))
             pLabel:SetWidth(450)
 
@@ -449,6 +462,9 @@ function UI:RefreshUI()
             summaryGroup:AddChild(warnLabel)
         end
     end
+
+    -- === #35: LOOT ALERTS ===
+    self:RenderLootAlerts(self.mainFrame)
 
     -- === TAB GROUP (M+ / Raid) ===
     local tabGroup = AceGUI:Create("TabGroup")
@@ -733,6 +749,105 @@ function UI:CreateDungeonEntry(parent, rank, entry)
                 end
             end
         end
+    end
+end
+
+-- ============================================================================
+-- ============================================================================
+-- #35: LOOT TRADING ALERTS
+-- ============================================================================
+
+--- Called by Core when a tradeable BIS item is detected
+function UI:OnTradeableLoot(lootEvent)
+    if not NS.Core.db.profile.lootAlertEnabled then return end
+
+    -- Print a chat notification
+    local looterColor = NS.CLASS_COLORS[lootEvent.looterClass] or "ffffff"
+    local looterShort = lootEvent.looter:match("^([^-]+)") or lootEvent.looter
+    local msg = string.format(
+        "|cff00ff00%s|r %s |cff%s%s|r looted %s",
+        NS.L["LOOT_TRADEABLE"],
+        NS.L["LOOT_LOOTED_BY"],
+        looterColor, looterShort,
+        lootEvent.itemLink
+    )
+
+    -- List candidates
+    for _, c in ipairs(lootEvent.candidates) do
+        local pColor = NS.CLASS_COLORS[c.playerData.class] or "ffffff"
+        local pShort = c.playerName:match("^([^-]+)") or c.playerName
+        msg = msg .. string.format(
+            " -> |cff%s%s|r (%s)",
+            pColor, pShort, c.tag
+        )
+    end
+
+    NS.Core:Print(msg)
+
+    -- Refresh UI if visible to show in loot alerts section
+    self:RefreshIfVisible()
+end
+
+--- Render loot alerts section in the shared top area (called from RefreshUI)
+function UI:RenderLootAlerts(parent)
+    if not NS.tradeableLoot or #NS.tradeableLoot == 0 then return end
+
+    -- Only show alerts from the last 5 minutes
+    local cutoff = time() - 300
+    local recentAlerts = {}
+    for _, alert in ipairs(NS.tradeableLoot) do
+        if alert.timestamp >= cutoff then
+            table.insert(recentAlerts, alert)
+        end
+    end
+    if #recentAlerts == 0 then return end
+
+    local heading = AceGUI:Create("Heading")
+    heading:SetText(NS.L["LOOT_ALERTS"])
+    heading:SetFullWidth(true)
+    parent:AddChild(heading)
+
+    for _, alert in ipairs(recentAlerts) do
+        local alertGroup = AceGUI:Create("SimpleGroup")
+        alertGroup:SetFullWidth(true)
+        alertGroup:SetLayout("Flow")
+        parent:AddChild(alertGroup)
+
+        local looterColor = NS.CLASS_COLORS[alert.looterClass] or "ffffff"
+        local looterShort = alert.looter:match("^([^-]+)") or alert.looter
+        local itemName = GetItemInfo(alert.itemId) or alert.itemLink or ("Item #" .. alert.itemId)
+
+        local infoLabel = AceGUI:Create("InteractiveLabel")
+        infoLabel:SetText(string.format(
+            "  |cff%s%s|r looted |cff69ccf0%s|r",
+            looterColor, looterShort, itemName
+        ))
+        infoLabel:SetWidth(400)
+
+        -- Item tooltip on hover
+        local capturedItemId = alert.itemId
+        infoLabel:SetCallback("OnEnter", function(widget)
+            GameTooltip:SetOwner(widget.frame, "ANCHOR_RIGHT")
+            GameTooltip:SetItemByID(capturedItemId)
+            GameTooltip:Show()
+        end)
+        infoLabel:SetCallback("OnLeave", function() GameTooltip:Hide() end)
+        alertGroup:AddChild(infoLabel)
+
+        -- Candidates
+        for _, c in ipairs(alert.candidates) do
+            local pColor = NS.CLASS_COLORS[c.playerData.class] or "ffffff"
+            local pShort = c.playerName:match("^([^-]+)") or c.playerName
+
+            local candidateLabel = AceGUI:Create("Label")
+            candidateLabel:SetText(string.format(
+                "    -> |cff%s%s|r |cff888888(%s)|r",
+                pColor, pShort, c.tag
+            ))
+            candidateLabel:SetFullWidth(true)
+            alertGroup:AddChild(candidateLabel)
+        end
+
     end
 end
 
