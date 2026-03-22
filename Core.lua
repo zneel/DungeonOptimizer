@@ -25,12 +25,14 @@ local defaults = {
         excludedDungeons = {},
         showTooltips = true,
         weightByScore = true, -- #20: factor M+ score into recommendations
+        offSpec = nil, -- off-spec key (e.g. "WARRIOR_FURY"), nil if disabled
     },
 }
 
 local ADDON_MSG_PREFIX = "DOptSync"       -- legacy exclusion sync
 local ADDON_MSG_PREFIX_KEY = "DOptKey"    -- #21: keystone sync
 local ADDON_MSG_PREFIX_COMP = "DOptComp"  -- per-player completion sync
+local ADDON_MSG_PREFIX_OFFSPEC = "DOptOff" -- off-spec sync
 
 -- Per-player dungeon completions: { ["Name-Realm"] = { MAGISTER=true, ... } }
 NS.groupCompletions = {}
@@ -171,8 +173,11 @@ function DungeonOptimizer:OnEnable()
     C_ChatInfo.RegisterAddonMessagePrefix(ADDON_MSG_PREFIX)
     C_ChatInfo.RegisterAddonMessagePrefix(ADDON_MSG_PREFIX_KEY)
     C_ChatInfo.RegisterAddonMessagePrefix(ADDON_MSG_PREFIX_COMP)
+    C_ChatInfo.RegisterAddonMessagePrefix(ADDON_MSG_PREFIX_OFFSPEC)
     -- Register gear sync prefix
     NS.Inspect:RegisterSync()
+    -- Off-spec: listen for spec changes to auto-reset
+    self:RegisterEvent("PLAYER_SPECIALIZATION_CHANGED")
 
     -- #18: Build dynamic dungeon list from C_ChallengeMode API
     self:BuildDynamicDungeonList()
@@ -180,9 +185,12 @@ function DungeonOptimizer:OnEnable()
     self:AutoDetectCompletedDungeons()
     -- Seed per-player completion data from saved variables
     self:SeedLocalCompletions()
-    -- Broadcast completions to group after a short delay
+    -- Broadcast completions and off-spec to group after a short delay
     if IsInGroup() then
-        self:ScheduleTimer(function() self:BroadcastCompletions() end, 2)
+        self:ScheduleTimer(function()
+            self:BroadcastCompletions()
+            self:BroadcastOffSpec()
+        end, 2)
     end
     -- #27: Request current affixes
     if C_MythicPlus and C_MythicPlus.RequestCurrentAffixes then
@@ -284,11 +292,12 @@ function DungeonOptimizer:GROUP_ROSTER_UPDATE()
         end
         self._rosterTimer = self:ScheduleTimer("ScanGroup", 1)
     end
-    -- Prune departed members, broadcast completions + keystones to new members
+    -- Prune departed members, broadcast completions + keystones + off-spec to new members
     self:ScheduleTimer(function()
         self:PruneCompletions()
         self:BroadcastCompletions()
         self:BroadcastKeystone()
+        self:BroadcastOffSpec()
     end, 2)
 end
 
@@ -556,8 +565,41 @@ function DungeonOptimizer:OnScanComplete()
         end
     end
 
+    -- Seed local player's off-spec into groupData
+    self:SeedLocalOffSpec()
+
     self.lastRanking = self:CalculateDungeonRanking()
     if NS.UI then NS.UI:RefreshIfVisible() end
+end
+
+-- ============================================================================
+-- OFF-SPEC SYNC
+-- ============================================================================
+function DungeonOptimizer:BroadcastOffSpec()
+    if not IsInGroup() then return end
+    local offSpec = self.db.profile.offSpec or "NONE"
+    local channel = IsInRaid() and "RAID" or "PARTY"
+    C_ChatInfo.SendAddonMessage(ADDON_MSG_PREFIX_OFFSPEC, offSpec, channel)
+end
+
+-- Seed off-spec into local player's groupData
+function DungeonOptimizer:SeedLocalOffSpec()
+    local myName = NS.Inspect:GetUnitFullName("player")
+    if not myName or not NS.groupData[myName] then return end
+    NS.groupData[myName].offSpec = self.db.profile.offSpec
+end
+
+-- Auto-reset off-spec if player switched to it
+function DungeonOptimizer:PLAYER_SPECIALIZATION_CHANGED()
+    local currentSpec = NS.Inspect:GetPlayerSpecKey()
+    if currentSpec and self.db.profile.offSpec == currentSpec then
+        self.db.profile.offSpec = nil
+        self:Print(NS.L["OFF_SPEC_RESET"] or "Off-spec reset (now your active spec).")
+        self:SeedLocalOffSpec()
+        self:BroadcastOffSpec()
+        self.lastRanking = self:CalculateDungeonRanking()
+        if NS.UI then NS.UI:RefreshIfVisible() end
+    end
 end
 
 -- ============================================================================
@@ -588,6 +630,39 @@ function DungeonOptimizer:PlayerNeedsItem(playerData, itemId)
     end
 
     return equippedCount < bisCount
+end
+
+-- Check if a player needs an item for their off-spec BIS list
+-- Since we don't know off-spec gear, all off-spec BIS items are considered missing
+-- except those already equipped in main-spec (same itemId)
+function DungeonOptimizer:PlayerNeedsItemForOffSpec(playerData, itemId)
+    if not playerData or not playerData.offSpec then return false end
+
+    local bisTable = NS.GetActiveBISTable()
+    local bisList = bisTable[playerData.offSpec]
+    if not bisList then return false end
+
+    -- Check if this item is in the off-spec BIS list
+    local isOffSpecBIS = false
+    for _, bisItemId in pairs(bisList) do
+        if bisItemId == itemId then
+            isOffSpecBIS = true
+            break
+        end
+    end
+    if not isOffSpecBIS then return false end
+
+    -- Skip if this item is also a main-spec BIS item (already tracked as main-spec)
+    if playerData.spec then
+        local mainBisList = bisTable[playerData.spec]
+        if mainBisList then
+            for _, bisItemId in pairs(mainBisList) do
+                if bisItemId == itemId then return false end
+            end
+        end
+    end
+
+    return true
 end
 
 function DungeonOptimizer:CountMissingBIS(playerData)
@@ -648,7 +723,9 @@ function DungeonOptimizer:ScoreDungeon(dungeonId)
     for playerName, playerData in pairs(NS.groupData) do
         local needed = {}
         local seenItems = {}
+        local offSpecCount = 0
 
+        -- Main-spec items
         for _, drop in ipairs(lootTable) do
             if not seenItems[drop.itemId] and self:PlayerNeedsItem(playerData, drop.itemId) then
                 seenItems[drop.itemId] = true
@@ -663,14 +740,39 @@ function DungeonOptimizer:ScoreDungeon(dungeonId)
             end
         end
 
+        -- Off-spec items (only items not already tracked as main-spec)
+        if playerData.offSpec then
+            for _, drop in ipairs(lootTable) do
+                if not seenItems[drop.itemId] and self:PlayerNeedsItemForOffSpec(playerData, drop.itemId) then
+                    seenItems[drop.itemId] = true
+                    local bisSlot = NS.FindBISSlot(playerData.offSpec, drop.itemId)
+                    table.insert(needed, {
+                        itemId = drop.itemId,
+                        slot = bisSlot,
+                        itemName = drop.itemName or ("Item " .. drop.itemId),
+                        slotName = NS.SLOT_NAMES[bisSlot] or "?",
+                        boss = drop.boss or "",
+                        isOffSpec = true,
+                    })
+                    offSpecCount = offSpecCount + 1
+                end
+            end
+        end
+
+        local mainSpecCount = #needed - offSpecCount
+
         -- Always include every group member (even with 0 needs)
         playerDetails[playerName] = {
             needed = needed,
             count = #needed,
+            mainSpecCount = mainSpecCount,
+            offSpecCount = offSpecCount,
             class = playerData.class,
             name = playerData.name,
+            offSpec = playerData.offSpec,
         }
-        totalScore = totalScore + #needed
+        -- Off-spec items count 0.5 each toward the dungeon score
+        totalScore = totalScore + mainSpecCount + (offSpecCount * 0.5)
     end
 
     return totalScore, playerDetails
@@ -864,6 +966,17 @@ function DungeonOptimizer:CHAT_MSG_ADDON(event, prefix, message, channel, sender
                 level = tonumber(level),
                 dungeonName = dungeonName or "",
             }
+            if NS.UI then NS.UI:RefreshIfVisible() end
+        end
+    elseif prefix == ADDON_MSG_PREFIX_OFFSPEC then
+        -- Off-spec sync
+        if not sender then return end
+        local myFullName = NS.Inspect:GetUnitFullName("player")
+        if sender == myFullName then return end
+
+        if NS.groupData[sender] then
+            NS.groupData[sender].offSpec = (message ~= "NONE") and message or nil
+            self.lastRanking = self:CalculateDungeonRanking()
             if NS.UI then NS.UI:RefreshIfVisible() end
         end
     elseif prefix == "DOptGear" then

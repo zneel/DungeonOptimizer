@@ -126,7 +126,8 @@ function Inspect:BroadcastOwnGear()
     end
 
     local gearStr = table.concat(parts, ",")
-    local message = string.format("%s|%s|%s", tostring(specID), class, gearStr)
+    local offSpecKey = NS.Core and NS.Core.db and NS.Core.db.profile.offSpec or "NONE"
+    local message = string.format("%s|%s|%s|%s", tostring(specID), class, gearStr, offSpecKey)
 
     local channel = IsInRaid() and "RAID" or "PARTY"
     C_ChatInfo.SendAddonMessage(GEAR_MSG_PREFIX, message, channel)
@@ -142,8 +143,29 @@ function Inspect:OnGearMessage(message, sender)
     local myFullName = self:GetUnitFullName("player")
     if myFullName and sender == myFullName then return end
 
-    local specIDStr, class, gearStr = message:match("^(%d+)|(%u+)|(.+)$")
-    if not specIDStr or not class or not gearStr then return end
+    -- Parse format: specID|CLASS|gearStr or specID|CLASS|gearStr|offSpecKey
+    local specIDStr, class, rest = message:match("^(%d+)|(%u+)|(.+)$")
+    if not specIDStr or not class or not rest then return end
+
+    -- Split rest into gearStr and optional offSpecKey
+    local gearStr, offSpecKey
+    -- The off-spec field is after the last | that doesn't look like gear data (slot:item)
+    local lastPipe = rest:find("|[^%d]")
+    if not lastPipe then
+        -- Try matching trailing |WORD pattern
+        local g, o = rest:match("^(.+)|(%u[%u_]+)$")
+        if g and o then
+            gearStr = g
+            offSpecKey = (o ~= "NONE") and o or nil
+        else
+            gearStr = rest
+            offSpecKey = nil
+        end
+    else
+        gearStr = rest:sub(1, lastPipe - 1)
+        offSpecKey = rest:sub(lastPipe + 1)
+        if offSpecKey == "NONE" then offSpecKey = nil end
+    end
 
     local specID = tonumber(specIDStr)
     local specKey = NS.SPEC_MAP[specID]
@@ -169,6 +191,7 @@ function Inspect:OnGearMessage(message, sender)
         unit = nil, -- no unit token for remote synced players
         source = "sync", -- distinguish from local inspect
         ilvls = {}, -- will be empty for synced players (can't read remote ilvls)
+        offSpec = offSpecKey,
     }
 
     return true

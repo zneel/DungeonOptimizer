@@ -47,6 +47,12 @@ local L = {
     ["NO_BIS_DATA"] = "|cff888888No BIS data for this spec|r",
     ["UNKNOWN_SPEC"] = "Unknown",
 
+    -- Off-Spec
+    ["OFF_SPEC_LABEL"] = "Off-Spec:",
+    ["OFF_SPEC_NONE"] = "None",
+    ["OFF_SPEC_TAG"] = "[OS]",
+    ["OFF_SPEC_RESET"] = "Off-spec reset (now your active spec).",
+
     -- Slot names
     ["SLOT_HEAD"] = "Head",
     ["SLOT_NECK"] = "Neck",
@@ -101,6 +107,11 @@ local frFR = {
     ["MISSING"] = "(manquant)",
     ["NO_BIS_DATA"] = "|cff888888Pas de donn\195\169es BIS pour cette sp\195\169cialisation|r",
     ["UNKNOWN_SPEC"] = "Inconnue",
+
+    ["OFF_SPEC_LABEL"] = "Off-Spec :",
+    ["OFF_SPEC_NONE"] = "Aucune",
+    ["OFF_SPEC_TAG"] = "[OS]",
+    ["OFF_SPEC_RESET"] = "Off-spec r\195\169initialis\195\169e (c'est maintenant votre spec active).",
 
     ["SLOT_HEAD"] = "T\195\170te",
     ["SLOT_NECK"] = "Cou",

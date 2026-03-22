@@ -1129,6 +1129,34 @@ NS.SPEC_MAP = {
 }
 
 -- ============================================================================
+-- CLASS_SPECS: Reverse mapping class -> list of specs (built from SPEC_MAP)
+-- { WARRIOR = { {specID=71, key="WARRIOR_ARMS"}, ... }, ... }
+-- ============================================================================
+NS.CLASS_SPECS = {}
+for specID, specKey in pairs(NS.SPEC_MAP) do
+    local className = specKey:match("^([^_]+)")
+    if className then
+        if not NS.CLASS_SPECS[className] then
+            NS.CLASS_SPECS[className] = {}
+        end
+        table.insert(NS.CLASS_SPECS[className], { specID = specID, key = specKey })
+    end
+end
+-- Sort each class's specs by specID for consistent ordering
+for _, specs in pairs(NS.CLASS_SPECS) do
+    table.sort(specs, function(a, b) return a.specID < b.specID end)
+end
+
+-- Returns the short spec name from a spec key (e.g. "WARRIOR_FURY" -> "Fury")
+function NS.GetSpecShortName(specKey)
+    if not specKey then return nil end
+    local suffix = specKey:match("_(.+)$")
+    if not suffix then return specKey end
+    -- Title case: FURY -> Fury, BEASTMASTERY -> Beastmastery
+    return suffix:sub(1, 1):upper() .. suffix:sub(2):lower()
+end
+
+-- ============================================================================
 -- BUILD DUNGEON ITEM INDEX (computed at load time)
 -- Maps itemId -> list of dungeon keys where it drops
 -- ============================================================================

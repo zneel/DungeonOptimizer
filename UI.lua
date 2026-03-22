@@ -42,6 +42,8 @@ function UI:Show()
     end
     -- #21: broadcast keystone on open
     NS.Core:BroadcastKeystone()
+    -- Broadcast off-spec on open
+    NS.Core:BroadcastOffSpec()
 end
 
 function UI:CreateMainFrame()
@@ -185,6 +187,35 @@ function UI:RefreshUI()
     end)
     topGroup:AddChild(scoreToggle)
 
+    -- Off-Spec dropdown
+    local playerClass = select(2, UnitClass("player"))
+    local classSpecs = NS.CLASS_SPECS[playerClass]
+    local currentSpec = NS.Inspect:GetPlayerSpecKey()
+    if classSpecs and #classSpecs > 1 then
+        local offSpecDropdown = AceGUI:Create("Dropdown")
+        offSpecDropdown:SetLabel(NS.L["OFF_SPEC_LABEL"] or "Off-Spec:")
+        offSpecDropdown:SetWidth(150)
+
+        local specList = { ["NONE"] = NS.L["OFF_SPEC_NONE"] or "None" }
+        local order = { "NONE" }
+        for _, specInfo in ipairs(classSpecs) do
+            if specInfo.key ~= currentSpec then
+                specList[specInfo.key] = NS.GetSpecShortName(specInfo.key)
+                table.insert(order, specInfo.key)
+            end
+        end
+        offSpecDropdown:SetList(specList, order)
+        offSpecDropdown:SetValue(NS.Core.db.profile.offSpec or "NONE")
+        offSpecDropdown:SetCallback("OnValueChanged", function(_, _, val)
+            NS.Core.db.profile.offSpec = (val ~= "NONE") and val or nil
+            NS.Core:SeedLocalOffSpec()
+            NS.Core:BroadcastOffSpec()
+            NS.Core.lastRanking = NS.Core:CalculateDungeonRanking()
+            self:RefreshUI()
+        end)
+        topGroup:AddChild(offSpecDropdown)
+    end
+
     -- === #27: CURRENT AFFIXES ===
     local affixes = NS.Core:GetCurrentAffixes()
     if affixes and #affixes > 0 then
@@ -306,10 +337,16 @@ function UI:RefreshUI()
                 sourceTag = " |cff888888[synced]|r"
             end
 
+            local offSpecTag = ""
+            if playerData.offSpec then
+                local osName = NS.GetSpecShortName(playerData.offSpec)
+                offSpecTag = string.format(" |cffcc88ff+%s|r", osName or playerData.offSpec)
+            end
+
             local pLabel = AceGUI:Create("InteractiveLabel")
             pLabel:SetText(string.format(
-                "|cff%s%s|r |cff888888(%s)|r : |cff00ff00%d|r/%d BIS (%d%%)%s",
-                classColor, playerData.name, specLabel,
+                "|cff%s%s|r |cff888888(%s%s)|r : |cff00ff00%d|r/%d BIS (%d%%)%s",
+                classColor, playerData.name, specLabel, offSpecTag,
                 totalDungeon - missingDungeon, totalDungeon, dungeonPct,
                 sourceTag
             ))
@@ -370,6 +407,30 @@ function UI:RefreshUI()
                 else
                     GameTooltip:AddLine(NS.L["NO_BIS_DATA"])
                 end
+
+                -- Off-spec BIS section
+                if capturedData.offSpec then
+                    local offBisList = bisTable[capturedData.offSpec]
+                    if offBisList then
+                        local osName = NS.GetSpecShortName(capturedData.offSpec)
+                        GameTooltip:AddLine(" ")
+                        GameTooltip:AddLine(string.format("|cffcc88ffOff-Spec (%s)|r", osName or capturedData.offSpec))
+
+                        for _, slot in ipairs(NS.SLOT_DISPLAY_ORDER) do
+                            local bisItemId = offBisList[slot]
+                            if bisItemId then
+                                local slotName = NS.SLOT_NAMES[slot] or "?"
+                                local itemName = GetItemInfo(bisItemId) or ("Item #" .. bisItemId)
+                                GameTooltip:AddDoubleLine(
+                                    slotName,
+                                    "|cffcc88ff" .. itemName .. "|r",
+                                    0.6, 0.6, 0.6, 0.8, 0.53, 1.0
+                                )
+                            end
+                        end
+                    end
+                end
+
                 GameTooltip:Show()
             end)
             pLabel:SetCallback("OnLeave", function() GameTooltip:Hide() end)
@@ -533,8 +594,17 @@ function UI:CreateDungeonEntry(parent, rank, entry)
             playerLabel:SetFullWidth(true)
             dungeonGroup:AddChild(playerLabel)
         else
+            -- Show main-spec count + off-spec count if any
+            local countText
+            if pInfo.offSpecCount and pInfo.offSpecCount > 0 then
+                local osTag = NS.L["OFF_SPEC_TAG"] or "[OS]"
+                countText = string.format("%d BIS item(s) needed |cffcc88ff(+%d %s)|r",
+                    pInfo.mainSpecCount or pInfo.count, pInfo.offSpecCount, osTag)
+            else
+                countText = string.format("%d BIS item(s) needed:", pInfo.count)
+            end
             playerLabel:SetText(string.format(
-                NS.L["BIS_ITEMS_NEEDED"], classColor, pInfo.name, pInfo.count
+                "   |cff%s%s|r  -  %s", classColor, pInfo.name, countText
             ))
             playerLabel:SetFullWidth(true)
             dungeonGroup:AddChild(playerLabel)
@@ -579,10 +649,18 @@ function UI:CreateDungeonEntry(parent, rank, entry)
                     end
 
                     local indent = (bossName ~= "Other" or #bossOrder > 1) and "         " or "      "
-                    itemLabel:SetText(string.format(
-                        "%s|cffeda55f[%s]|r |cff69ccf0%s|r%s",
-                        indent, item.slotName, displayName, minKeyStr
-                    ))
+                    if item.isOffSpec then
+                        local osTag = NS.L["OFF_SPEC_TAG"] or "[OS]"
+                        itemLabel:SetText(string.format(
+                            "%s|cffcc88ff%s [%s]|r |cffcc88ff%s|r%s",
+                            indent, osTag, item.slotName, displayName, minKeyStr
+                        ))
+                    else
+                        itemLabel:SetText(string.format(
+                            "%s|cffeda55f[%s]|r |cff69ccf0%s|r%s",
+                            indent, item.slotName, displayName, minKeyStr
+                        ))
+                    end
                     itemLabel:SetFullWidth(true)
 
                     local capturedItemId = item.itemId
