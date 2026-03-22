@@ -69,6 +69,18 @@ local L = {
     -- Catalyst
     ["CATALYST_SUGGEST"] = "Catalyst suggestion: convert %s (%s)",
 
+    -- Ready Check
+    ["READYCHECK_TITLE"] = "BIS Ready Check",
+    ["READYCHECK_ENCHANTS"] = "Enchants",
+    ["READYCHECK_GEMS"] = "Gems",
+    ["READYCHECK_FLASK"] = "Flask/Phial",
+    ["READYCHECK_FOOD"] = "Food",
+    ["READYCHECK_RUNE"] = "Augment Rune",
+    ["READYCHECK_PASS"] = "|cff00ff00PASS|r",
+    ["READYCHECK_FAIL"] = "|cffff4444FAIL|r",
+    ["READYCHECK_SCANNING"] = "Running BIS ready check...",
+    ["READYCHECK_RANGE"] = "|cff888888(out of range)|r",
+
     -- Slot names
     ["SLOT_HEAD"] = "Head",
     ["SLOT_NECK"] = "Neck",
@@ -141,6 +153,17 @@ local frFR = {
     ["LOOT_NO_ALERTS"] = "|cff888888Aucun loot \195\169changeable d\195\169tect\195\169 r\195\169cemment.|r",
 
     ["CATALYST_SUGGEST"] = "Suggestion catalyst : convertir %s (%s)",
+
+    ["READYCHECK_TITLE"] = "V\195\169rification BIS",
+    ["READYCHECK_ENCHANTS"] = "Enchantements",
+    ["READYCHECK_GEMS"] = "Gemmes",
+    ["READYCHECK_FLASK"] = "Flasque/Fiole",
+    ["READYCHECK_FOOD"] = "Nourriture",
+    ["READYCHECK_RUNE"] = "Rune d'augmentation",
+    ["READYCHECK_PASS"] = "|cff00ff00OK|r",
+    ["READYCHECK_FAIL"] = "|cffff4444MANQUE|r",
+    ["READYCHECK_SCANNING"] = "V\195\169rification BIS en cours...",
+    ["READYCHECK_RANGE"] = "|cff888888(hors de port\195\169e)|r",
 
     ["SLOT_HEAD"] = "T\195\170te",
     ["SLOT_NECK"] = "Cou",

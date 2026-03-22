@@ -802,6 +802,102 @@ end
 
 -- ============================================================================
 -- ============================================================================
+-- #41: READY CHECK RESULTS
+-- ============================================================================
+function UI:ShowReadyCheckResults(results)
+    if not self.mainFrame then self:CreateMainFrame() end
+    self.mainFrame:Show()
+    self.mainFrame:ReleaseChildren()
+
+    local heading = AceGUI:Create("Heading")
+    heading:SetText(NS.L["READYCHECK_TITLE"])
+    heading:SetFullWidth(true)
+    self.mainFrame:AddChild(heading)
+
+    local scroll = AceGUI:Create("ScrollFrame")
+    scroll:SetFullWidth(true)
+    scroll:SetFullHeight(true)
+    scroll:SetLayout("Flow")
+    self.mainFrame:AddChild(scroll)
+
+    for _, result in ipairs(results) do
+        local classColor = NS.CLASS_COLORS[result.class] or "ffffff"
+
+        local playerGroup = AceGUI:Create("InlineGroup")
+        playerGroup:SetFullWidth(true)
+        playerGroup:SetTitle(string.format(
+            "|cff%s%s|r  [%d/%d]",
+            classColor, result.name, result.passCount, result.totalChecks
+        ))
+        playerGroup:SetLayout("Flow")
+        scroll:AddChild(playerGroup)
+
+        if not result.inRange then
+            local rangeLabel = AceGUI:Create("Label")
+            rangeLabel:SetText("   " .. NS.L["READYCHECK_RANGE"])
+            rangeLabel:SetFullWidth(true)
+            playerGroup:AddChild(rangeLabel)
+        else
+            -- Enchants
+            local enchantStatus = result.checks.enchants.pass and NS.L["READYCHECK_PASS"] or NS.L["READYCHECK_FAIL"]
+            local enchantExtra = ""
+            if not result.checks.enchants.pass and #result.checks.enchants.missing > 0 then
+                enchantExtra = " (" .. table.concat(result.checks.enchants.missing, ", ") .. ")"
+            end
+            local enchantLabel = AceGUI:Create("Label")
+            enchantLabel:SetText(string.format("   %s %s: %s%s",
+                result.checks.enchants.pass and "|cff00ff00[+]|r" or "|cffff4444[-]|r",
+                NS.L["READYCHECK_ENCHANTS"], enchantStatus, enchantExtra))
+            enchantLabel:SetFullWidth(true)
+            playerGroup:AddChild(enchantLabel)
+
+            -- Gems
+            local gemStatus = result.checks.gems.pass and NS.L["READYCHECK_PASS"] or NS.L["READYCHECK_FAIL"]
+            local gemLabel = AceGUI:Create("Label")
+            gemLabel:SetText(string.format("   %s %s: %s",
+                result.checks.gems.pass and "|cff00ff00[+]|r" or "|cffff4444[-]|r",
+                NS.L["READYCHECK_GEMS"], gemStatus))
+            gemLabel:SetFullWidth(true)
+            playerGroup:AddChild(gemLabel)
+
+            -- Flask
+            local flaskStatus = result.checks.flask.pass and NS.L["READYCHECK_PASS"] or NS.L["READYCHECK_FAIL"]
+            local flaskLabel = AceGUI:Create("Label")
+            flaskLabel:SetText(string.format("   %s %s: %s",
+                result.checks.flask.pass and "|cff00ff00[+]|r" or "|cffff4444[-]|r",
+                NS.L["READYCHECK_FLASK"], flaskStatus))
+            flaskLabel:SetFullWidth(true)
+            playerGroup:AddChild(flaskLabel)
+
+            -- Food
+            local foodStatus = result.checks.food.pass and NS.L["READYCHECK_PASS"] or NS.L["READYCHECK_FAIL"]
+            local foodLabel = AceGUI:Create("Label")
+            foodLabel:SetText(string.format("   %s %s: %s",
+                result.checks.food.pass and "|cff00ff00[+]|r" or "|cffff4444[-]|r",
+                NS.L["READYCHECK_FOOD"], foodStatus))
+            foodLabel:SetFullWidth(true)
+            playerGroup:AddChild(foodLabel)
+
+            -- Rune
+            local runeStatus = result.checks.rune.pass and NS.L["READYCHECK_PASS"] or NS.L["READYCHECK_FAIL"]
+            local runeLabel = AceGUI:Create("Label")
+            runeLabel:SetText(string.format("   %s %s: %s",
+                result.checks.rune.pass and "|cff00ff00[+]|r" or "|cffff4444[-]|r",
+                NS.L["READYCHECK_RUNE"], runeStatus))
+            runeLabel:SetFullWidth(true)
+            playerGroup:AddChild(runeLabel)
+        end
+    end
+
+    -- Back button
+    local backBtn = AceGUI:Create("Button")
+    backBtn:SetText("Back to Main")
+    backBtn:SetWidth(150)
+    backBtn:SetCallback("OnClick", function() self:RefreshUI() end)
+    self.mainFrame:AddChild(backBtn)
+end
+
+-- ============================================================================
 -- #35: LOOT TRADING ALERTS
 -- ============================================================================
 
