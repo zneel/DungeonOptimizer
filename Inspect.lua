@@ -98,6 +98,7 @@ function Inspect:GetUnitFullName(unit)
     if not realm or realm == "" then
         realm = GetNormalizedRealmName()
     end
+    if not realm or realm == "" then return name end
     return name .. "-" .. realm
 end
 
