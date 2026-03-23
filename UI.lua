@@ -605,19 +605,19 @@ function UI:RenderMPlusContent(parent)
 end
 
 -- ============================================================================
--- RAID TAB CONTENT
+-- GENERIC RANKING TAB RENDERER
 -- ============================================================================
-function UI:RenderRaidContent(parent)
+function UI:RenderRankingTab(parent, opts)
     local rankHeading = AceGUI:Create("Heading")
-    rankHeading:SetText(string.format(NS.L["RAID_RANKING"] or NS.L["DUNGEON_RANKING"], "Raid"))
+    rankHeading:SetText(opts.heading)
     rankHeading:SetFullWidth(true)
     parent:AddChild(rankHeading)
 
-    local ranking = NS.Core.lastRaidRanking or NS.Core:CalculateRaidRanking()
+    local ranking = opts.ranking or opts.rankingFn() or {}
 
-    if #ranking == 0 or (ranking[1] and ranking[1].score == 0 and not next(NS.RAID_LOOT)) then
+    if opts.emptyCheck and opts.emptyCheck(ranking) then
         local noData = AceGUI:Create("Label")
-        noData:SetText(NS.L["NO_RAIDS"])
+        noData:SetText(opts.emptyLabel)
         noData:SetFullWidth(true)
         parent:AddChild(noData)
         return
@@ -634,34 +634,28 @@ function UI:RenderRaidContent(parent)
     end
 end
 
--- ============================================================================
--- OVERALL TAB CONTENT
--- ============================================================================
+function UI:RenderRaidContent(parent)
+    self:RenderRankingTab(parent, {
+        heading = string.format(NS.L["RAID_RANKING"] or NS.L["DUNGEON_RANKING"], "Raid"),
+        ranking = NS.Core.lastRaidRanking,
+        rankingFn = function() return NS.Core:CalculateRaidRanking() end,
+        emptyLabel = NS.L["NO_RAIDS"],
+        emptyCheck = function(r)
+            return #r == 0 or (r[1] and r[1].score == 0 and not next(NS.RAID_LOOT))
+        end,
+    })
+end
+
 function UI:RenderOverallContent(parent)
-    local rankHeading = AceGUI:Create("Heading")
-    rankHeading:SetText(NS.L["OVERALL_RANKING"] or "Overall BIS Ranking")
-    rankHeading:SetFullWidth(true)
-    parent:AddChild(rankHeading)
-
-    local ranking = NS.Core.lastOverallRanking or NS.Core:CalculateOverallRanking()
-
-    if not NS.BIS_OVERALL or not next(NS.BIS_OVERALL) then
-        local noData = AceGUI:Create("Label")
-        noData:SetText(NS.L["NO_OVERALL"])
-        noData:SetFullWidth(true)
-        parent:AddChild(noData)
-        return
-    end
-
-    local scroll = AceGUI:Create("ScrollFrame")
-    scroll:SetFullWidth(true)
-    scroll:SetFullHeight(true)
-    scroll:SetLayout("Flow")
-    parent:AddChild(scroll)
-
-    for rank, entry in ipairs(ranking) do
-        self:CreateDungeonEntry(scroll, rank, entry)
-    end
+    self:RenderRankingTab(parent, {
+        heading = NS.L["OVERALL_RANKING"] or "Overall BIS Ranking",
+        ranking = NS.Core.lastOverallRanking,
+        rankingFn = function() return NS.Core:CalculateOverallRanking() end,
+        emptyLabel = NS.L["NO_OVERALL"],
+        emptyCheck = function()
+            return not NS.BIS_OVERALL or not next(NS.BIS_OVERALL)
+        end,
+    })
 end
 
 -- ============================================================================

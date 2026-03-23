@@ -132,15 +132,19 @@ function DungeonOptimizer:PruneCompletions()
 end
 
 -- Broadcast your own completions to the group
-function DungeonOptimizer:BroadcastCompletions()
+-- Sends an addon message to the group (RAID or PARTY channel)
+function DungeonOptimizer:BroadcastToGroup(prefix, data)
     if not IsInGroup() then return end
+    local channel = IsInRaid() and "RAID" or "PARTY"
+    C_ChatInfo.SendAddonMessage(prefix, data, channel)
+end
+
+function DungeonOptimizer:BroadcastCompletions()
     local parts = {}
     for id, val in pairs(self.db.profile.excludedDungeons) do
         if val then table.insert(parts, id) end
     end
-    local data = "V2:" .. (#parts > 0 and table.concat(parts, ",") or "NONE")
-    local channel = IsInRaid() and "RAID" or "PARTY"
-    C_ChatInfo.SendAddonMessage(ADDON_MSG_PREFIX_COMP, data, channel)
+    self:BroadcastToGroup(ADDON_MSG_PREFIX_COMP, "V2:" .. (#parts > 0 and table.concat(parts, ",") or "NONE"))
 end
 
 -- Seed groupCompletions with the local player's saved data
@@ -725,10 +729,7 @@ end
 -- OFF-SPEC SYNC
 -- ============================================================================
 function DungeonOptimizer:BroadcastOffSpec()
-    if not IsInGroup() then return end
-    local offSpec = self.db.profile.offSpec or "NONE"
-    local channel = IsInRaid() and "RAID" or "PARTY"
-    C_ChatInfo.SendAddonMessage(ADDON_MSG_PREFIX_OFFSPEC, offSpec, channel)
+    self:BroadcastToGroup(ADDON_MSG_PREFIX_OFFSPEC, self.db.profile.offSpec or "NONE")
 end
 
 -- Seed off-spec into local player's groupData
@@ -807,9 +808,7 @@ function DungeonOptimizer:BroadcastCatalyst()
     local charges = self:GetCatalystCharges()
     local tierCount = myData and self:GetTierSetCount(myData) or 0
 
-    local data = string.format("%d:%d", charges, tierCount)
-    local channel = IsInRaid() and "RAID" or "PARTY"
-    C_ChatInfo.SendAddonMessage(ADDON_MSG_PREFIX_CATALYST, data, channel)
+    self:BroadcastToGroup(ADDON_MSG_PREFIX_CATALYST, string.format("%d:%d", charges, tierCount))
 
     -- Also store locally
     if myName then
@@ -1048,8 +1047,9 @@ end
 -- ============================================================================
 -- DUNGEON SCORING & RANKING
 -- ============================================================================
-function DungeonOptimizer:ScoreDungeon(dungeonId)
-    local lootTable = NS.DUNGEON_LOOT[dungeonId]
+-- Generic content scoring: scores a loot table against a BIS table for all
+-- group members. Used by ScoreDungeon, ScoreRaid, and ScoreOverallContent.
+function DungeonOptimizer:ScoreContent(lootTable, bisTable)
     if not lootTable then return 0, {} end
 
     local totalScore = 0
@@ -1062,9 +1062,9 @@ function DungeonOptimizer:ScoreDungeon(dungeonId)
 
         -- Main-spec items
         for _, drop in ipairs(lootTable) do
-            if not seenItems[drop.itemId] and self:PlayerNeedsItem(playerData, drop.itemId) then
+            if not seenItems[drop.itemId] and self:PlayerNeedsItem(playerData, drop.itemId, bisTable) then
                 seenItems[drop.itemId] = true
-                local bisSlot = NS.FindBISSlot(playerData.spec, drop.itemId)
+                local bisSlot = NS.FindBISSlot(playerData.spec, drop.itemId, bisTable)
                 table.insert(needed, {
                     itemId = drop.itemId,
                     slot = bisSlot,
@@ -1078,9 +1078,9 @@ function DungeonOptimizer:ScoreDungeon(dungeonId)
         -- Off-spec items (only items not already tracked as main-spec)
         if playerData.offSpec then
             for _, drop in ipairs(lootTable) do
-                if not seenItems[drop.itemId] and self:PlayerNeedsItemForOffSpec(playerData, drop.itemId) then
+                if not seenItems[drop.itemId] and self:PlayerNeedsItemForOffSpec(playerData, drop.itemId, bisTable) then
                     seenItems[drop.itemId] = true
-                    local bisSlot = NS.FindBISSlot(playerData.offSpec, drop.itemId)
+                    local bisSlot = NS.FindBISSlot(playerData.offSpec, drop.itemId, bisTable)
                     table.insert(needed, {
                         itemId = drop.itemId,
                         slot = bisSlot,
@@ -1111,6 +1111,11 @@ function DungeonOptimizer:ScoreDungeon(dungeonId)
     end
 
     return totalScore, playerDetails
+end
+
+-- Backward-compatible wrappers
+function DungeonOptimizer:ScoreDungeon(dungeonId)
+    return self:ScoreContent(NS.DUNGEON_LOOT[dungeonId], NS.GetActiveBISTable())
 end
 
 function DungeonOptimizer:CalculateDungeonRanking()
@@ -1169,67 +1174,7 @@ end
 -- RAID SCORING & RANKING
 -- ============================================================================
 function DungeonOptimizer:ScoreRaid(raidId)
-    local lootTable = NS.RAID_LOOT[raidId]
-    if not lootTable then return 0, {} end
-
-    local raidBIS = NS.GetRaidBISTable()
-    local totalScore = 0
-    local playerDetails = {}
-
-    for playerName, playerData in pairs(NS.groupData) do
-        local needed = {}
-        local seenItems = {}
-        local offSpecCount = 0
-
-        -- Main-spec items (using raid BIS table)
-        for _, drop in ipairs(lootTable) do
-            if not seenItems[drop.itemId] and self:PlayerNeedsItem(playerData, drop.itemId, raidBIS) then
-                seenItems[drop.itemId] = true
-                local bisSlot = NS.FindBISSlot(playerData.spec, drop.itemId, raidBIS)
-                table.insert(needed, {
-                    itemId = drop.itemId,
-                    slot = bisSlot,
-                    itemName = drop.itemName or ("Item " .. drop.itemId),
-                    slotName = NS.SLOT_NAMES[bisSlot] or "?",
-                    boss = drop.boss or "",
-                })
-            end
-        end
-
-        -- Off-spec items (using raid BIS table)
-        if playerData.offSpec then
-            for _, drop in ipairs(lootTable) do
-                if not seenItems[drop.itemId] and self:PlayerNeedsItemForOffSpec(playerData, drop.itemId, raidBIS) then
-                    seenItems[drop.itemId] = true
-                    local bisSlot = NS.FindBISSlot(playerData.offSpec, drop.itemId, raidBIS)
-                    table.insert(needed, {
-                        itemId = drop.itemId,
-                        slot = bisSlot,
-                        itemName = drop.itemName or ("Item " .. drop.itemId),
-                        slotName = NS.SLOT_NAMES[bisSlot] or "?",
-                        boss = drop.boss or "",
-                        isOffSpec = true,
-                    })
-                    offSpecCount = offSpecCount + 1
-                end
-            end
-        end
-
-        local mainSpecCount = #needed - offSpecCount
-
-        playerDetails[playerName] = {
-            needed = needed,
-            count = #needed,
-            mainSpecCount = mainSpecCount,
-            offSpecCount = offSpecCount,
-            class = playerData.class,
-            name = playerData.name,
-            offSpec = playerData.offSpec,
-        }
-        totalScore = totalScore + mainSpecCount + (offSpecCount * 0.5)
-    end
-
-    return totalScore, playerDetails
+    return self:ScoreContent(NS.RAID_LOOT[raidId], NS.GetRaidBISTable())
 end
 
 function DungeonOptimizer:CalculateRaidRanking()
@@ -1257,66 +1202,9 @@ end
 -- Scores all content (dungeons + raids) against BIS_OVERALL table
 -- ============================================================================
 function DungeonOptimizer:ScoreOverallContent(contentId, lootTable)
-    if not lootTable then return 0, {} end
-
     local overallBIS = NS.GetOverallBISTable()
     if not overallBIS then return 0, {} end
-
-    local totalScore = 0
-    local playerDetails = {}
-
-    for playerName, playerData in pairs(NS.groupData) do
-        local needed = {}
-        local seenItems = {}
-        local offSpecCount = 0
-
-        for _, drop in ipairs(lootTable) do
-            if not seenItems[drop.itemId] and self:PlayerNeedsItem(playerData, drop.itemId, overallBIS) then
-                seenItems[drop.itemId] = true
-                local bisSlot = NS.FindBISSlot(playerData.spec, drop.itemId, overallBIS)
-                table.insert(needed, {
-                    itemId = drop.itemId,
-                    slot = bisSlot,
-                    itemName = drop.itemName or ("Item " .. drop.itemId),
-                    slotName = NS.SLOT_NAMES[bisSlot] or "?",
-                    boss = drop.boss or "",
-                })
-            end
-        end
-
-        if playerData.offSpec then
-            for _, drop in ipairs(lootTable) do
-                if not seenItems[drop.itemId] and self:PlayerNeedsItemForOffSpec(playerData, drop.itemId, overallBIS) then
-                    seenItems[drop.itemId] = true
-                    local bisSlot = NS.FindBISSlot(playerData.offSpec, drop.itemId, overallBIS)
-                    table.insert(needed, {
-                        itemId = drop.itemId,
-                        slot = bisSlot,
-                        itemName = drop.itemName or ("Item " .. drop.itemId),
-                        slotName = NS.SLOT_NAMES[bisSlot] or "?",
-                        boss = drop.boss or "",
-                        isOffSpec = true,
-                    })
-                    offSpecCount = offSpecCount + 1
-                end
-            end
-        end
-
-        local mainSpecCount = #needed - offSpecCount
-
-        playerDetails[playerName] = {
-            needed = needed,
-            count = #needed,
-            mainSpecCount = mainSpecCount,
-            offSpecCount = offSpecCount,
-            class = playerData.class,
-            name = playerData.name,
-            offSpec = playerData.offSpec,
-        }
-        totalScore = totalScore + mainSpecCount + (offSpecCount * 0.5)
-    end
-
-    return totalScore, playerDetails
+    return self:ScoreContent(lootTable, overallBIS)
 end
 
 function DungeonOptimizer:CalculateOverallRanking()
@@ -1655,56 +1543,54 @@ function DungeonOptimizer:GetOwnKeystone()
 end
 
 function DungeonOptimizer:BroadcastKeystone()
-    if not IsInGroup() then return end
     local key = self:GetOwnKeystone()
     if not key then return end
-    local data = string.format("%d:%d:%s", key.mapID, key.level, key.dungeonName)
-    local channel = IsInRaid() and "RAID" or "PARTY"
-    C_ChatInfo.SendAddonMessage(ADDON_MSG_PREFIX_KEY, data, channel)
+    self:BroadcastToGroup(ADDON_MSG_PREFIX_KEY, string.format("%d:%d:%s", key.mapID, key.level, key.dungeonName))
 end
 
-function DungeonOptimizer:CHAT_MSG_ADDON(event, prefix, message, channel, sender)
-    if prefix == ADDON_MSG_PREFIX then
-        local myFullName = NS.Inspect:GetUnitFullName("player")
-        if sender and myFullName and sender == myFullName then return end
-        -- Legacy compat: treat old-format sync as that sender's completions
-        if sender then
-            local completions = {}
-            if message ~= "RESET" then
-                for rawId in message:gmatch("[^,]+") do
-                    local id = rawId:match("^%s*(.-)%s*$")
-                    for _, dungeon in ipairs(NS.DUNGEONS) do
-                        if dungeon.id == id then completions[id] = true; break end
-                    end
-                end
-            end
-            NS.groupCompletions[sender] = completions
-            self:RecalculateAllRankings()
-            if NS.UI then NS.UI:RefreshIfVisible() end
+-- Returns true if sender is the local player (used to skip own messages)
+local function isOwnMessage(sender)
+    if not sender then return true end
+    local myFullName = NS.Inspect:GetUnitFullName("player")
+    return myFullName and sender == myFullName
+end
+
+-- Parses a comma-separated list of dungeon IDs, validating against NS.DUNGEONS
+local function parseDungeonIds(str)
+    local completions = {}
+    for rawId in str:gmatch("[^,]+") do
+        local id = rawId:match("^%s*(.-)%s*$")
+        for _, dungeon in ipairs(NS.DUNGEONS) do
+            if dungeon.id == id then completions[id] = true; break end
         end
-    elseif prefix == ADDON_MSG_PREFIX_COMP then
-        -- Per-player completion sync (new protocol)
-        if not sender then return end
-        local myFullName = NS.Inspect:GetUnitFullName("player")
-        if sender == myFullName then return end
+    end
+    return completions
+end
 
-        local payload = message:match("^V2:(.+)$")
-        if not payload then return end
-
+-- Dispatch table for addon message handling
+local messageHandlers = {
+    [ADDON_MSG_PREFIX] = function(self, message, sender)
+        if isOwnMessage(sender) then return end
         local completions = {}
-        if payload ~= "NONE" then
-            for rawId in payload:gmatch("[^,]+") do
-                local id = rawId:match("^%s*(.-)%s*$")
-                for _, dungeon in ipairs(NS.DUNGEONS) do
-                    if dungeon.id == id then completions[id] = true; break end
-                end
-            end
+        if message ~= "RESET" then
+            completions = parseDungeonIds(message)
         end
-
         NS.groupCompletions[sender] = completions
         self:RecalculateAllRankings()
         if NS.UI then NS.UI:RefreshIfVisible() end
-    elseif prefix == ADDON_MSG_PREFIX_KEY then
+    end,
+
+    [ADDON_MSG_PREFIX_COMP] = function(self, message, sender)
+        if isOwnMessage(sender) then return end
+        local payload = message:match("^V2:(.+)$")
+        if not payload then return end
+        NS.groupCompletions[sender] = payload ~= "NONE" and parseDungeonIds(payload) or {}
+        self:RecalculateAllRankings()
+        if NS.UI then NS.UI:RefreshIfVisible() end
+    end,
+
+    [ADDON_MSG_PREFIX_KEY] = function(self, message, sender)
+        if isOwnMessage(sender) then return end
         local mapID, level, dungeonName = message:match("^(%d+):(%d+):(.*)$")
         if mapID and level and sender then
             NS.partyKeystones[sender] = {
@@ -1714,24 +1600,20 @@ function DungeonOptimizer:CHAT_MSG_ADDON(event, prefix, message, channel, sender
             }
             if NS.UI then NS.UI:RefreshIfVisible() end
         end
-    elseif prefix == ADDON_MSG_PREFIX_OFFSPEC then
-        -- Off-spec sync
-        if not sender then return end
-        local myFullName = NS.Inspect:GetUnitFullName("player")
-        if sender == myFullName then return end
+    end,
 
+    [ADDON_MSG_PREFIX_OFFSPEC] = function(self, message, sender)
+        if isOwnMessage(sender) then return end
         if NS.groupData[sender] then
             local validOffSpec = (message ~= "NONE") and NS.GetActiveBISTable()[message] and message or nil
             NS.groupData[sender].offSpec = validOffSpec
             self:RecalculateAllRankings()
             if NS.UI then NS.UI:RefreshIfVisible() end
         end
-    elseif prefix == ADDON_MSG_PREFIX_CATALYST then
-        -- #37: Catalyst sync
-        if not sender then return end
-        local myFullName = NS.Inspect:GetUnitFullName("player")
-        if sender == myFullName then return end
+    end,
 
+    [ADDON_MSG_PREFIX_CATALYST] = function(self, message, sender)
+        if isOwnMessage(sender) then return end
         local charges, tierCount = message:match("^(%d+):(%d+)$")
         if charges and tierCount then
             NS.groupCatalyst[sender] = {
@@ -1740,12 +1622,20 @@ function DungeonOptimizer:CHAT_MSG_ADDON(event, prefix, message, channel, sender
             }
             if NS.UI then NS.UI:RefreshIfVisible() end
         end
-    elseif prefix == "DOptGear" then
-        -- Gear sync: another addon user broadcasted their equipment
+    end,
+
+    ["DOptGear"] = function(self, message, sender)
         if NS.Inspect:OnGearMessage(message, sender) then
             self:Print(string.format("Received gear from |cff00ff00%s|r (via addon sync).", sender or "?"))
             self:RecalculateAllRankings()
             if NS.UI then NS.UI:RefreshIfVisible() end
         end
+    end,
+}
+
+function DungeonOptimizer:CHAT_MSG_ADDON(event, prefix, message, channel, sender)
+    local handler = messageHandlers[prefix]
+    if handler then
+        handler(self, message, sender)
     end
 end

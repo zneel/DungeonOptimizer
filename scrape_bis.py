@@ -303,13 +303,29 @@ def parse_table_element(table_el, warn_unknown_slots=True) -> dict:
         if isinstance(slot_result, tuple):
             all_ids = _extract_all_item_ids(cell_html)
             all_names = _extract_all_item_names(cells[1])
-            for i, slot_id in enumerate(slot_result):
-                if i < len(all_ids) and slot_id not in items:
-                    items[slot_id] = {
-                        "itemId": all_ids[i],
-                        "itemName": all_names[i] if i < len(all_names) else None,
-                        "source": source,
-                    }
+            # When a plural row has only 1 item and the first slot is taken,
+            # assign to the next unfilled slot (e.g. second "trinkets" row).
+            filled = 0
+            for slot_id in slot_result:
+                if slot_id in items:
+                    filled += 1
+            if filled > 0 and len(all_ids) > 0:
+                for slot_id in slot_result:
+                    if slot_id not in items:
+                        items[slot_id] = {
+                            "itemId": all_ids[0],
+                            "itemName": all_names[0] if all_names else None,
+                            "source": source,
+                        }
+                        break
+            else:
+                for i, slot_id in enumerate(slot_result):
+                    if i < len(all_ids) and slot_id not in items:
+                        items[slot_id] = {
+                            "itemId": all_ids[i],
+                            "itemName": all_names[i] if i < len(all_names) else None,
+                            "source": source,
+                        }
         else:
             # Single-slot row
             item_id = extract_item_id(cell_html)
@@ -328,6 +344,20 @@ def parse_table_element(table_el, warn_unknown_slots=True) -> dict:
                 # Duplicate mainhand row (e.g. two "1H Weapon" rows for
                 # dual-wield specs) — promote the second one to offhand.
                 items[17] = {
+                    "itemId": item_id,
+                    "itemName": item_name,
+                    "source": source,
+                }
+            elif slot_result == 11 and 12 not in items:
+                # Duplicate ring row — promote to second ring slot.
+                items[12] = {
+                    "itemId": item_id,
+                    "itemName": item_name,
+                    "source": source,
+                }
+            elif slot_result == 13 and 14 not in items:
+                # Duplicate trinket row — promote to second trinket slot.
+                items[14] = {
                     "itemId": item_id,
                     "itemName": item_name,
                     "source": source,
@@ -543,6 +573,23 @@ def generate_lua(all_data: dict) -> str:
                     primary[slot_id] = item
         overall[spec] = primary
     sections.append(format_bis_table("BIS_OVERALL", overall))
+
+    # Validate: every spec must have all expected slots after backfill.
+    # Paired slots (rings, trinkets) are the most common scraping gap.
+    REQUIRED_SLOTS = [1, 2, 3, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]
+    warnings = []
+    for table_label, table_data in [("BIS_MYTHIC", mythic), ("BIS_RAID", raid), ("BIS_OVERALL", overall)]:
+        for spec_key in sorted(table_data.keys()):
+            items = table_data[spec_key]
+            missing = [s for s in REQUIRED_SLOTS if s not in items]
+            if missing:
+                slot_names = [SLOT_NAMES.get(s, str(s)) for s in missing]
+                warnings.append(f"  {table_label}.{spec_key} missing: {', '.join(slot_names)}")
+    if warnings:
+        print("\nWARNING: Incomplete BIS data detected after backfill:", file=sys.stderr)
+        for w in warnings:
+            print(w, file=sys.stderr)
+        print("", file=sys.stderr)
 
     return header + "\n\n".join(sections)
 
