@@ -3,7 +3,7 @@
 -- Handles scanning group members' equipped gear and specializations
 --
 -- Two modes:
---   1. LOCAL INSPECT: NotifyInspect (requires 28yd range)
+--   1. LOCAL INSPECT: NotifyInspect (works at any distance for group members)
 --   2. ADDON SYNC: Each addon user broadcasts their own gear via addon
 --      messages. No range requirement — works cross-continent.
 -- ============================================================================
@@ -272,18 +272,6 @@ function Inspect:ProcessNextInspect()
         return
     end
 
-    -- Check range for inspect
-    if not CheckInteractDistance(unit, 2) then
-        local name = UnitName(unit) or unit
-        -- Don't mark as skipped — they might sync via addon messages
-        local fullName = self:GetUnitFullName(unit)
-        if not NS.groupData[fullName] then
-            table.insert(NS.skippedPlayers, name .. " (out of range - waiting for sync)")
-        end
-        self:ProcessNextInspect()
-        return
-    end
-
     currentInspectUnit = unit
     isInspecting = true
     retryCount = 0
@@ -301,7 +289,7 @@ function Inspect:StartInspectTimeout()
     inspectTimer = C_Timer.NewTimer(INSPECT_TIMEOUT, function()
         if isInspecting and currentInspectUnit then
             retryCount = retryCount + 1
-            if retryCount <= MAX_RETRIES and UnitExists(currentInspectUnit) and CheckInteractDistance(currentInspectUnit, 2) then
+            if retryCount <= MAX_RETRIES and UnitExists(currentInspectUnit) then
                 ClearInspectPlayer()
                 NotifyInspect(currentInspectUnit)
                 Inspect:StartInspectTimeout()
