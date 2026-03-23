@@ -56,8 +56,11 @@ local L = {
     -- Tabs
     ["TAB_MPLUS"] = "Mythic+",
     ["TAB_RAID"] = "Raid",
+    ["TAB_OVERALL"] = "Overall",
     ["RAID_RANKING"] = "Raid Ranking - %s (best to worst)",
     ["NO_RAIDS"] = "|cffff0000No raid data available. Populate raid loot tables first.|r",
+    ["NO_OVERALL"] = "|cffff0000No overall BIS data available.|r",
+    ["OVERALL_RANKING"] = "Overall BIS Ranking (best to worst)",
 
     -- Loot Trading
     ["LOOT_TRADEABLE"] = "Tradeable BIS item detected!",
@@ -143,8 +146,11 @@ local frFR = {
 
     ["TAB_MPLUS"] = "Mythic+",
     ["TAB_RAID"] = "Raid",
+    ["TAB_OVERALL"] = "Overall",
     ["RAID_RANKING"] = "Classement du raid - %s (du meilleur au pire)",
     ["NO_RAIDS"] = "|cffff0000Aucune donn\195\169e de raid disponible.|r",
+    ["NO_OVERALL"] = "|cffff0000Aucune donn\195\169e BIS Overall disponible.|r",
+    ["OVERALL_RANKING"] = "Classement Overall BIS (du meilleur au pire)",
 
     ["LOOT_TRADEABLE"] = "Item BIS \195\169changeable d\195\169tect\195\169 !",
     ["LOOT_LOOTED_BY"] = "Loot\195\169 par :",

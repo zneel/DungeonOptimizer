@@ -531,6 +531,19 @@ def generate_lua(all_data: dict) -> str:
         raid[spec] = primary
     sections.append(format_bis_table("BIS_RAID", raid))
 
+    # Overall BIS (with backfill from mythic/raid for missing slots)
+    overall = {}
+    for spec, data in all_data.items():
+        primary = dict(data.get("overall", data.get("mythic", {})))
+        # Backfill missing slots from other tables (mythic > raid)
+        for fallback_key in ["mythic", "raid"]:
+            fallback = data.get(fallback_key, {})
+            for slot_id, item in fallback.items():
+                if slot_id not in primary:
+                    primary[slot_id] = item
+        overall[spec] = primary
+    sections.append(format_bis_table("BIS_OVERALL", overall))
+
     return header + "\n\n".join(sections)
 
 
@@ -622,7 +635,7 @@ def main():
             existing = out_path.read_text(encoding="utf-8")
 
             # Replace BIS_MYTHIC and BIS_RAID sections
-            for table_name in ["BIS_MYTHIC", "BIS_RAID"]:
+            for table_name in ["BIS_MYTHIC", "BIS_RAID", "BIS_OVERALL"]:
                 pattern = rf"NS\.{table_name}\s*=\s*\{{.*?\n\}}"
                 if args.json:
                     continue

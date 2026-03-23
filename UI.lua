@@ -494,6 +494,7 @@ function UI:RefreshUI()
     tabGroup:SetTabs({
         { text = NS.L["TAB_MPLUS"], value = "mplus" },
         { text = NS.L["TAB_RAID"], value = "raid" },
+        { text = NS.L["TAB_OVERALL"], value = "overall" },
     })
 
     tabGroup:SetCallback("OnGroupSelected", function(container, event, group)
@@ -503,6 +504,8 @@ function UI:RefreshUI()
             self:RenderMPlusContent(container)
         elseif group == "raid" then
             self:RenderRaidContent(container)
+        elseif group == "overall" then
+            self:RenderOverallContent(container)
         end
     end)
 
@@ -615,6 +618,36 @@ function UI:RenderRaidContent(parent)
     if #ranking == 0 or (ranking[1] and ranking[1].score == 0 and not next(NS.RAID_LOOT)) then
         local noData = AceGUI:Create("Label")
         noData:SetText(NS.L["NO_RAIDS"])
+        noData:SetFullWidth(true)
+        parent:AddChild(noData)
+        return
+    end
+
+    local scroll = AceGUI:Create("ScrollFrame")
+    scroll:SetFullWidth(true)
+    scroll:SetFullHeight(true)
+    scroll:SetLayout("Flow")
+    parent:AddChild(scroll)
+
+    for rank, entry in ipairs(ranking) do
+        self:CreateDungeonEntry(scroll, rank, entry)
+    end
+end
+
+-- ============================================================================
+-- OVERALL TAB CONTENT
+-- ============================================================================
+function UI:RenderOverallContent(parent)
+    local rankHeading = AceGUI:Create("Heading")
+    rankHeading:SetText(NS.L["OVERALL_RANKING"] or "Overall BIS Ranking")
+    rankHeading:SetFullWidth(true)
+    parent:AddChild(rankHeading)
+
+    local ranking = NS.Core.lastOverallRanking or NS.Core:CalculateOverallRanking()
+
+    if not NS.BIS_OVERALL or not next(NS.BIS_OVERALL) then
+        local noData = AceGUI:Create("Label")
+        noData:SetText(NS.L["NO_OVERALL"])
         noData:SetFullWidth(true)
         parent:AddChild(noData)
         return

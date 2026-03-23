@@ -50,6 +50,23 @@ function NS.GetRaidBISTable()
     return NS.BIS_RAID
 end
 
+-- Returns the Overall BIS table
+function NS.GetOverallBISTable()
+    return NS.BIS_OVERALL
+end
+
+-- Returns the BIS table for the currently active tab
+function NS.GetBISTableForActiveTab()
+    local activeTab = NS.Core.db.profile.activeTab or "mplus"
+    if activeTab == "raid" then
+        return NS.GetRaidBISTable()
+    elseif activeTab == "overall" then
+        return NS.GetOverallBISTable()
+    else
+        return NS.GetActiveBISTable()
+    end
+end
+
 -- Find which BIS slot an item maps to for a given spec
 function NS.FindBISSlot(spec, itemId, bisTable)
     bisTable = bisTable or NS.GetActiveBISTable()
@@ -749,7 +766,7 @@ end
 function DungeonOptimizer:GetTierSetCount(playerData)
     if not playerData or not playerData.spec or not playerData.gear then return 0 end
 
-    local bisTable = NS.GetActiveBISTable()
+    local bisTable = NS.GetBISTableForActiveTab()
     local bisList = bisTable[playerData.spec]
     if not bisList then return 0 end
 
@@ -766,7 +783,7 @@ end
 function DungeonOptimizer:GetCatalystSuggestion(playerData)
     if not playerData or not playerData.spec or not playerData.gear then return nil end
 
-    local bisTable = NS.GetActiveBISTable()
+    local bisTable = NS.GetBISTableForActiveTab()
     local bisList = bisTable[playerData.spec]
     if not bisList then return nil end
 
@@ -1141,10 +1158,11 @@ function DungeonOptimizer:CalculateDungeonRanking()
     return ranking
 end
 
--- Recalculate both dungeon and raid rankings
+-- Recalculate all rankings (dungeon, raid, overall)
 function DungeonOptimizer:RecalculateAllRankings()
     self.lastRanking = self:CalculateDungeonRanking()
     self.lastRaidRanking = self:CalculateRaidRanking()
+    self.lastOverallRanking = self:CalculateOverallRanking()
 end
 
 -- ============================================================================
@@ -1225,6 +1243,108 @@ function DungeonOptimizer:CalculateRaidRanking()
             score = score,
             bisScore = score,
             ratingBonus = 0, -- raids don't have M+ rating bonus
+            details = details,
+            isRaid = true,
+        })
+    end
+
+    table.sort(ranking, function(a, b) return a.score > b.score end)
+    return ranking
+end
+
+-- ============================================================================
+-- OVERALL SCORING & RANKING
+-- Scores all content (dungeons + raids) against BIS_OVERALL table
+-- ============================================================================
+function DungeonOptimizer:ScoreOverallContent(contentId, lootTable)
+    if not lootTable then return 0, {} end
+
+    local overallBIS = NS.GetOverallBISTable()
+    if not overallBIS then return 0, {} end
+
+    local totalScore = 0
+    local playerDetails = {}
+
+    for playerName, playerData in pairs(NS.groupData) do
+        local needed = {}
+        local seenItems = {}
+        local offSpecCount = 0
+
+        for _, drop in ipairs(lootTable) do
+            if not seenItems[drop.itemId] and self:PlayerNeedsItem(playerData, drop.itemId, overallBIS) then
+                seenItems[drop.itemId] = true
+                local bisSlot = NS.FindBISSlot(playerData.spec, drop.itemId, overallBIS)
+                table.insert(needed, {
+                    itemId = drop.itemId,
+                    slot = bisSlot,
+                    itemName = drop.itemName or ("Item " .. drop.itemId),
+                    slotName = NS.SLOT_NAMES[bisSlot] or "?",
+                    boss = drop.boss or "",
+                })
+            end
+        end
+
+        if playerData.offSpec then
+            for _, drop in ipairs(lootTable) do
+                if not seenItems[drop.itemId] and self:PlayerNeedsItemForOffSpec(playerData, drop.itemId, overallBIS) then
+                    seenItems[drop.itemId] = true
+                    local bisSlot = NS.FindBISSlot(playerData.offSpec, drop.itemId, overallBIS)
+                    table.insert(needed, {
+                        itemId = drop.itemId,
+                        slot = bisSlot,
+                        itemName = drop.itemName or ("Item " .. drop.itemId),
+                        slotName = NS.SLOT_NAMES[bisSlot] or "?",
+                        boss = drop.boss or "",
+                        isOffSpec = true,
+                    })
+                    offSpecCount = offSpecCount + 1
+                end
+            end
+        end
+
+        local mainSpecCount = #needed - offSpecCount
+
+        playerDetails[playerName] = {
+            needed = needed,
+            count = #needed,
+            mainSpecCount = mainSpecCount,
+            offSpecCount = offSpecCount,
+            class = playerData.class,
+            name = playerData.name,
+            offSpec = playerData.offSpec,
+        }
+        totalScore = totalScore + mainSpecCount + (offSpecCount * 0.5)
+    end
+
+    return totalScore, playerDetails
+end
+
+function DungeonOptimizer:CalculateOverallRanking()
+    local ranking = {}
+
+    -- Score dungeons against overall BIS
+    for _, dungeon in ipairs(NS.DUNGEONS) do
+        if not self:IsDungeonExcluded(dungeon.id) then
+            local score, details = self:ScoreOverallContent(dungeon.id, NS.DUNGEON_LOOT[dungeon.id])
+            table.insert(ranking, {
+                dungeon = dungeon,
+                score = score,
+                bisScore = score,
+                ratingBonus = 0,
+                details = details,
+                isRaid = false,
+            })
+        end
+    end
+
+    -- Score raids against overall BIS
+    for _, raid in ipairs(NS.RAIDS) do
+        local score, details = self:ScoreOverallContent(raid.id, NS.RAID_LOOT[raid.id])
+        table.insert(ranking, {
+            dungeon = raid,
+            score = score,
+            bisScore = score,
+            ratingBonus = 0,
             details = details,
             isRaid = true,
         })
