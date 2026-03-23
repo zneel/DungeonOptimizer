@@ -50,7 +50,9 @@ NS.DUNGEONS = {
 -- RAID LIST - Midnight Season 1
 -- ============================================================================
 NS.RAIDS = {
-    { id = "LIBERATION_OF_UNDERMINE", name = "Liberation of Undermine", icon = "Interface\\Icons\\achievement_raid_liberationofundermine" },
+    { id = "THE_VOIDSPIRE", name = "The Voidspire", icon = "Interface\\Icons\\achievement_raid_thevoidspire" },
+    { id = "THE_DREAMRIFT", name = "The Dreamrift", icon = "Interface\\Icons\\achievement_raid_thedreamrift" },
+    { id = "MARCH_ON_QUELDANAS", name = "March on Quel'Danas", icon = "Interface\\Icons\\achievement_raid_marchonqueldanas" },
 }
 
 
@@ -94,20 +96,20 @@ NS.AFFIX_TIPS = {
 NS.BIS_MYTHIC = {
     DEATHKNIGHT_BLOOD = {
         [16] = 251168, -- Liferipper's Cutlass (Maisara Caverns)
-        [1] = 249970, -- Relentless Rider's Crown (Matrix Catalyst , or Lightblinded Vanguard in The Voidspire)
-        [2] = 249368, -- Eternal Voidsong Chain (Crown of the Cosmos in The Voidspire)
-        [3] = 249968, -- Relentless Rider's Dreadthorns (Matrix Catalyst , or Fallen-King Salhadaar in The Voidspire)
+        [1] = 151333, -- Crown of the Dark Envoy (Seat of the Triumvirate)
+        [2] = 50228, -- Barbed Ymirheim Choker (Pit of Saron)
+        [3] = 258587, -- Spaulders of Scorching Ray (Skyreach)
         [15] = 260312, -- Defiant Defender's Drape (Magister's Terrace)
-        [5] = 249973, -- Relentless Rider's Cuirass (Matrix Catalyst , or Chimaerus in The Dreamrift)
-        [9] = 251203, -- Kasreth's Bindings (Nexus-Point Xenas)
+        [5] = 50272, -- Frost Wyrm Ribcage (Pit of Saron)
+        [9] = 263193, -- Trollhunter's Bands (Maisara Caverns)
         [10] = 151332, -- Voidclaw Gauntlets (Seat of the Triumvirate)
-        [6] = 249380, -- Hate-Tied Waistchain (Crown of the Cosmos in The Voidspire)
-        [7] = 249969, -- Relentless Rider's Legguards (Matrix Catalyst , or Vaelgor and Ezzorak in The Voidspire)
-        [8] = 249381, -- Greaves of the Unformed (Chimaerus in The Dreamrift)
-        [11] = 240949, -- Masterwork Sin'dorei Band (Crafted by Jewelcrafting)
-        [12] = 251513, -- Loa Worshiper's Band (Crafted by Jewelcrafting)
-        [13] = 249343, -- Gaze of the Alnseer (Chimaerus in The Dreamrift)
-        [14] = 260235, -- Umbral Plume (Belo'ren in March on Quel'Danas)
+        [6] = 49808, -- Bent Gold Belt (Pit of Saron)
+        [7] = 251208, -- Lightscarred Cuisses (Nexus-Point Xenas)
+        [8] = 251091, -- Sabatons of Furious Revenge (Windrunner Spire)
+        [11] = 251217, -- Occlusion of Void (Nexus-Point Xenas)
+        [12] = 251093, -- Omission of Light (Nexus-Point Xenas)
+        [13] = 250256, -- Heart of Wind (Windrunner Spire)
+        [14] = 252420, -- Solarflare Prism (Skyreach)
     },
     DEATHKNIGHT_FROST = {
         [16] = 251168, -- Liferipper's Cutlass (Maisara Caverns)
@@ -164,7 +166,7 @@ NS.BIS_MYTHIC = {
     },
     DEMONHUNTER_HAVOC = {
         [16] = 251175, -- Soulblight Cleaver (Maisara Caverns)
-        [17] = 249280, -- Emblazoned Sunglaive (Vaelgor and Ezzorak)
+        [17] = 251175, -- Soulblight Cleaver (Maisara Caverns)
         [1] = 251109, -- Spellsnap Shadowmask (Magister's Terrace)
         [2] = 50228, -- Barbed Ymirheim Choker (Pit of Saron)
         [3] = 250031, -- Devouring Reaver's Exhaustplates (Matrix Catalyst)
@@ -264,9 +266,7 @@ NS.BIS_MYTHIC = {
         [7] = 250023, -- Phloemwraps of the Luminous Bloom (Vaelgor and Ezzorak - The Voidspire)
         [8] = 251121, -- Domanaar's Dire Treads (Magister's Terrace)
         [11] = 251093, -- Omission of Light (Nexus-Point Xenas)
-        [12] = 251217, -- Occlusion of Void (Nexus-Point Xenas)
         [13] = 193718, -- Emerald Coach's Whistle (Algeth'ar Academy)
-        [14] = 193701, -- Algeth'ar Puzzle Box (Algeth'ar Academy)
     },
     EVOKER_AUGMENTATION = {
         [16] = 251178, -- Ceremonial Hexblade (Maisara Caverns Magister's Terrace Skyreach Algeth'ar Academy)
@@ -405,7 +405,7 @@ NS.BIS_MYTHIC = {
         [7] = 250059, -- Voidbreaker's Britches (Matrix Catalyst)
         [8] = 258584, -- Lightbinder Treads (Skyreach)
         [11] = 251093, -- Omission of Light (Nexus-Point Xenas)
-        [12] = 249920, -- Eye of Midnight (Midnight Falls in March on Quel'Danas)
+        [12] = 251217, -- Occlusion of Void (Nexus-Point Xenas)
         [13] = 250144, -- Emberwing Feather (Windrunner Spire)
         [14] = 250256, -- Heart of Wind (Windrunner Spire)
     },
@@ -499,22 +499,22 @@ NS.BIS_MYTHIC = {
         [14] = 250144, -- Emberwing Feather (Windrunner Spire)
     },
     PALADIN_PROTECTION = {
-        [16] = 249295, -- Turalyon's False Echo (Crown of the Cosmos in The Voidspire)
-        [17] = 249275, -- Bulwark of Noble Resolve (Imperator Averzian in The Voidspire)
-        [1] = 249961, -- Luminant Verdict's Unwavering Gaze (Matrix Catalyst , or Lightblinded Vanguard in The Voidspire)
-        [2] = 249337, -- Ribbon of Coiled Malice (Fallen-King Salhadaar in The Voidspire)
-        [3] = 249959, -- Luminant Verdict's Providence Watch (Matrix Catalyst , or Fallen-King Salhadaar in The Voidspire)
-        [15] = 249335, -- Imperator's Banner (Imperator Averzian in The Voidspire)
-        [5] = 249309, -- Sunbound Breastplate (Crown of the Cosmos in The Voidspire)
+        [16] = 193711, -- Spellbane Cutlass (Algeth'ar Academy)
+        [17] = 251105, -- Ward of the Spellbreaker (Magister's Terrace)
+        [1] = 249961, -- Luminant Verdict's Unwavering Gaze (Matrix Catalyst)
+        [2] = 251096, -- Pendant of Aching Grief (Windrunner Spire)
+        [3] = 249959, -- Luminant Verdict's Providence Watch (Matrix Catalyst)
+        [15] = 49823, -- Cloak of the Fallen Cardinal (Pit of Saron)
+        [5] = 249964, -- Luminant Verdict's Divine Warplate (Matrix Catalyst)
         [9] = 237834, -- Spellbreaker's Bracers (Crafted by Blacksmithing)
-        [10] = 249962, -- Luminant Verdict's Gauntlets (Matrix Catalyst , or Vorasius in The Voidspire)
-        [6] = 249331, -- Ezzorak's Gloombind (Vaelgor and Ezzorak in The Voidspire)
-        [7] = 249960, -- Luminant Verdict's Greaves (Matrix Catalyst , or Vaelgor and Ezzorak in The Voidspire)
-        [8] = 249332, -- Parasite Stompers (Vorasius in The Voidspire)
-        [11] = 249920, -- Eye of Midnight (Midnight Falls in March on Quel'Danas)
+        [10] = 151332, -- Voidclaw Gauntlets (Seat of the Triumvirate)
+        [6] = 251112, -- Shadowsplit Girdle (Magister's Terrace)
+        [7] = 249960, -- Luminant Verdict's Greaves (Matrix Catalyst)
+        [8] = 251169, -- Footwraps of Ill-Fate (Maisara Caverns)
+        [11] = 251217, -- Occlusion of Void (Nexus-Point Xenas)
         [12] = 251513, -- Loa Worshiper's Band (Crafted by Jewelcrafting)
-        [13] = 260235, -- Umbral Plume (Belo'ren in March on Quel'Danas)
-        [14] = 249343, -- Gaze of the Alnseer (Chimaerus in The Dreamrift)
+        [13] = 252420, -- Solarflare Prism (Skyreach)
+        [14] = 193701, -- Algeth'ar Puzzle Box (Algeth'ar Academy)
     },
     PALADIN_RETRIBUTION = {
         [16] = 251168, -- Liferipper's Cutlass (Maisara Caverns)
@@ -640,22 +640,22 @@ NS.BIS_MYTHIC = {
         [14] = 252420, -- Solarflare Prism (Skyreach)
     },
     SHAMAN_ELEMENTAL = {
-        [16] = 251083, -- Excavating Cudgel (Windrunner Spire)
+        [16] = 249283, -- Belo'melorn, the Shattered Talon (Belo'ren in March on Quel'Danas)
         [17] = 251105, -- Ward of the Spellbreaker (Magister's Terrace)
         [1] = 249979, -- Locus of the Primal Core (Matrix Catalyst , or Lightblinded Vanguard in The Voidspire)
-        [2] = 50228, -- Barbed Ymirheim Choker (Pit of Saron)
+        [2] = 250247, -- Amulet of the Abyssal Hymn (Midnight Falls in March on Quel'Danas)
         [3] = 249977, -- Tempests of the Primal Core (Matrix Catalyst , or Fallen-King Salhadaar in The Voidspire)
-        [15] = 258575, -- Rigid Scale Greatcloak (Skyreach)
+        [15] = 249370, -- Draconic Nullcape (Vaelgor and Ezzorak in The Voidspire)
         [5] = 249982, -- Embrace of the Primal Core (Matrix Catalyst , or Chimaerus in The Dreamrift)
-        [9] = 251079, -- Amberfrond Bracers (Windrunner Spire)
+        [9] = 249304, -- Fallen King's Cuffs (Fallen-King Salhadaar in The Voidspire)
         [10] = 249980, -- Earthgrips of the Primal Core (Matrix Catalyst , or Vorasius in The Voidspire)
         [6] = 244611, -- World Tender's Barkclasp (Crafted by Leatherworking)
-        [7] = 251215, -- Greaves of the Divine Guile (Nexus-Point Xenas)
+        [7] = 249324, -- Eternal Flame Scaleguards (Belo'ren March on Quel'Danas)
         [8] = 244610, -- World Tender's Rootslippers (Crafted by Leatherworking)
-        [11] = 193708, -- Platinum Star Band (Algeth'ar Academy)
-        [12] = 251115, -- Bifurcation Band (Magister's Terrace)
-        [13] = 250144, -- Emberwing Feather (Windrunner Spire)
-        [14] = 250256, -- Heart of Wind (Windrunner Spire)
+        [11] = 249369, -- Bond of Light (Lightblinded Vanguard in The Voidspire)
+        [12] = 249919, -- Sin'dorei Band of Hope (Belo'ren in March on Quel'Danas)
+        [13] = 249346, -- Vaelgor's Final Stare (Vaelgor and Ezzorak in The Voidspire)
+        [14] = 249809, -- Locus-Walker's Ribbon (Crown of the Cosmos in The Voidspire)
     },
     SHAMAN_ENHANCEMENT = {
         [16] = 258438, -- Blazing Sunclaws (Skyreach)
@@ -805,96 +805,708 @@ NS.BIS_MYTHIC = {
 -- ============================================================================
 NS.BIS_RAID = {
     DEATHKNIGHT_BLOOD = {
+        [16] = 251168, -- Liferipper's Cutlass (Maisara Caverns)
+        [1] = 249970, -- Relentless Rider's Crown (Matrix Catalyst , or Lightblinded Vanguard in The Voidspire)
+        [2] = 249368, -- Eternal Voidsong Chain (Crown of the Cosmos in The Voidspire)
+        [3] = 249968, -- Relentless Rider's Dreadthorns (Matrix Catalyst , or Fallen-King Salhadaar in The Voidspire)
+        [15] = 260312, -- Defiant Defender's Drape (Magister's Terrace)
+        [5] = 249973, -- Relentless Rider's Cuirass (Matrix Catalyst , or Chimaerus in The Dreamrift)
+        [9] = 237834, -- Spellbreaker's Bracers (Crafted by Blacksmithing)
+        [10] = 151332, -- Voidclaw Gauntlets (Seat of the Triumvirate)
+        [6] = 49808, -- Bent Gold Belt (Pit of Saron)
+        [7] = 249969, -- Relentless Rider's Legguards (Matrix Catalyst , or Vaelgor and Ezzorak in The Voidspire)
+        [8] = 249381, -- Greaves of the Unformed (Chimaerus in The Dreamrift)
+        [11] = 249920, -- Eye of Midnight (Midnight Falls in March on Quel'Danas)
+        [12] = 251513, -- Loa Worshiper's Band (Crafted by Jewelcrafting)
+        [13] = 249343, -- Gaze of the Alnseer (Chimaerus in The Dreamrift)
+        [14] = 249344, -- Light Company Guidon (Imperator Averzian in The Voidspire)
     },
     DEATHKNIGHT_FROST = {
+        [16] = 249277, -- Bellamy's Final Judgement (Lightblinded Vanguard in The Voidspire)
+        [17] = 249281, -- Blade of the Final Twilight (Fallen-King Salhadaar in The Voidspire)
+        [1] = 249970, -- Relentless Rider's Crown (Matrix Catalyst , or Lightblinded Vanguard in The Voidspire)
+        [2] = 249337, -- Ribbon of Coiled Malice (Fallen-King Salhadaar in The Voidspire)
+        [3] = 249313, -- Light-Judged Spaulders (Imperator Averzian in The Voidspire)
+        [15] = 239656, -- Adherent's Silken Shroud (Crafted by Leatherworking)
+        [5] = 249973, -- Relentless Rider's Cuirass (Matrix Catalyst , or Chimaerus in The Dreamrift)
+        [9] = 237834, -- Spellbreaker's Bracers (Crafted by Blacksmithing)
+        [10] = 249971, -- Relentless Rider's Bonegrasps (Matrix Catalyst , or Vorasius in The Voidspire)
+        [6] = 249380, -- Hate-Tied Waistchain (Crown of the Cosmos in The Voidspire)
+        [7] = 249969, -- Relentless Rider's Legguards (Matrix Catalyst , or Vaelgor and Ezzorak in The Voidspire)
+        [8] = 249381, -- Greaves of the Unformed (Chimaerus in The Dreamrift)
+        [11] = 249336, -- Signet of the Starved Beast (Vorasius in The Voidspire)
+        [12] = 249919, -- Sin'dorei Band of Hope (Belo'ren in March on Quel'Danas)
+        [13] = 249343, -- Gaze of the Alnseer (Chimaerus in The Dreamrift)
+        [14] = 249344, -- Light Company Guidon (Imperator Averzian in The Voidspire)
     },
     DEATHKNIGHT_UNHOLY = {
+        [16] = 249277, -- Bellamy's Final Judgement (Lightblinded Vanguard in The Voidspire)
+        [1] = 249970, -- Relentless Rider's Crown (Matrix Catalyst , or Lightblinded Vanguard in The Voidspire)
+        [2] = 249337, -- Ribbon of Coiled Malice (Fallen-King Salhadaar in The Voidspire)
+        [3] = 249313, -- Light-Judged Spaulders (Imperator Averzian in The Voidspire)
+        [15] = 239656, -- Adherent's Silken Shroud (Crafted by Leatherworking)
+        [5] = 249973, -- Relentless Rider's Cuirass (Matrix Catalyst , or Chimaerus in The Dreamrift)
+        [9] = 237834, -- Spellbreaker's Bracers (Crafted by Blacksmithing)
+        [10] = 249971, -- Relentless Rider's Bonegrasps (Matrix Catalyst , or Vorasius in The Voidspire)
+        [6] = 249380, -- Hate-Tied Waistchain (Crown of the Cosmos in The Voidspire)
+        [7] = 249969, -- Relentless Rider's Legguards (Matrix Catalyst , or Vaelgor and Ezzorak in The Voidspire)
+        [8] = 249381, -- Greaves of the Unformed (Chimaerus in The Dreamrift)
+        [11] = 249336, -- Signet of the Starved Beast (Vorasius in The Voidspire)
+        [12] = 249919, -- Sin'dorei Band of Hope (Belo'ren in March on Quel'Danas)
+        [13] = 249343, -- Gaze of the Alnseer (Chimaerus in The Dreamrift)
+        [14] = 249344, -- Light Company Guidon (Imperator Averzian in The Voidspire)
     },
     DEMONHUNTER_DEVOURER = {
+        [16] = 260408, -- Lightless Lament (Midnight Falls)
+        [17] = 237840, -- Spellbreaker's Warglaive (Blacksmithing)
+        [1] = 250033, -- Devouring Reaver's Intake (Lightblinded Vanguard)
+        [2] = 249368, -- Eternal Voidsong Chain (Crown of the Cosmos)
+        [3] = 250031, -- Devouring Reaver's Exhaustplates (Fallen-King Salhadaar)
+        [15] = 249370, -- Draconic Nullcape (Vaelgor and Ezzorak)
+        [5] = 250036, -- Devouring Reaver's Engine (Chimaerus)
+        [9] = 249327, -- Void-Skinned Bracers (Vorasius)
+        [10] = 250034, -- Devouring Reaver's Essence Grips (Vorasius)
+        [6] = 244573, -- Silvermoon Agent's Utility Belt (Leatherworking)
+        [7] = 249312, -- Nightblade's Pantaloons (Crown of the Cosmos)
+        [8] = 249382, -- Canopy Walker's Footwraps (Crown of the Cosmos)
+        [11] = 249369, -- Bond of Light (Lightblinded Vanguard)
+        [12] = 249920, -- Eye of Midnight (Midnight Falls)
+        [13] = 249343, -- Gaze of the Alnseer (Chimaerus)
+        [14] = 249346, -- Vaelgor's Final Stare (Vaelgor and Ezzorak)
     },
     DEMONHUNTER_HAVOC = {
+        [16] = 260408, -- Lightless Lament (Midnight Falls)
+        [17] = 249280, -- Emblazoned Sunglaive (Vaelgor and Ezzorak)
+        [1] = 249306, -- Devouring Night's Visage (Imperator Averzian)
+        [2] = 250247, -- Amulet of the Abyssal Hymn (Crown of the Cosmos)
+        [3] = 250031, -- Devouring Reaver's Exhaustplates (Fallen-King Salhadaar)
+        [15] = 239656, -- Adherent's Silken Shroud (Tailoring)
+        [5] = 250036, -- Devouring Reaver's Engine (Chimaerus)
+        [9] = 244576, -- Silvermoon Agent's Deflectors (Leatherworking)
+        [10] = 250034, -- Devouring Reaver's Essence Grips (Vorasius)
+        [6] = 249314, -- Twisted Twilight Sash (Fallen-King Salhadaar)
+        [7] = 250032, -- Devouring Reaver's Pistons (Vaelgor and Ezzorak)
+        [8] = 249382, -- Canopy Walker's Footwraps (Crown of the Cosmos)
+        [11] = 249919, -- Sin'dorei Band of Hope (Belo'ren)
+        [12] = 249336, -- Signet of the Starved Beast (Vorasius)
+        [13] = 249343, -- Gaze of the Alnseer (Chimaerus)
+        [14] = 260235, -- Umbral Plume (Belo'ren)
     },
     DEMONHUNTER_VENGEANCE = {
+        [16] = 260408, -- Lightless Lament (Midnight Falls)
+        [17] = 237840, -- Spellbreaker's Warglaive (Crafted by Blacksmithing)
+        [1] = 250033, -- Devouring Reaver's Intake (Matrix Catalyst , or Lightblinded Vanguard in The Voidspire)
+        [2] = 249368, -- Eternal Voidsong Chain (Crown of the Cosmos in The Voidspire)
+        [3] = 250031, -- Devouring Reaver's Exhaustplates (Matrix Catalyst , or Fallen-King Salhadaar in The Voidspire)
+        [15] = 249335, -- Imperator's Banner (Vaelgor and Ezzorak in The Voidspire)
+        [5] = 249322, -- Radiant Clutchtender's Jerkin (Belo'ren in March on Quel'Danas)
+        [9] = 244576, -- Silvermoon Agent's Deflectors (Crafted by Leatherworking)
+        [10] = 250034, -- Devouring Reaver's Essence Grips (Matrix Catalyst , or Vorasius in The Voidspire)
+        [6] = 249374, -- Scorn-Scarred Shul'ka's Belt (Chimaerus in The Dreamrift)
+        [7] = 250032, -- Devouring Reaver's Pistons (Matrix Catalyst , or Vaelgor and Ezzorak in The Voidspire)
+        [8] = 249334, -- Void-Claimed Shinkickers (Imperator Averzian in The Voidspire)
+        [11] = 249336, -- Signet of the Starved Beast (Vorasius in The Voidspire)
+        [12] = 249920, -- Eye of Midnight (Midnight Falls in March on Quel'Danas)
+        [13] = 249344, -- Light Company Guidon (Imperator Averzian in The Voidspire)
+        [14] = 249343, -- Gaze of the Alnseer (Chimaerus in The Dreamrift)
     },
     DRUID_BALANCE = {
+        [16] = 249286, -- Brazier of the Dissonant Dirge (Midnight Falls in March on Quel'Danas)
+        [17] = 249283, -- Belo'melorn, the Shattered Talon (Belo'ren & Vorasius)
+        [1] = 250024, -- Branches of the Luminous Bloom (Lightblinded Vanguard in The Voidspire)
+        [2] = 250247, -- Amulet of the Abyssal Hymn (Midnight Falls in March on Quel'Danas)
+        [3] = 250022, -- Seedpods of the Luminous Bloom (Fallen-King Salhadaar in The Voidspire)
+        [15] = 250019, -- Leafdrape of the Luminous Bloom (Creation Catalyst)
+        [5] = 250027, -- Trunk of the Luminous Bloom (Chimaerus in The Dreamrift)
+        [9] = 249327, -- Void-Skinned Bracers (Vorasius in The Voidspire)
+        [10] = 244575, -- Silvermoon Agent's Handwraps (Leatherworking)
+        [6] = 249374, -- Scorn-Scarred Shul'ka's Belt (Chimaerus in The Dreamrift)
+        [7] = 250023, -- Phloemwraps of the Luminous Bloom (Vaelgor and Ezzorak in The Voidspire)
+        [8] = 244569, -- Silvermoon Agent's Sneakers (Leatherworking)
+        [11] = 249920, -- Eye of Midnight (Midnight Falls in March on Quel'Danas)
+        [12] = 249369, -- Bond of Light (Lightblinded Vanguard in The Voidspire)
+        [13] = 249343, -- Gaze of the Alnseer (Chimaerus in The Dreamrift)
+        [14] = 249346, -- Vaelgor's Final Stare (Vaelgor and Ezzorak)
     },
     DRUID_FERAL = {
+        [16] = 249302, -- Inescapable Reach (Midnight Falls)
+        [1] = 250024, -- Branches of the Luminous Bloom (Lightblinded Vanguard)
+        [2] = 250247, -- Amulet of the Abyssal Hymn (Midnight Falls)
+        [3] = 250022, -- Seedpods of the Luminous Bloom (Fallen-King Salhadaar)
+        [15] = 239656, -- Adherent's Silken Shroud (Tailoring)
+        [5] = 250027, -- Trunk of the Luminous Bloom (Chimaerus)
+        [9] = 244576, -- Silvermoon Agent's Deflectors (Leatherworking)
+        [10] = 250025, -- Arbortenders of the Luminous Bloom (Vorasius)
+        [6] = 249374, -- Scorn-Scarred Shul'ka's Belt (Chimaerus)
+        [7] = 250023, -- Phloemwraps of the Luminous Bloom (Vaelgor and Ezzorak)
+        [8] = 249382, -- Canopy Walker's Footwraps (Crown of the Cosmos)
+        [11] = 249920, -- Eye of Midnight (Midnight Falls)
+        [12] = 249369, -- Bond of Light (Lightblinded Vanguard)
+        [13] = 249343, -- Gaze of the Alnseer (Chimaerus)
+        [14] = 249806, -- Radiant Plume (Belo'ren)
     },
     DRUID_GUARDIAN = {
+        [16] = 249278, -- Alnscorned Spire (Chimaerus in The Dreamrift)
+        [1] = 249913, -- Mask of Darkest Intent (Midnight Falls)
+        [2] = 249368, -- Eternal Voidsong Chain (Crown of the Cosmos in The Voidspire)
+        [3] = 250022, -- Seedpods of the Luminous Bloom (Matrix Catalyst , or Fallen-King Salhadaar in The Voidspire)
+        [15] = 249370, -- Draconic Nullcape (Vaelgor and Ezzorak in The Voidspire)
+        [5] = 250027, -- Trunk of the Luminous Bloom (Chimaerus in The Dreamrift)
+        [9] = 244576, -- Silvermoon Agent's Deflectors (Crafted by Leatherworking)
+        [10] = 250025, -- Arbortenders of the Luminous Bloom (Matrix Catalyst , or Vorasius in The Voidspire)
+        [6] = 244573, -- Silvermoon Agent's Utility Belt (Crafted by Leatherworking)
+        [7] = 250023, -- Phloemwraps of the Luminous Bloom (Vaelgor and Ezzorak in The Voidspire)
+        [8] = 249334, -- Void-Claimed Shinkickers (Imperator Averzian in The Voidspire)
+        [11] = 249920, -- Eye of Midnight (Midnight Falls)
+        [12] = 249336, -- Signet of the Starved Beast (Vorasius in The Voidspire)
+        [13] = 249343, -- Gaze of the Alnseer (Chimaerus in The Dreamrift)
+        [14] = 249807, -- The Eternal Egg (Belo'ren)
     },
     DRUID_RESTORATION = {
+        [16] = 249283, -- Belo'melorn, the Shattered Talon (Belo'ren - March on Quel'Danas)
+        [17] = 249922, -- Tome of Alnscorned Regret (Chimaerus - Dreamrift)
+        [1] = 249913, -- Mask of Darkest Intent (Midnight Falls - March on Quel'Danas)
+        [2] = 250247, -- Amulet of the Abyssal Hymn (Midnight Falls - March on Quel'Danas)
+        [3] = 250022, -- Seedpods of the Luminous Bloom (Fallen-King Salhadaar - The Voidspire)
+        [15] = 249370, -- Draconic Nullcape (Vaelgor and Ezzorak - The Voidspire)
+        [5] = 250027, -- Trunk of the Luminous Bloom (Chimaerus - Dreamrift)
+        [9] = 250020, -- Bindings of the Luminous Bloom (Lightblinded Vanguard - The Voidspire)
+        [10] = 250025, -- Arbortenders of the Luminous Bloom (Vorasius - The Voidspire)
+        [6] = 249314, -- Twisted Twilight Sash (Fallen-King Salhadaar - The Voidspire)
+        [7] = 250023, -- Phloemwraps of the Luminous Bloom (Vaelgor and Ezzorak - The Voidspire)
+        [8] = 249334, -- Void-Claimed Shinkickers (Imperator Averzian - The Voidspire)
+        [11] = 249369, -- Bond of Light (Lightblinded Vanguard - The Voidspire)
+        [13] = 249343, -- Gaze of the Alnseer (Chimaerus - Dreamrift)
     },
     EVOKER_AUGMENTATION = {
+        [16] = 249283, -- Belo'melorn, the Shattered Talon (Belo'ren in March on Quel'Danas Lightblinded Vanguard in The Voidspire Vorasius in The Voidspire)
+        [17] = 249294, -- Blade of the Blind Verdict (Belo'ren in March on Quel'Danas Lightblinded Vanguard in The Voidspire Vorasius in The Voidspire)
+        [1] = 249914, -- Oblivion Guise (Midnight Falls in March on Quel'Danas Vorasius in The Voidspire)
+        [2] = 249337, -- Ribbon of Coiled Malice (Fallen-King Salhadaar in The Voidspire)
+        [3] = 249995, -- Beacons of the Black Talon (Matrix Catalyst , Fallen-King Salhadaar in The Voidspire .)
+        [15] = 239656, -- Adherent's Silken Shroud (Crafted by Tailoring)
+        [5] = 250000, -- Frenzyward of the Black Talon (Matrix Catalyst , or Chimaerus in The Dreamrift)
+        [9] = 244584, -- Farstrider's Plated Bracers (Crafted by Leatherworking)
+        [10] = 249998, -- Enforcer's Grips of the Black Talon (Matrix Catalyst , or Vorasius in The Voidspire)
+        [6] = 244581, -- Farstrider's Trophy Belt (Crafted by Leatherworking Chimaerus in The Dreamrift Lightblinded Vanguard in The Voidspire)
+        [7] = 249996, -- Greaves of the Black Talon (Matrix Catalyst , or Vaelgor and Ezzorak in The Voidspire)
+        [8] = 249377, -- Darkstrider Treads (Belo'ren in March on Quel'Danas)
+        [11] = 249920, -- Eye of Midnight (Midnight Falls in March on Quel'Danas Crafted by Jewelcrafting Lightblinded Vanguard in The Voidspire Belo'ren in March on Quel'Danas)
+        [12] = 240949, -- Masterwork Sin'dorei Band (Midnight Falls in March on Quel'Danas Crafted by Jewelcrafting Lightblinded Vanguard in The Voidspire Belo'ren in March on Quel'Danas)
+        [13] = 249810, -- Shadow of the Empyrean Requiem (Midnight Falls in March on Quel'Danas Vaelgor and Ezzorak in The Voidspire)
+        [14] = 249346, -- Vaelgor's Final Stare (Midnight Falls in March on Quel'Danas Vaelgor and Ezzorak in The Voidspire)
     },
     EVOKER_DEVASTATION = {
+        [16] = 249294, -- Blade of the Blind Verdict (Lightblinded Vanguard in The Voidspire .)
+        [17] = 249276, -- Grimoire of the Eternal Light (Vorasius in The Voidspire .)
+        [1] = 249997, -- Hornhelm of the Black Talon (Matrix Catalyst , Lightblinded Vanguard in The Voidspire .)
+        [2] = 250247, -- Amulet of the Abyssal Hymn (Midnight Falls in March on Quel'Danas .)
+        [3] = 249995, -- Beacons of the Black Talon (Matrix Catalyst , Fallen-King Salhadaar in The Voidspire .)
+        [15] = 239656, -- Adherent's Silken Shroud (Crafted by Tailoring)
+        [5] = 250000, -- Frenzyward of the Black Talon (Matrix Catalyst , or Chimaerus in The Dreamrift)
+        [9] = 244584, -- Farstrider's Plated Bracers (Crafted by Leatherworking)
+        [10] = 249325, -- Untethered Berserker's Grips (Crown of the Cosmos in The Voidspire)
+        [6] = 249371, -- Scornbane Waistguard (Chimaerus in The Dreamrift)
+        [7] = 249996, -- Greaves of the Black Talon (Matrix Catalyst , or Vaelgor and Ezzorak in The Voidspire)
+        [8] = 249999, -- Spelltreads of the Black Talon (Matrix Catalyst .)
+        [11] = 249919, -- Sin'dorei Band of Hope (Belo'ren in March on Quel'Danas .)
+        [12] = 249920, -- Eye of Midnight (Midnight Falls in March on Quel'Danas .)
+        [13] = 249809, -- Locus-Walker's Ribbon (Crown of the Cosmos in The Voidspire .)
+        [14] = 249346, -- Vaelgor's Final Stare (Vaelgor and Ezzorak in The Voidspire .)
     },
     EVOKER_PRESERVATION = {
+        [16] = 249286, -- Brazier of the Dissonant Dirge (Midnight Falls in The Voidspire)
+        [1] = 249914, -- Oblivion Guise (Midnight Falls in March on Quel'Danas)
+        [2] = 250247, -- Amulet of the Abyssal Hymn (Midnight Falls in March on Quel'Danas)
+        [3] = 249995, -- Beacons of the Black Talon (Matrix Catalyst , or Fallen-King Salhadaar in The Voidspire)
+        [15] = 249370, -- Draconic Nullcape (Vaelgor and Ezzorak in The Voidspire)
+        [5] = 250000, -- Frenzyward of the Black Talon (Matrix Catalyst , or Chimaerus in The Dreamrift)
+        [9] = 249304, -- Fallen King's Cuffs (Fallen-King Salhadaar in The Voidspire)
+        [10] = 249998, -- Enforcer's Grips of the Black Talon (Matrix Catalyst , or Vorasius in The Voidspire)
+        [6] = 244611, -- World Tender's Barkclasp (Crafted by Leatherworking)
+        [7] = 249996, -- Greaves of the Black Talon (Matrix Catalyst , or Vaelgor and Ezzorak in The Voidspire)
+        [8] = 244610, -- World Tender's Rootslippers (Crafted by Leatherworking)
+        [11] = 249369, -- Bond of Light (Lightblinded Vanguard in The Voidspire)
+        [12] = 249920, -- Eye of Midnight (Midnight Falls in March on Quel'Danas)
+        [13] = 249346, -- Vaelgor's Final Stare (Vaelgor and Ezzorak in The Voidspire)
+        [14] = 249343, -- Gaze of the Alnseer (Chimaerus in The Dreamrift)
     },
     HUNTER_BEASTMASTERY = {
+        [16] = 249279, -- Sunstrike Rifle (Imperator Averzian - Voidspire)
+        [1] = 249988, -- Primal Sentry's Maw (Lightblinded Vanguard - Voidspire, or Matrix Catalyst)
+        [2] = 250247, -- Amulet of the Abyssal Hymn (Midnight Falls - March on Quel'Danas)
+        [3] = 249318, -- Nullwalker's Dread Epaulettes (Vaelgor and Ezzorak - Voidspire)
+        [15] = 249335, -- Imperator's Banner (Imperator Averzian - Voidspire)
+        [5] = 249991, -- Primal Sentry's Scaleplate (Chimaerus - Dreamrift, or Matrix Catalyst)
+        [9] = 249304, -- Fallen King's Cuffs (Fallen-King Salhadaar - Voidspire)
+        [10] = 249989, -- Primal Sentry's Talonguards (Vorasius - Voidspire, or Matrix Catalyst)
+        [6] = 244611, -- World Tender's Barkclasp (Leatherworking)
+        [7] = 249987, -- Primal Sentry's Legguards (Vaelgor and Ezzorak - Voidspire, or Matrix Catalyst)
+        [8] = 244610, -- World Tender's Rootslippers (Leatherworking)
+        [11] = 249920, -- Eye of Midnight (Midnight Falls - March on Quel'Danas)
+        [12] = 249369, -- Bond of Light (Lightblinded Vanguard - Voidspire)
+        [13] = 249806, -- Radiant Plume (Belo'ren - March on Quel'Danas)
+        [14] = 249343, -- Gaze of the Alnseer (Chimaerus - The Dreamrift)
     },
     HUNTER_MARKSMANSHIP = {
+        [16] = 249288, -- Ranger-Captain's Lethal Recurve (Crown of the Cosmos - Voidspire)
+        [1] = 249988, -- Primal Sentry's Maw (Lightblinded Vanguard - Voidspire, or Matrix Catalyst)
+        [2] = 250247, -- Amulet of the Abyssal Hymn (Midnight Falls - March on Quel'Danas)
+        [3] = 249318, -- Nullwalker's Dread Epaulettes (Vaelgor and Ezzorak - Voidspire)
+        [15] = 249335, -- Imperator's Banner (Imperator Averzian - Voidspire)
+        [5] = 249991, -- Primal Sentry's Scaleplate (Chimaerus - Dreamrift, or Matrix Catalyst)
+        [9] = 249304, -- Fallen King's Cuffs (Fallen-King Salhadaar - Voidspire)
+        [10] = 249989, -- Primal Sentry's Talonguards (Vorasius - Voidspire, or Matrix Catalyst)
+        [6] = 244611, -- World Tender's Barkclasp (Leatherworking)
+        [7] = 249987, -- Primal Sentry's Legguards (Vaelgor and Ezzorak - Voidspire, or Matrix Catalyst)
+        [8] = 244610, -- World Tender's Rootslippers (Leatherworking)
+        [11] = 249336, -- Signet of the Starved Beast (Vorasius - Voidspire)
+        [12] = 249919, -- Sin'dorei Band of Hope (Belo'ren - March on Quel'Danas)
+        [13] = 260235, -- Umbral Plume (Belo'ren - March on Quel'Danas)
+        [14] = 249344, -- Light Company Guidon (Imperator Averzian - Voidspire)
     },
     HUNTER_SURVIVAL = {
+        [16] = 249302, -- Inescapable Reach (Vorasius - Voidspire)
+        [17] = 249925, -- Hungering Victory (Vorasius - Voidspire)
+        [1] = 249988, -- Primal Sentry's Maw (Lightblinded Vanguard - Voidspire, or Matrix Catalyst)
+        [2] = 250247, -- Amulet of the Abyssal Hymn (Midnight Falls - March on Quel'Danas)
+        [3] = 249318, -- Nullwalker's Dread Epaulettes (Vaelgor and Ezzorak - Voidspire)
+        [15] = 249370, -- Draconic Nullcape (Vaelgor and Ezzorak - Voidspire)
+        [5] = 249991, -- Primal Sentry's Scaleplate (Chimaerus - Dreamrift, or Matrix Catalyst)
+        [9] = 244584, -- Farstrider's Plated Bracers (Leatherworking)
+        [10] = 249989, -- Primal Sentry's Talonguards (Vorasius - Voidspire, or Matrix Catalyst)
+        [6] = 244611, -- World Tender's Barkclasp (Leatherworking)
+        [7] = 249987, -- Primal Sentry's Legguards (Vaelgor and Ezzorak - Voidspire, or Matrix Catalyst)
+        [8] = 244610, -- World Tender's Rootslippers (Leatherworking)
+        [11] = 249920, -- Eye of Midnight (Midnight Falls - March on Quel'Danas)
+        [12] = 249369, -- Bond of Light (Lightblinded Vanguard - Voidspire, or Matrix Catalyst)
+        [13] = 249806, -- Radiant Plume (Belo'ren - March on Quel'Danas)
+        [14] = 249343, -- Gaze of the Alnseer (Chimaerus - The Dreamdrift)
     },
     MAGE_ARCANE = {
+        [16] = 249286, -- Brazier of the Dissonant Dirge (Midnight Falls in March on Quel'Danas)
+        [17] = 251094, -- Sigil of the Restless Heart (The Great Vault / Windrunner Spire)
+        [1] = 250060, -- Voidbreaker's Veil (Matrix Catalyst , or Lightblinded Vanguard in The Voidspire)
+        [2] = 250247, -- Amulet of the Abyssal Hymn (Midnight Falls in March on Quel'Danas)
+        [3] = 250058, -- Voidbreaker's Leyline Nexi (Matrix Catalyst , or Fallen-King Salhadaar in The Voidspire)
+        [15] = 239661, -- Arcanoweave Cloak (Crafted by Tailoring)
+        [5] = 250063, -- Voidbreaker's Robe (Matrix Catalyst , or Chimaerus in The Dreamrift)
+        [9] = 239660, -- Arcanoweave Bracers (Crafted by Tailoring)
+        [10] = 250061, -- Voidbreaker's Gloves (Matrix Catalyst , or Vorasius in The Voidspire)
+        [6] = 249376, -- Whisper-Inscribed Sash (Belo'ren in March on Quel'Danas)
+        [7] = 249323, -- Leggings of the Devouring Advance (Imperator Averzian in The Voidspire)
+        [8] = 249373, -- Dream-Scorched Striders (Chimaerus in The Dreamrift)
+        [11] = 249919, -- Sin'dorei Band of Hope (Belo'ren in March on Quel'Danas)
+        [12] = 249920, -- Eye of Midnight (Midnight Falls in March on Quel'Danas)
+        [13] = 249343, -- Gaze of the Alnseer (Chimaerus in The Dreamrift)
+        [14] = 249346, -- Vaelgor's Final Stare (Vaelgor and Ezzorak in The Voidspire)
     },
     MAGE_FIRE = {
+        [16] = 249286, -- Brazier of the Dissonant Dirge (Midnight Falls in March on Quel'Danas)
+        [17] = 258472, -- Rukhran's Solar Reliquary (Windrunner Spire)
+        [1] = 250060, -- Voidbreaker's Veil (Matrix Catalyst , or Lightblinded Vanguard in The Voidspire)
+        [2] = 250247, -- Amulet of the Abyssal Hymn (Midnight Falls in March on Quel'Danas)
+        [3] = 250058, -- Voidbreaker's Leyline Nexi (Matrix Catalyst , or Fallen-King Salhadaar in The Voidspire)
+        [15] = 239656, -- Adherent's Silken Shroud (Crafted by Tailoring with Arcanoweave Lining and Haste + Mastery)
+        [5] = 249912, -- Robes of Endless Oblivion (Midnight Falls in March on Quel'Danas)
+        [9] = 239648, -- Martyr's Bindings (Crafted by Tailoring with Arcanoweave Lining and Haste + Mastery)
+        [10] = 250061, -- Voidbreaker's Gloves (Matrix Catalyst , or Vorasius in The Voidspire)
+        [6] = 249376, -- Whisper-Inscribed Sash (Belo'ren in March on Quel'Danas)
+        [7] = 250059, -- Voidbreaker's Britches (Matrix Catalyst , or Vaelgor and Ezzorak in The Voidspire)
+        [8] = 250062, -- Voidbreaker's Treads (Matrix Catalyst on any pair of boots, or The Great Vault)
+        [11] = 249369, -- Bond of Light (Lightblinded Vanguard in The Voidspire)
+        [12] = 249920, -- Eye of Midnight (Midnight Falls in March on Quel'Danas)
+        [13] = 249809, -- Locus-Walker's Ribbon (Crown of the Cosmos in The Voidspire)
+        [14] = 249346, -- Vaelgor's Final Stare (Vaelgor and Ezzorak in The Voidspire)
     },
     MAGE_FROST = {
+        [16] = 245770, -- Aln'hara Cane (Inscription)
+        [17] = 245769, -- Aln'hara Lantern (Inscription)
+        [1] = 250060, -- Voidbreaker's Veil (Matrix Catalyst , or Lightblinded Vanguard in The Voidspire)
+        [2] = 250247, -- Amulet of the Abyssal Hymn (Midnight Falls in March on Quel'Danas)
+        [3] = 249328, -- Echoing Void Mantle (Belo'ren in March on Quel'Danas)
+        [15] = 249370, -- Draconic Nullcape (Vaelgor and Ezzorak in The Voidspire)
+        [5] = 250063, -- Voidbreaker's Robe (Matrix Catalyst , or Chimaerus in The Dreamrift)
+        [9] = 239648, -- Martyr's Bindings (Tailoring)
+        [10] = 250061, -- Voidbreaker's Gloves (Matrix Catalyst , or Vorasius in The Voidspire)
+        [6] = 250057, -- Voidbreaker's Sage Cord (Matrix Catalyst)
+        [7] = 250059, -- Voidbreaker's Britches (Matrix Catalyst , or Vaelgor and Ezzorak in The Voidspire)
+        [8] = 249373, -- Dream-Scorched Striders (Chimaerus in The Dreamrift)
+        [11] = 249919, -- Sin'dorei Band of Hope (Belo'ren in March on Quel'Danas)
+        [12] = 249920, -- Eye of Midnight (Midnight Falls in March on Quel'Danas)
+        [13] = 249346, -- Vaelgor's Final Stare (Vaelgor and Ezzorak in The Voidspire)
+        [14] = 249343, -- Gaze of the Alnseer (Chimaerus in The Dreamrift)
     },
     MONK_BREWMASTER = {
+        [16] = 249302, -- Inescapable Reach (Vorasius ( The Voidspire ))
+        [17] = 249287, -- Clutchmates' Caress (Crown of the Cosmos ( The Voidspire ) Vaelgor and Ezzorak ( The Voidspire ))
+        [1] = 250015, -- Fearsome Visage of Ra-den's Chosen (Lightblinded Vanguard ( March on Quel'Danas ))
+        [2] = 240950, -- Masterwork Sin'dorei Amulet (Jewelcrafting ( see note ))
+        [3] = 250013, -- Aurastones of Ra-den's Chosen (Fallen-King Salhadaar ( The Voidspire ))
+        [15] = 249335, -- Imperator's Banner (Imperator Averzian ( The Voidspire ))
+        [5] = 250018, -- Battle Garb of Ra-den's Chosen (Chimaerus ( The Dreamrift ))
+        [9] = 249327, -- Void-Skinned Bracers (Vorasius ( The Voidspire ))
+        [10] = 250016, -- Thunderfists of Ra-den's Chosen (> Vorasius ( The Voidspire ))
+        [6] = 249314, -- Twisted Twilight Sash (Fallen-King Salhadaar ( The Voidspire ))
+        [7] = 249312, -- Nightblade's Pantaloons (Crown of the Cosmos ( The Voidspire ))
+        [8] = 249382, -- Canopy Walker's Footwraps (Crown of the Cosmos ( The Voidspire ))
+        [11] = 249336, -- Signet of the Starved Beast (Vorasius ( The Voidspire ))
+        [12] = 251513, -- Loa Worshiper's Band (Jewelcrafting)
+        [13] = 249806, -- Radiant Plume (Belo'ren ( March on Quel'Danas ) Chimaerus ( The Dreamrift ) Vaelgor and Ezzorak ( The Voidspire ) Belo'ren ( March on Quel'Danas ))
+        [14] = 249343, -- Gaze of the Alnseer (Belo'ren ( March on Quel'Danas ) Chimaerus ( The Dreamrift ) Vaelgor and Ezzorak ( The Voidspire ) Belo'ren ( March on Quel'Danas ))
     },
     MONK_MISTWEAVER = {
+        [16] = 249293, -- Weight of Command (Imperator Averzian in The Voidspire)
+        [17] = 249276, -- Grimoire of the Eternal Light (Vorasius in The Voidspire)
+        [1] = 249913, -- Mask of Darkest Intent (Matrix Catalyst , or Lightblinded Vanguard in The Voidspire)
+        [2] = 249337, -- Ribbon of Coiled Malice (Fallen-King Salhadaar in The Voidspire)
+        [3] = 250013, -- Aurastones of Ra-den's Chosen (Fallen-King Salhadaar in The Voidspire)
+        [15] = 239656, -- Adherent's Silken Shroud (Crafted by Tailoring)
+        [5] = 250018, -- Battle Garb of Ra-den's Chosen (Matrix Catalyst , or Chimaerus in The Dreamrift)
+        [9] = 244576, -- Silvermoon Agent's Deflectors (Crafted by Leatherworking)
+        [10] = 250016, -- Thunderfists of Ra-den's Chosen (Matrix Catalyst , or Vorasius in The Voidspire)
+        [6] = 249374, -- Scorn-Scarred Shul'ka's Belt (Chimaerus in The Dreamrift)
+        [7] = 250014, -- Swiftsweepers of Ra-den's Chosen (Matrix Catalyst , or Vaelgor and Ezzorak in The Voidspire)
+        [8] = 249334, -- Void-Claimed Shinkickers (Imperator Averzian in The Voidspire)
+        [11] = 249920, -- Eye of Midnight (Midnight Falls in March on Quel'Danas)
+        [12] = 249336, -- Signet of the Starved Beast (Vorasius in The Voidspire)
+        [13] = 249343, -- Gaze of the Alnseer (Chimaerus in The Dreamrift)
+        [14] = 249341, -- Volatile Void Suffuser (Fallen-King Salhadaar in The Voidspire)
     },
     MONK_WINDWALKER = {
+        [16] = 249302, -- Inescapable Reach (Vorasius)
+        [17] = 260423, -- Arator's Swift Remembrance (Crown of the Cosmos)
+        [1] = 250015, -- Fearsome Visage of Ra-den's Chosen (Matrix Catalyst , or Lightblinded Vanguard - The Voidspire)
+        [2] = 250247, -- Amulet of the Abyssal Hymn (Midnight Falls)
+        [3] = 250013, -- Aurastones of Ra-den's Chosen (Matrix Catalyst , or Fallen-King Salhadaar - The Voidspire)
+        [15] = 250010, -- Windwrap of Ra-den's Chosen (Matrix Catalyst)
+        [5] = 250018, -- Battle Garb of Ra-den's Chosen (Matrix Catalyst , or Chimaerus - The Dreamrift)
+        [9] = 249327, -- Void-Skinned Bracers (Vorasius)
+        [10] = 249321, -- Vaelgor's Fearsome Grasp (Vaelgor and Ezzorak)
+        [6] = 249374, -- Scorn-Scarred Shul'ka's Belt (Chimaerus)
+        [7] = 250014, -- Swiftsweepers of Ra-den's Chosen (Matrix Catalyst , or Vaelgor and Ezzorak - The Voidspire)
+        [8] = 250017, -- Storm Crashers of Ra-den's Chosen (Matrix Catalyst)
+        [11] = 251513, -- Loa Worshiper's Band (Jewelcrafting)
+        [13] = 249343, -- Gaze of the Alnseer (Chimaerus)
+        [14] = 249806, -- Radiant Plume (Belo'ren)
     },
     PALADIN_HOLY = {
+        [16] = 249294, -- Blade of the Blind Verdict (Lightblinded Vanguard in The Voidspire)
+        [17] = 249921, -- Thalassian Dawnguard (Belo'ren in March on Quel'Danas)
+        [1] = 249961, -- Luminant Verdict's Unwavering Gaze (Matrix Catalyst , or Lightblinded Vanguard in The Voidspire)
+        [2] = 250247, -- Amulet of the Abyssal Hymn (Midnight Falls in March on Quel'Danas)
+        [3] = 249959, -- Luminant Verdict's Providence Watch (Matrix Catalyst , or Fallen-King Salhadaar in The Voidspire)
+        [15] = 239656, -- Adherent's Silken Shroud (Crafted by Tailoring)
+        [5] = 249964, -- Luminant Verdict's Divine Warplate (Matrix Catalyst , or Chimaerus in The Dreamrift)
+        [9] = 237834, -- Spellbreaker's Bracers (Crafted by Blacksmithing)
+        [10] = 249962, -- Luminant Verdict's Gauntlets (Matrix Catalyst , or Vorasius in The Voidspire)
+        [6] = 249331, -- Ezzorak's Gloombind (Vaelgor and Ezzorak in The Voidspire)
+        [7] = 249915, -- Extinction Guards (Midnight Falls in March on Quel'Danas)
+        [8] = 249332, -- Parasite Stompers (Vorasius in The Voidspire)
+        [11] = 249919, -- Sin'dorei Band of Hope (Belo'ren in March on Quel'Danas)
+        [12] = 249920, -- Eye of Midnight (Midnight Falls in March on Quel'Danas)
+        [13] = 249346, -- Vaelgor's Final Stare (Vaelgor and Ezzorak in The Voidspire)
+        [14] = 249343, -- Gaze of the Alnseer (Chimaerus in The Dreamrift)
     },
     PALADIN_PROTECTION = {
-        [16] = 193711, -- Spellbane Cutlass (Algeth'ar Academy)
-        [17] = 251105, -- Ward of the Spellbreaker (Magister's Terrace)
-        [2] = 251096, -- Pendant of Aching Grief (Windrunner Spire)
-        [15] = 49823, -- Cloak of the Fallen Cardinal (Pit of Saron)
-        [10] = 151332, -- Voidclaw Gauntlets (Seat of the Triumvirate)
-        [6] = 251112, -- Shadowsplit Girdle (Magister's Terrace)
-        [8] = 251169, -- Footwraps of Ill-Fate (Maisara Caverns)
-        [11] = 251217, -- Occlusion of Void (Nexus-Point Xenas)
-        [13] = 252420, -- Solarflare Prism (Skyreach)
-        [14] = 193701, -- Algeth'ar Puzzle Box (Algeth'ar Academy)
+        [16] = 249295, -- Turalyon's False Echo (Crown of the Cosmos in The Voidspire)
+        [17] = 249275, -- Bulwark of Noble Resolve (Imperator Averzian in The Voidspire)
+        [1] = 249961, -- Luminant Verdict's Unwavering Gaze (Matrix Catalyst , or Lightblinded Vanguard in The Voidspire)
+        [2] = 249337, -- Ribbon of Coiled Malice (Fallen-King Salhadaar in The Voidspire)
+        [3] = 249959, -- Luminant Verdict's Providence Watch (Matrix Catalyst , or Fallen-King Salhadaar in The Voidspire)
+        [15] = 249335, -- Imperator's Banner (Imperator Averzian in The Voidspire)
+        [5] = 249309, -- Sunbound Breastplate (Crown of the Cosmos in The Voidspire)
+        [9] = 237834, -- Spellbreaker's Bracers (Crafted by Blacksmithing)
+        [10] = 249962, -- Luminant Verdict's Gauntlets (Matrix Catalyst , or Vorasius in The Voidspire)
+        [6] = 249331, -- Ezzorak's Gloombind (Vaelgor and Ezzorak in The Voidspire)
+        [7] = 249960, -- Luminant Verdict's Greaves (Matrix Catalyst , or Vaelgor and Ezzorak in The Voidspire)
+        [8] = 249332, -- Parasite Stompers (Vorasius in The Voidspire)
+        [11] = 249920, -- Eye of Midnight (Midnight Falls in March on Quel'Danas)
+        [12] = 251513, -- Loa Worshiper's Band (Crafted by Jewelcrafting)
+        [13] = 260235, -- Umbral Plume (Belo'ren in March on Quel'Danas)
+        [14] = 249343, -- Gaze of the Alnseer (Chimaerus in The Dreamrift)
     },
     PALADIN_RETRIBUTION = {
+        [16] = 249277, -- Bellamy's Final Judgement (Lightblinded Vanguard in The Voidspire)
+        [1] = 249961, -- Luminant Verdict's Unwavering Gaze (Matrix Catalyst , or Lightblinded Vanguard in The Voidspire)
+        [2] = 250247, -- Amulet of the Abyssal Hymn (Midnight Falls in March on Quel'Danas)
+        [3] = 249959, -- Luminant Verdict's Providence Watch (Matrix Catalyst , or Fallen-King Salhadaar in The Voidspire)
+        [15] = 239656, -- Adherent's Silken Shroud (Crafted by Tailoring)
+        [5] = 249964, -- Luminant Verdict's Divine Warplate (Matrix Catalyst , or Chimaerus in The Dreamrift)
+        [9] = 237834, -- Spellbreaker's Bracers (Crafted by Blacksmithing)
+        [10] = 249307, -- Emberborn Grasps (Belo'ren in March on Quel'Danas)
+        [6] = 249380, -- Hate-Tied Waistchain (Crown of the Cosmos in The Voidspire)
+        [7] = 249960, -- Luminant Verdict's Greaves (Matrix Catalyst , or Vaelgor and Ezzorak in The Voidspire)
+        [8] = 249381, -- Greaves of the Unformed (Chimaerus in The Dreamrift)
+        [11] = 249920, -- Eye of Midnight (Midnight Falls in March on Quel'Danas)
+        [12] = 249919, -- Sin'dorei Band of Hope (Belo'ren in March on Quel'Danas)
+        [13] = 249343, -- Gaze of the Alnseer (Chimaerus in The Dreamrift)
+        [14] = 249806, -- Radiant Plume (Belo'ren in March on Quel'Danas)
     },
     PRIEST_DISCIPLINE = {
+        [16] = 249283, -- Belo'melorn, the Shattered Talon (Belo'ren in March on Quel'Danas)
+        [17] = 245769, -- Aln'hara Lantern (Crafted by Inscription)
+        [1] = 250051, -- Blind Oath's Winged Crest (Matrix Catalyst , or Lightblinded Vanguard in The Voidspire)
+        [2] = 249368, -- Eternal Voidsong Chain (Crown of the Cosmos in The Voidspire)
+        [3] = 250049, -- Blind Oath's Seraphguards (Matrix Catalyst , or Fallen-King Salhadaar in The Voidspire)
+        [15] = 249370, -- Draconic Nullcape (Vaelgor and Ezzorak in The Voidspire)
+        [5] = 249912, -- Robes of Endless Oblivion (Midnight Falls in March on Quel'Danas)
+        [9] = 249315, -- Voracious Wristwraps (Vorasius in The Voidspire)
+        [10] = 250052, -- Blind Oath's Touch (Matrix Catalyst , or Vorasius in The Voidspire)
+        [6] = 239664, -- Arcanoweave Cord (Crafted by Tailoring)
+        [7] = 250050, -- Blind Oath's Leggings (Matrix Catalyst , or Vaelgor and Ezzorak in The Voidspire)
+        [8] = 249305, -- Slippers of the Midnight Flame (Vaelgor and Ezzorak in The Voidspire)
+        [11] = 249920, -- Eye of Midnight (Midnight Falls in March on Quel'Danas)
+        [12] = 249369, -- Bond of Light (Lightblinded Vanguard in The Voidspire)
+        [13] = 249346, -- Vaelgor's Final Stare (Vaelgor and Ezzorak in The Voidspire)
+        [14] = 249341, -- Volatile Void Suffuser (Fallen-King Salhadaar in The Voidspire)
     },
     PRIEST_HOLY = {
+        [16] = 245770, -- Aln'hara Cane (Tailoring Imperator Averzian in The Voidspire)
+        [17] = 249276, -- Grimoire of the Eternal Light (Vorasius in The Voidspire)
+        [1] = 250051, -- Blind Oath's Winged Crest (Lightblinded Vanguard in The Voidspire / Matrix Catalyst)
+        [2] = 249337, -- Ribbon of Coiled Malice (Fallen-King Salhadaar in The Voidspire Midnight Falls in March on Quel'Danas)
+        [3] = 250049, -- Blind Oath's Seraphguards (Fallen-King Salhadaar in The Voidspire / Matrix Catalyst)
+        [15] = 249335, -- Imperator's Banner (Imperator Averzian in The Voidspire)
+        [5] = 250054, -- Blind Oath's Raiment (Chimaerus in The Dreamrift / Matrix Catalyst)
+        [9] = 250047, -- Blind Oath's Wraps (Matrix Catalyst any bracer)
+        [10] = 250052, -- Blind Oath's Touch (Vorasius in The Voidspire / Matrix Catalyst)
+        [6] = 239664, -- Arcanoweave Cord (Tailoring)
+        [7] = 249323, -- Leggings of the Devouring Advance (Imperator Averzian in The Voidspire)
+        [8] = 249373, -- Dream-Scorched Striders (Chimaerus in The Dreamrift)
+        [11] = 249336, -- Signet of the Starved Beast (Vorasius in The Voidspire)
+        [13] = 249808, -- Litany of Lightblind Wrath (Lightblinded Vanguard in The Voidspire)
     },
     PRIEST_SHADOW = {
+        [16] = 249283, -- Belo'melorn, the Shattered Talon (Belo'ren in March on Quel'Danas Chimaerus in The Dreamrift Midnight Falls in March on Quel'Danas)
+        [17] = 249922, -- Tome of Alnscorned Regret (Belo'ren in March on Quel'Danas Chimaerus in The Dreamrift Midnight Falls in March on Quel'Danas)
+        [1] = 250051, -- Blind Oath's Winged Crest (Lightblinded Vanguard in The Voidspire)
+        [2] = 249368, -- Eternal Voidsong Chain (Crown of the Cosmos in The Voidspire)
+        [3] = 250049, -- Blind Oath's Seraphguards (Fallen-King Salhadaar in The Voidspire)
+        [15] = 249370, -- Draconic Nullcape (Vaelgor and Ezzorak in Voidspire)
+        [5] = 250054, -- Blind Oath's Raiment (Chimaerus in The Dreamrift)
+        [9] = 249315, -- Voracious Wristwraps (Vorasius in Voidspire)
+        [10] = 249330, -- War Chaplain's Grips (Lightblinded Vanguard in Voidspire)
+        [6] = 249376, -- Whisper-Inscribed Sash (Belo'ren in March on Quel'Danas)
+        [7] = 250050, -- Blind Oath's Leggings (Vaelgor and Ezzorak in Voidspire)
+        [8] = 249373, -- Dream-Scorched Striders (Chimaerus in The Dreamrift)
+        [11] = 249920, -- Eye of Midnight (Midnight Falls in March on Quel'Danas Lightblinded Vanguard in Voidspire)
+        [12] = 249369, -- Bond of Light (Midnight Falls in March on Quel'Danas Lightblinded Vanguard in Voidspire)
+        [13] = 249343, -- Gaze of the Alnseer (Chimaerus in The Dreamrift Vaelgor and Ezzorak in The Voidspire Midnight Falls in March on Quel'Danas)
+        [14] = 249346, -- Vaelgor's Final Stare (Chimaerus in The Dreamrift Vaelgor and Ezzorak in The Voidspire Midnight Falls in March on Quel'Danas)
     },
     ROGUE_ASSASSINATION = {
+        [16] = 249925, -- Hungering Victory (Vorasius in The Voidspire)
+        [17] = 237837, -- Farstrider's Mercy (Crafted by Blacksmithing)
+        [1] = 250006, -- Masquerade of the Grim Jest (Matrix Catalyst , or Lightblinded Vanguard in The Voidspire)
+        [2] = 249337, -- Ribbon of Coiled Malice (Fallen-King Salhadaar in The Voidspire)
+        [3] = 250004, -- Venom Casks of the Grim Jest (Matrix Catalyst , or Fallen-King Salhadaar in The Voidspire)
+        [15] = 249370, -- Draconic Nullcape (Vaelgor and Ezzorak in The Voidspire)
+        [5] = 250009, -- Fantastic Finery of the Grim Jest (Matrix Catalyst , or Chimaerus in The Dreamrift)
+        [9] = 244576, -- Silvermoon Agent's Deflectors (Crafted by Leatherworking)
+        [10] = 250007, -- Sleight of Hand of the Grim Jest (Matrix Catalyst , or Vorasius in The Voidspire)
+        [6] = 249374, -- Scorn-Scarred Shul'ka's Belt (Chimaerus in The Dreamrift)
+        [7] = 249312, -- Nightblade's Pantaloons (Crown of the Cosmos in The Voidspire)
+        [8] = 249382, -- Canopy Walker's Footwraps (Crown of the Cosmos in The Voidspire)
+        [11] = 249919, -- Sin'dorei Band of Hope (Belo'ren in March on Quel'Danas)
+        [12] = 249920, -- Eye of Midnight (Midnight Falls in March on Quel'Danas)
+        [13] = 249806, -- Radiant Plume (Belo'ren in March on Quel'Danas)
+        [14] = 249343, -- Gaze of the Alnseer (Chimaerus in The Dreamrift)
     },
     ROGUE_OUTLAW = {
+        [16] = 260423, -- Arator's Swift Remembrance (Crown of the Cosmos in The Voidspire)
+        [17] = 249284, -- Belo'ren's Swift Talon (Belo'ren in March on Quel'Danas)
+        [1] = 249913, -- Mask of Darkest Intent (Midnight Falls in March on Quel'Danas)
+        [2] = 249337, -- Ribbon of Coiled Malice (Fallen-King Salhadaar in The Voidspire)
+        [3] = 250004, -- Venom Casks of the Grim Jest (Matrix Catalyst , or Fallen-King Salhadaar in The Voidspire)
+        [15] = 249335, -- Imperator's Banner (Imperator Averzian in The Voidspire)
+        [5] = 250009, -- Fantastic Finery of the Grim Jest (Matrix Catalyst , or Chimaerus in The Dreamrift)
+        [9] = 249327, -- Void-Skinned Bracers (Vorasius in The Voidspire)
+        [10] = 250007, -- Sleight of Hand of the Grim Jest (Matrix Catalyst , or Vorasius in The Voidspire)
+        [6] = 249374, -- Scorn-Scarred Shul'ka's Belt (Chimaerus in The Dreamrift)
+        [7] = 250005, -- Blade Holsters of the Grim Jest (Matrix Catalyst , or Vaelgor and Ezzorak in The Voidspire)
+        [8] = 244569, -- Silvermoon Agent's Sneakers (Crafted by Leatherworking)
+        [11] = 249920, -- Eye of Midnight (Midnight Falls in March on Quel'Danas)
+        [12] = 240949, -- Masterwork Sin'dorei Band (Crafted by Jewelcrafting)
+        [13] = 260235, -- Umbral Plume (Belo'ren in March on Quel'Danas)
+        [14] = 249343, -- Gaze of the Alnseer (Chimaerus in The Dreamrift)
     },
     ROGUE_SUBTLETY = {
+        [16] = 249925, -- Hungering Victory (Vorasius in The Voidspire)
+        [17] = 249925, -- Hungering Victory (Vorasius in The Voidspire)
+        [1] = 250006, -- Masquerade of the Grim Jest (Matrix Catalyst , or Lightblinded Vanguard in The Voidspire)
+        [2] = 249368, -- Eternal Voidsong Chain (Crown of the Cosmos in The Voidspire)
+        [3] = 250004, -- Venom Casks of the Grim Jest (Matrix Catalyst , or Fallen-King Salhadaar in The Voidspire)
+        [15] = 249370, -- Draconic Nullcape (Vaelgor and Ezzorak in The Voidspire)
+        [5] = 250009, -- Fantastic Finery of the Grim Jest (Matrix Catalyst , or Chimaerus in The Dreamrift)
+        [9] = 249327, -- Void-Skinned Bracers (Vorasius in The Voidspire)
+        [10] = 250007, -- Sleight of Hand of the Grim Jest (Matrix Catalyst , or Vorasius in The Voidspire)
+        [6] = 249374, -- Scorn-Scarred Shul'ka's Belt (Chimaerus in The Dreamrift)
+        [7] = 249312, -- Nightblade's Pantaloons (Crown of the Cosmos in The Voidspire)
+        [8] = 249382, -- Canopy Walker's Footwraps (Crown of the Cosmos in The Voidspire)
+        [11] = 249919, -- Sin'dorei Band of Hope (Belo'ren in March on Quel'Danas)
+        [12] = 249920, -- Eye of Midnight (Midnight Falls in March on Quel'Danas)
+        [13] = 249344, -- Light Company Guidon (Imperator Averzian in The Voidspire)
+        [14] = 249343, -- Gaze of the Alnseer (Chimaerus in The Dreamrift)
     },
     SHAMAN_ELEMENTAL = {
+        [16] = 251083, -- Excavating Cudgel (Windrunner Spire)
         [17] = 251105, -- Ward of the Spellbreaker (Magister's Terrace)
+        [1] = 249979, -- Locus of the Primal Core (Matrix Catalyst , or Lightblinded Vanguard in The Voidspire)
+        [2] = 50228, -- Barbed Ymirheim Choker (Pit of Saron)
+        [3] = 249977, -- Tempests of the Primal Core (Matrix Catalyst , or Fallen-King Salhadaar in The Voidspire)
+        [15] = 258575, -- Rigid Scale Greatcloak (Skyreach)
+        [5] = 249982, -- Embrace of the Primal Core (Matrix Catalyst , or Chimaerus in The Dreamrift)
+        [9] = 251079, -- Amberfrond Bracers (Windrunner Spire)
+        [10] = 249980, -- Earthgrips of the Primal Core (Matrix Catalyst , or Vorasius in The Voidspire)
+        [6] = 244611, -- World Tender's Barkclasp (Crafted by Leatherworking)
+        [7] = 251215, -- Greaves of the Divine Guile (Nexus-Point Xenas)
+        [8] = 244610, -- World Tender's Rootslippers (Crafted by Leatherworking)
+        [11] = 193708, -- Platinum Star Band (Algeth'ar Academy)
+        [12] = 251115, -- Bifurcation Band (Magister's Terrace)
+        [13] = 250144, -- Emberwing Feather (Windrunner Spire)
+        [14] = 250256, -- Heart of Wind (Windrunner Spire)
     },
     SHAMAN_ENHANCEMENT = {
+        [16] = 249287, -- Clutchmates' Caress (Vaelgor and Ezzorak)
+        [17] = 237850, -- Farstrider's Chopper (Blacksmithing)
+        [1] = 249979, -- Locus of the Primal Core (Lightblinded Vanguard)
+        [2] = 250247, -- Amulet of the Abyssal Hymn (Midnight Falls)
+        [3] = 249977, -- Tempests of the Primal Core (Fallen-King Salhadaar)
+        [15] = 239656, -- Adherent's Silken Shroud (Tailoring)
+        [5] = 249982, -- Embrace of the Primal Core (Chimaerus)
+        [9] = 249304, -- Fallen King's Cuffs (Fallen-King Salhadaar)
+        [10] = 249980, -- Earthgrips of the Primal Core (Vorasius)
+        [6] = 249976, -- Ceinture of the Primal Core (Matrix Catalyst)
+        [7] = 249324, -- Eternal Flame Scaleguards (Belo'ren)
+        [8] = 249981, -- Sollerets of the Primal Core (Matrix Catalyst)
+        [11] = 249920, -- Eye of Midnight (Midnight Falls)
+        [12] = 249369, -- Bond of Light (Lightblinded Vanguard)
+        [13] = 249343, -- Gaze of the Alnseer (Chimaerus)
+        [14] = 249806, -- Radiant Plume (Belo'ren)
     },
     SHAMAN_RESTORATION = {
+        [16] = 249293, -- Weight of Command (Imperator Averzian in The Voidspire)
+        [17] = 249921, -- Thalassian Dawnguard (Belo'ren in March on Quel'Danas)
+        [1] = 249914, -- Oblivion Guise (Midnight Falls in March on Quel'Danas)
+        [2] = 249337, -- Ribbon of Coiled Malice (Fallen-King Salhadaar in The Voidspire)
+        [3] = 249977, -- Tempests of the Primal Core (Matrix Catalyst , or Fallen-King Salhadaar in The Voidspire)
+        [15] = 249974, -- Guardian of the Primal Core (Matrix Catalyst)
+        [5] = 249982, -- Embrace of the Primal Core (Matrix Catalyst , or Chimaerus in The Dreamrift)
+        [9] = 249975, -- Cuffs of the Primal Core (Matrix Catalyst)
+        [10] = 249980, -- Earthgrips of the Primal Core (Matrix Catalyst , or Vorasius in The Voidspire)
+        [6] = 244611, -- World Tender's Barkclasp (Crafted by Leatherworking)
+        [7] = 249978, -- Leggings of the Primal Core (Matrix Catalyst , or Vaelgor and Ezzorak in The Dreamrift)
+        [8] = 244610, -- World Tender's Rootslippers (Crafted by Leatherworking)
+        [11] = 151308, -- Eredath Seal of Nobility (Seat of the Triumvirate)
+        [12] = 151311, -- Band of the Triumvirate (Seat of the Triumvirate)
+        [13] = 249808, -- Litany of Lightblind Wrath (Lightblinded Vanguard in The Voidspire)
+        [14] = 249343, -- Gaze of the Alnseer (Chimaerus in The Dreamrift)
     },
     WARLOCK_AFFLICTION = {
+        [16] = 249283, -- Belo'melorn, the Shattered Talon (Belo'ren in March on Quel'Danas)
+        [17] = 249276, -- Grimoire of the Eternal Light (Vorasius in The Voidspire)
+        [1] = 250042, -- Abyssal Immolator's Smoldering Flames (Lightblinded Vanguard in The Voidspire or Matrix Catalyst)
+        [2] = 249368, -- Eternal Voidsong Chain (Crown of the Cosmos in The Voidspire)
+        [3] = 249328, -- Echoing Void Mantle (Belo'ren in March on Quel'Danas)
+        [15] = 239656, -- Adherent's Silken Shroud (Crafted by Tailoring)
+        [5] = 250045, -- Abyssal Immolator's Dreadrobe (Chimaerus in The Dreamrift or Matrix Catalyst)
+        [9] = 239648, -- Martyr's Bindings (Crafted by Tailoring)
+        [10] = 250043, -- Abyssal Immolator's Grasps (Vorasius in The Voidspire or Matrix Catalyst)
+        [6] = 249319, -- Endless March Waistwrap (Imperator Averzian in The Voidspire)
+        [7] = 250041, -- Abyssal Immolator's Pillars (Vaelgor and Ezzorak in The Voidspire or Matrix Catalyst)
+        [8] = 249305, -- Slippers of the Midnight Flame (Vaelgor and Ezzorak in The Voidspire)
+        [11] = 249920, -- Eye of Midnight (Midnight Falls in March on Quel'Danas)
+        [12] = 249919, -- Sin'dorei Band of Hope (Belo'ren in March on Quel'Danas)
+        [13] = 249810, -- Shadow of the Empyrean Requiem (Midnight Falls in March on Quel'Danas)
+        [14] = 249343, -- Gaze of the Alnseer (Chimaerus in The Dreamrift)
     },
     WARLOCK_DEMONOLOGY = {
+        [16] = 249286, -- Brazier of the Dissonant Dirge (Midnight Falls in March on Quel'Danas)
+        [1] = 250042, -- Abyssal Immolator's Smoldering Flames (Lightblinded Vanguard in The Voidspire or Matrix Catalyst)
+        [2] = 249368, -- Eternal Voidsong Chain (Crown of the Cosmos in The Voidspire)
+        [3] = 250040, -- Abyssal Immolator's Fury (Fallen-King Salhadaar in The Voidspire or Matrix Catalyst)
+        [15] = 239656, -- Adherent's Silken Shroud (Crafted by Tailoring)
+        [5] = 250045, -- Abyssal Immolator's Dreadrobe (Chimaerus in The Dreamrift or Matrix Catalyst)
+        [9] = 239648, -- Martyr's Bindings (Crafted by Tailoring)
+        [10] = 250043, -- Abyssal Immolator's Grasps (Vorasius in The Voidspire or Matrix Catalyst)
+        [6] = 249319, -- Endless March Waistwrap (Imperator Averzian in The Voidspire)
+        [7] = 250041, -- Abyssal Immolator's Pillars (Vaelgor and Ezzorak in The Voidspire or Matrix Catalyst)
+        [8] = 249373, -- Dream-Scorched Striders (Chimaerus in The Dreamrift)
+        [11] = 249920, -- Eye of Midnight (Midnight Falls in March on Quel'Danas)
+        [12] = 249336, -- Signet of the Starved Beast (Vorasius in The Voidspire)
+        [13] = 249346, -- Vaelgor's Final Stare (Vaelgor and Ezzorak in The Voidspire)
+        [14] = 249809, -- Locus-Walker's Ribbon (Crown of the Cosmos in The Voidspire)
     },
     WARLOCK_DESTRUCTION = {
+        [16] = 249286, -- Brazier of the Dissonant Dirge (Midnight Falls in March on Quel'Danas)
+        [1] = 250042, -- Abyssal Immolator's Smoldering Flames (Lightblinded Vanguard in The Voidspire or Matrix Catalyst)
+        [2] = 249368, -- Eternal Voidsong Chain (Crown of the Cosmos in The Voidspire)
+        [3] = 250040, -- Abyssal Immolator's Fury (Fallen-King Salhadaar in The Voidspire or Matrix Catalyst)
+        [15] = 239656, -- Adherent's Silken Shroud (Crafted by Tailoring)
+        [5] = 250045, -- Abyssal Immolator's Dreadrobe (Chimaerus in The Dreamrift or Matrix Catalyst)
+        [9] = 239648, -- Martyr's Bindings (Crafted by Tailoring)
+        [10] = 250043, -- Abyssal Immolator's Grasps (Vorasius in The Voidspire or Matrix Catalyst)
+        [6] = 249319, -- Endless March Waistwrap (Imperator Averzian in The Voidspire)
+        [7] = 250041, -- Abyssal Immolator's Pillars (Vaelgor and Ezzorak in The Voidspire or Matrix Catalyst)
+        [8] = 249305, -- Slippers of the Midnight Flame (Vaelgor and Ezzorak in The Voidspire)
+        [11] = 249920, -- Eye of Midnight (Midnight Falls in March on Quel'Danas)
+        [12] = 249336, -- Signet of the Starved Beast (Vorasius in The Voidspire)
+        [13] = 249346, -- Vaelgor's Final Stare (Vaelgor and Ezzorak in The Voidspire)
+        [14] = 249810, -- Shadow of the Empyrean Requiem (Midnight Falls in March on Quel'Danas)
     },
     WARRIOR_ARMS = {
+        [16] = 249296, -- Alah'endal, the Dawnsong (Midnight Falls in March on Quel'Danas)
+        [1] = 249952, -- Night Ender's Tusks (Lightblinded Vanguard in The Voidspire)
+        [2] = 249337, -- Ribbon of Coiled Malice (Fallen-King Salhadaar in The Voidspire)
+        [3] = 249950, -- Night Ender's Pauldrons (Fallen-King Salhadaar in The Voidspire)
+        [15] = 239656, -- Adherent's Silken Shroud (Crafted by Tailoring)
+        [5] = 249955, -- Night Ender's Breastplate (Chimaerus in The Dreamrift)
+        [9] = 237834, -- Spellbreaker's Bracers (Crafted by Blacksmithing)
+        [10] = 249307, -- Emberborn Grasps (Belo'ren in March on Quel'Danas)
+        [6] = 249949, -- Night Ender's Girdle (Matrix Catalyst)
+        [7] = 249951, -- Night Ender's Chausses (Vaelgor and Ezzorak in The Voidspire)
+        [8] = 249381, -- Greaves of the Unformed (Chimaerus in The Dreamrift)
+        [11] = 249920, -- Eye of Midnight (Midnight Falls in March on Quel'Danas)
+        [12] = 249919, -- Sin'dorei Band of Hope (Belo'ren in March on Quel'Danas)
+        [13] = 249343, -- Gaze of the Alnseer (Chimaerus in The Dreamrift)
+        [14] = 249342, -- Heart of Ancient Hunger (Vorasius in The Voidspire)
     },
     WARRIOR_FURY = {
+        [16] = 249277, -- Bellamy's Final Judgement (Lightblinded Vanguard in The Voidspire)
+        [17] = 237847, -- Blood Knight's Impetus (Crafted by Blacksmithing)
+        [1] = 249952, -- Night Ender's Tusks (Lightblinded Vanguard in The Voidspire)
+        [2] = 250247, -- Amulet of the Abyssal Hymn (Midnight Falls in March on Quel'Danas)
+        [3] = 249950, -- Night Ender's Pauldrons (Fallen-King Salhadaar in The Voidspire)
+        [15] = 249370, -- Draconic Nullcape (Vaelgor and Ezzorak in The Voidspire)
+        [5] = 249955, -- Night Ender's Breastplate (Chimaerus in The Dreamrift)
+        [9] = 237834, -- Spellbreaker's Bracers (Crafted by Blacksmithing)
         [10] = 251081, -- Embergrove Grasps (Windrunner Spire)
+        [6] = 249949, -- Night Ender's Girdle (Matrix Catalyst)
+        [7] = 249951, -- Night Ender's Chausses (Vaelgor and Ezzorak in The Voidspire)
+        [8] = 249954, -- Night Ender's Greatboots (Matrix Catalyst)
+        [11] = 249920, -- Eye of Midnight (Midnight Falls in March on Quel'Danas)
+        [12] = 249919, -- Sin'dorei Band of Hope (Belo'ren in March on Quel'Danas)
+        [13] = 249343, -- Gaze of the Alnseer (Chimaerus in The Dreamrift)
+        [14] = 249342, -- Heart of Ancient Hunger (Vorasius in The Voidspire)
     },
     WARRIOR_PROTECTION = {
+        [16] = 249295, -- Turalyon's False Echo (Crown of the Cosmos in The Voidspire)
+        [17] = 249275, -- Bulwark of Noble Resolve (Imperator Averzian in The Voidspire)
+        [1] = 249952, -- Night Ender's Tusks (Matrix Catalyst , or Lightblinded Vanguard in The Voidspire)
+        [2] = 249368, -- Eternal Voidsong Chain (Crown of the Cosmos in The Voidspire)
+        [3] = 249950, -- Night Ender's Pauldrons (Matrix Catalyst , or Fallen-King Salhadaar in The Voidspire)
+        [15] = 239656, -- Adherent's Silken Shroud (Crafted — Tailoring)
+        [5] = 249955, -- Night Ender's Breastplate (Matrix Catalyst , or Chimaerus in The Dreamrift)
+        [9] = 237834, -- Spellbreaker's Bracers (Crafted — Blacksmithing)
+        [10] = 249307, -- Emberborn Grasps (Belo'ren in March on Quel'Danas)
+        [6] = 249949, -- Night Ender's Girdle (Matrix Catalyst / Vaelgor and Ezzorak in The Voidspire)
+        [7] = 249951, -- Night Ender's Chausses (Matrix Catalyst , or Vaelgor and Ezzorak in The Voidspire)
+        [8] = 249954, -- Night Ender's Greatboots (Matrix Catalyst)
+        [11] = 249920, -- Eye of Midnight (Midnight Falls in March on Quel'Danas)
+        [12] = 249369, -- Bond of Light (Lightblinded Vanguard in The Voidspire)
+        [13] = 249343, -- Gaze of the Alnseer (Chimaerus in The Dreamrift)
+        [14] = 249806, -- Radiant Plume (Belo'ren in March on Quel'Danas)
     },
 }
 
@@ -1143,7 +1755,155 @@ NS.DUNGEON_LOOT = {
 -- Populated by: python scrape_loot.py --raids --output Data.lua
 -- ============================================================================
 NS.RAID_LOOT = {
-    -- Placeholder: will be populated when scrape_loot.py --raids runs
+    -- The Voidspire (99 items)
+    THE_VOIDSPIRE = {
+        { itemId = 249288, itemName = "Ranger-Captain's Lethal Recurve", boss = "Crown of the Cosmos" },
+        { itemId = 249295, itemName = "Turalyon's False Echo", boss = "Crown of the Cosmos" },
+        { itemId = 249309, itemName = "Sunbound Breastplate", boss = "Crown of the Cosmos" },
+        { itemId = 249312, itemName = "Nightblade's Pantaloons", boss = "Crown of the Cosmos" },
+        { itemId = 249325, itemName = "Untethered Berserker's Grips", boss = "Crown of the Cosmos" },
+        { itemId = 249368, itemName = "Eternal Voidsong Chain", boss = "Crown of the Cosmos" },
+        { itemId = 249380, itemName = "Hate-Tied Waistchain", boss = "Crown of the Cosmos" },
+        { itemId = 249382, itemName = "Canopy Walker's Footwraps", boss = "Crown of the Cosmos" },
+        { itemId = 249809, itemName = "Locus-Walker's Ribbon", boss = "Crown of the Cosmos" },
+        { itemId = 250247, itemName = "Amulet of the Abyssal Hymn", boss = "Crown of the Cosmos" },
+        { itemId = 260423, itemName = "Arator's Swift Remembrance", boss = "Crown of the Cosmos" },
+        { itemId = 249281, itemName = "Blade of the Final Twilight", boss = "Fallen-King Salhadaar" },
+        { itemId = 249304, itemName = "Fallen King's Cuffs", boss = "Fallen-King Salhadaar" },
+        { itemId = 249314, itemName = "Twisted Twilight Sash", boss = "Fallen-King Salhadaar" },
+        { itemId = 249337, itemName = "Ribbon of Coiled Malice", boss = "Fallen-King Salhadaar" },
+        { itemId = 249341, itemName = "Volatile Void Suffuser", boss = "Fallen-King Salhadaar" },
+        { itemId = 249950, itemName = "Night Ender's Pauldrons", boss = "Fallen-King Salhadaar" },
+        { itemId = 249959, itemName = "Luminant Verdict's Providence Watch", boss = "Fallen-King Salhadaar" },
+        { itemId = 249968, itemName = "Relentless Rider's Dreadthorns", boss = "Fallen-King Salhadaar" },
+        { itemId = 249977, itemName = "Tempests of the Primal Core", boss = "Fallen-King Salhadaar" },
+        { itemId = 249995, itemName = "Beacons of the Black Talon", boss = "Fallen-King Salhadaar" },
+        { itemId = 250004, itemName = "Venom Casks of the Grim Jest", boss = "Fallen-King Salhadaar" },
+        { itemId = 250013, itemName = "Aurastones of Ra-den's Chosen", boss = "Fallen-King Salhadaar" },
+        { itemId = 250022, itemName = "Seedpods of the Luminous Bloom", boss = "Fallen-King Salhadaar" },
+        { itemId = 250031, itemName = "Devouring Reaver's Exhaustplates", boss = "Fallen-King Salhadaar" },
+        { itemId = 250040, itemName = "Abyssal Immolator's Fury", boss = "Fallen-King Salhadaar" },
+        { itemId = 250049, itemName = "Blind Oath's Seraphguards", boss = "Fallen-King Salhadaar" },
+        { itemId = 250058, itemName = "Voidbreaker's Leyline Nexi", boss = "Fallen-King Salhadaar" },
+        { itemId = 249275, itemName = "Bulwark of Noble Resolve", boss = "Imperator Averzian" },
+        { itemId = 249279, itemName = "Sunstrike Rifle", boss = "Imperator Averzian" },
+        { itemId = 249293, itemName = "Weight of Command", boss = "Imperator Averzian" },
+        { itemId = 249306, itemName = "Devouring Night's Visage", boss = "Imperator Averzian" },
+        { itemId = 249313, itemName = "Light-Judged Spaulders", boss = "Imperator Averzian" },
+        { itemId = 249319, itemName = "Endless March Waistwrap", boss = "Imperator Averzian" },
+        { itemId = 249323, itemName = "Leggings of the Devouring Advance", boss = "Imperator Averzian" },
+        { itemId = 249334, itemName = "Void-Claimed Shinkickers", boss = "Imperator Averzian" },
+        { itemId = 249344, itemName = "Light Company Guidon", boss = "Imperator Averzian" },
+        { itemId = 244581, itemName = "Farstrider's Trophy Belt", boss = "Lightblinded Vanguard" },
+        { itemId = 249277, itemName = "Bellamy's Final Judgement", boss = "Lightblinded Vanguard" },
+        { itemId = 249294, itemName = "Blade of the Blind Verdict", boss = "Lightblinded Vanguard" },
+        { itemId = 249330, itemName = "War Chaplain's Grips", boss = "Lightblinded Vanguard" },
+        { itemId = 249369, itemName = "Bond of Light", boss = "Lightblinded Vanguard" },
+        { itemId = 249952, itemName = "Night Ender's Tusks", boss = "Lightblinded Vanguard" },
+        { itemId = 249961, itemName = "Luminant Verdict's Unwavering Gaze", boss = "Lightblinded Vanguard" },
+        { itemId = 249970, itemName = "Relentless Rider's Crown", boss = "Lightblinded Vanguard" },
+        { itemId = 249979, itemName = "Locus of the Primal Core", boss = "Lightblinded Vanguard" },
+        { itemId = 249988, itemName = "Primal Sentry's Maw", boss = "Lightblinded Vanguard" },
+        { itemId = 249997, itemName = "Hornhelm of the Black Talon", boss = "Lightblinded Vanguard" },
+        { itemId = 250006, itemName = "Masquerade of the Grim Jest", boss = "Lightblinded Vanguard" },
+        { itemId = 250015, itemName = "Fearsome Visage of Ra-den's Chosen", boss = "Lightblinded Vanguard" },
+        { itemId = 250020, itemName = "Bindings of the Luminous Bloom", boss = "Lightblinded Vanguard" },
+        { itemId = 250024, itemName = "Branches of the Luminous Bloom", boss = "Lightblinded Vanguard" },
+        { itemId = 250033, itemName = "Devouring Reaver's Intake", boss = "Lightblinded Vanguard" },
+        { itemId = 250042, itemName = "Abyssal Immolator's Smoldering Flames", boss = "Lightblinded Vanguard" },
+        { itemId = 250051, itemName = "Blind Oath's Winged Crest", boss = "Lightblinded Vanguard" },
+        { itemId = 250060, itemName = "Voidbreaker's Veil", boss = "Lightblinded Vanguard" },
+        { itemId = 249280, itemName = "Emblazoned Sunglaive", boss = "Vaelgor and Ezzorak" },
+        { itemId = 249287, itemName = "Clutchmates' Caress", boss = "Vaelgor and Ezzorak" },
+        { itemId = 249305, itemName = "Slippers of the Midnight Flame", boss = "Vaelgor and Ezzorak" },
+        { itemId = 249318, itemName = "Nullwalker's Dread Epaulettes", boss = "Vaelgor and Ezzorak" },
+        { itemId = 249321, itemName = "Vaelgor's Fearsome Grasp", boss = "Vaelgor and Ezzorak" },
+        { itemId = 249331, itemName = "Ezzorak's Gloombind", boss = "Vaelgor and Ezzorak" },
+        { itemId = 249335, itemName = "Imperator's Banner", boss = "Vaelgor and Ezzorak" },
+        { itemId = 249346, itemName = "Vaelgor's Final Stare", boss = "Vaelgor and Ezzorak" },
+        { itemId = 249370, itemName = "Draconic Nullcape", boss = "Vaelgor and Ezzorak" },
+        { itemId = 249810, itemName = "Shadow of the Empyrean Requiem", boss = "Vaelgor and Ezzorak" },
+        { itemId = 249949, itemName = "Night Ender's Girdle", boss = "Vaelgor and Ezzorak" },
+        { itemId = 249951, itemName = "Night Ender's Chausses", boss = "Vaelgor and Ezzorak" },
+        { itemId = 249960, itemName = "Luminant Verdict's Greaves", boss = "Vaelgor and Ezzorak" },
+        { itemId = 249969, itemName = "Relentless Rider's Legguards", boss = "Vaelgor and Ezzorak" },
+        { itemId = 249987, itemName = "Primal Sentry's Legguards", boss = "Vaelgor and Ezzorak" },
+        { itemId = 249996, itemName = "Greaves of the Black Talon", boss = "Vaelgor and Ezzorak" },
+        { itemId = 250005, itemName = "Blade Holsters of the Grim Jest", boss = "Vaelgor and Ezzorak" },
+        { itemId = 250014, itemName = "Swiftsweepers of Ra-den's Chosen", boss = "Vaelgor and Ezzorak" },
+        { itemId = 250023, itemName = "Phloemwraps of the Luminous Bloom", boss = "Vaelgor and Ezzorak" },
+        { itemId = 250032, itemName = "Devouring Reaver's Pistons", boss = "Vaelgor and Ezzorak" },
+        { itemId = 250041, itemName = "Abyssal Immolator's Pillars", boss = "Vaelgor and Ezzorak" },
+        { itemId = 250050, itemName = "Blind Oath's Leggings", boss = "Vaelgor and Ezzorak" },
+        { itemId = 250059, itemName = "Voidbreaker's Britches", boss = "Vaelgor and Ezzorak" },
+        { itemId = 249276, itemName = "Grimoire of the Eternal Light", boss = "Vorasius" },
+        { itemId = 249283, itemName = "Belo'melorn, the Shattered Talon", boss = "Vorasius" },
+        { itemId = 249315, itemName = "Voracious Wristwraps", boss = "Vorasius" },
+        { itemId = 249327, itemName = "Void-Skinned Bracers", boss = "Vorasius" },
+        { itemId = 249332, itemName = "Parasite Stompers", boss = "Vorasius" },
+        { itemId = 249336, itemName = "Signet of the Starved Beast", boss = "Vorasius" },
+        { itemId = 249342, itemName = "Heart of Ancient Hunger", boss = "Vorasius" },
+        { itemId = 249925, itemName = "Hungering Victory", boss = "Vorasius" },
+        { itemId = 249962, itemName = "Luminant Verdict's Gauntlets", boss = "Vorasius" },
+        { itemId = 249971, itemName = "Relentless Rider's Bonegrasps", boss = "Vorasius" },
+        { itemId = 249980, itemName = "Earthgrips of the Primal Core", boss = "Vorasius" },
+        { itemId = 249989, itemName = "Primal Sentry's Talonguards", boss = "Vorasius" },
+        { itemId = 249998, itemName = "Enforcer's Grips of the Black Talon", boss = "Vorasius" },
+        { itemId = 250007, itemName = "Sleight of Hand of the Grim Jest", boss = "Vorasius" },
+        { itemId = 250016, itemName = "Thunderfists of Ra-den's Chosen", boss = "Vorasius" },
+        { itemId = 250025, itemName = "Arbortenders of the Luminous Bloom", boss = "Vorasius" },
+        { itemId = 250034, itemName = "Devouring Reaver's Essence Grips", boss = "Vorasius" },
+        { itemId = 250043, itemName = "Abyssal Immolator's Grasps", boss = "Vorasius" },
+        { itemId = 250052, itemName = "Blind Oath's Touch", boss = "Vorasius" },
+        { itemId = 250061, itemName = "Voidbreaker's Gloves", boss = "Vorasius" },
+    },
+    -- The Dreamrift (20 items)
+    THE_DREAMRIFT = {
+        { itemId = 249278, itemName = "Alnscorned Spire", boss = "Chimaerus" },
+        { itemId = 249343, itemName = "Gaze of the Alnseer", boss = "Chimaerus" },
+        { itemId = 249371, itemName = "Scornbane Waistguard", boss = "Chimaerus" },
+        { itemId = 249373, itemName = "Dream-Scorched Striders", boss = "Chimaerus" },
+        { itemId = 249374, itemName = "Scorn-Scarred Shul'ka's Belt", boss = "Chimaerus" },
+        { itemId = 249381, itemName = "Greaves of the Unformed", boss = "Chimaerus" },
+        { itemId = 249922, itemName = "Tome of Alnscorned Regret", boss = "Chimaerus" },
+        { itemId = 249955, itemName = "Night Ender's Breastplate", boss = "Chimaerus" },
+        { itemId = 249964, itemName = "Luminant Verdict's Divine Warplate", boss = "Chimaerus" },
+        { itemId = 249973, itemName = "Relentless Rider's Cuirass", boss = "Chimaerus" },
+        { itemId = 249982, itemName = "Embrace of the Primal Core", boss = "Chimaerus" },
+        { itemId = 249991, itemName = "Primal Sentry's Scaleplate", boss = "Chimaerus" },
+        { itemId = 250000, itemName = "Frenzyward of the Black Talon", boss = "Chimaerus" },
+        { itemId = 250009, itemName = "Fantastic Finery of the Grim Jest", boss = "Chimaerus" },
+        { itemId = 250018, itemName = "Battle Garb of Ra-den's Chosen", boss = "Chimaerus" },
+        { itemId = 250027, itemName = "Trunk of the Luminous Bloom", boss = "Chimaerus" },
+        { itemId = 250036, itemName = "Devouring Reaver's Engine", boss = "Chimaerus" },
+        { itemId = 250045, itemName = "Abyssal Immolator's Dreadrobe", boss = "Chimaerus" },
+        { itemId = 250054, itemName = "Blind Oath's Raiment", boss = "Chimaerus" },
+        { itemId = 250063, itemName = "Voidbreaker's Robe", boss = "Chimaerus" },
+    },
+    -- March on Quel'Danas (21 items)
+    MARCH_ON_QUELDANAS = {
+        { itemId = 249284, itemName = "Belo'ren's Swift Talon", boss = "Belo'ren" },
+        { itemId = 249307, itemName = "Emberborn Grasps", boss = "Belo'ren" },
+        { itemId = 249322, itemName = "Radiant Clutchtender's Jerkin", boss = "Belo'ren" },
+        { itemId = 249324, itemName = "Eternal Flame Scaleguards", boss = "Belo'ren" },
+        { itemId = 249328, itemName = "Echoing Void Mantle", boss = "Belo'ren" },
+        { itemId = 249376, itemName = "Whisper-Inscribed Sash", boss = "Belo'ren" },
+        { itemId = 249377, itemName = "Darkstrider Treads", boss = "Belo'ren" },
+        { itemId = 249806, itemName = "Radiant Plume", boss = "Belo'ren" },
+        { itemId = 249807, itemName = "The Eternal Egg", boss = "Belo'ren" },
+        { itemId = 249919, itemName = "Sin'dorei Band of Hope", boss = "Belo'ren" },
+        { itemId = 249921, itemName = "Thalassian Dawnguard", boss = "Belo'ren" },
+        { itemId = 260235, itemName = "Umbral Plume", boss = "Belo'ren" },
+        { itemId = 249286, itemName = "Brazier of the Dissonant Dirge", boss = "Midnight Falls" },
+        { itemId = 249296, itemName = "Alah'endal, the Dawnsong", boss = "Midnight Falls" },
+        { itemId = 249302, itemName = "Inescapable Reach", boss = "Midnight Falls" },
+        { itemId = 249912, itemName = "Robes of Endless Oblivion", boss = "Midnight Falls" },
+        { itemId = 249913, itemName = "Mask of Darkest Intent", boss = "Midnight Falls" },
+        { itemId = 249914, itemName = "Oblivion Guise", boss = "Midnight Falls" },
+        { itemId = 249915, itemName = "Extinction Guards", boss = "Midnight Falls" },
+        { itemId = 249920, itemName = "Eye of Midnight", boss = "Midnight Falls" },
+        { itemId = 260408, itemName = "Lightless Lament", boss = "Midnight Falls" },
+    },
 }
 
 -- ============================================================================

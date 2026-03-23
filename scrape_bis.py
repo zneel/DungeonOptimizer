@@ -335,6 +335,18 @@ def parse_table_element(table_el, warn_unknown_slots=True) -> dict:
     return items
 
 
+def _classify_tab(text):
+    """Classify a tab button label as overall/mythic/raid."""
+    t = text.lower()
+    if "mythic" in t or "m+" in t:
+        return "mythic"
+    if "raid" in t:
+        return "raid"
+    if "overall" in t:
+        return "overall"
+    return None
+
+
 def parse_page(html: str, quiet: bool = False) -> dict:
     """
     Parse a full Icy Veins BIS page.
@@ -343,47 +355,75 @@ def parse_page(html: str, quiet: bool = False) -> dict:
     soup = BeautifulSoup(html, "html.parser")
     result = {}
 
-    # Find section headers to identify which table is which
-    headings = soup.find_all(["h2", "h3"])
-    table_sections = []
+    # Strategy 1: Tab-based structure (area_N_button / area_N divs)
+    tab_buttons = soup.find_all("span", id=re.compile(r"^area_\d+_button$"))
+    if tab_buttons:
+        for btn in tab_buttons:
+            label = btn.get_text(strip=True)
+            section = _classify_tab(label)
+            if not section:
+                # First unclassified tab defaults to "overall"
+                if "overall" not in result:
+                    section = "overall"
+                else:
+                    continue
+            # Skip if we already have this section (take first match only)
+            if section in result:
+                continue
 
-    for h in headings:
-        text = h.get_text(strip=True).lower()
-        if "mythic" in text and ("bis" in text or "gear" in text):
-            table_sections.append(("mythic", h))
-        elif "raid" in text and ("bis" in text or "gear" in text):
-            table_sections.append(("raid", h))
-        elif "overall" in text and "bis" in text:
-            table_sections.append(("overall", h))
-        elif "bis list for" in text and "mythic" not in text and "raid" not in text:
-            table_sections.append(("overall", h))
+            # Extract the area number and find the matching content div
+            area_id = btn.get("id", "").replace("_button", "")  # "area_1"
+            content_div = soup.find("div", id=area_id)
+            if not content_div:
+                continue
 
-    # Map each section to its following table
-    all_tables = soup.find_all("table")
+            table_el = content_div.find("table")
+            if table_el:
+                items = parse_table_element(table_el, warn_unknown_slots=not quiet)
+                if items:
+                    result[section] = items
 
-    for section_name, heading in table_sections:
-        next_el = heading.parent
-        while next_el:
-            next_el = next_el.find_next_sibling()
-            if not next_el:
-                next_el = heading.parent.find_next_sibling()
-                break
-            if next_el.name == "table":
-                break
-            table_in = next_el.find("table") if next_el else None
-            if table_in:
-                next_el = table_in
-                break
+    # Strategy 2: Heading-based structure (h2/h3 with keywords)
+    if not result:
+        headings = soup.find_all(["h2", "h3"])
+        table_sections = []
 
-        if next_el and next_el.name == "table":
-            result[section_name] = parse_table_element(next_el, warn_unknown_slots=not quiet)
+        for h in headings:
+            text = h.get_text(strip=True).lower()
+            if "mythic" in text and ("bis" in text or "gear" in text):
+                table_sections.append(("mythic", h))
+            elif "raid" in text and ("bis" in text or "gear" in text):
+                table_sections.append(("raid", h))
+            elif "overall" in text and "bis" in text:
+                table_sections.append(("overall", h))
+            elif "bis list for" in text and "mythic" not in text and "raid" not in text:
+                table_sections.append(("overall", h))
 
-    # Fallback: if we didn't find section headers, use table order
-    if not result and len(all_tables) >= 1:
-        labels = ["overall", "mythic", "raid"]
-        for i, table_el in enumerate(all_tables[:3]):
-            if i < len(labels):
-                result[labels[i]] = parse_table_element(table_el, warn_unknown_slots=not quiet)
+        for section_name, heading in table_sections:
+            next_el = heading.parent
+            while next_el:
+                next_el = next_el.find_next_sibling()
+                if not next_el:
+                    next_el = heading.parent.find_next_sibling()
+                    break
+                if next_el.name == "table":
+                    break
+                table_in = next_el.find("table") if next_el else None
+                if table_in:
+                    next_el = table_in
+                    break
+
+            if next_el and next_el.name == "table":
+                result[section_name] = parse_table_element(next_el, warn_unknown_slots=not quiet)
+
+    # Fallback: if nothing found, use table order
+    if not result:
+        all_tables = soup.find_all("table")
+        if len(all_tables) >= 1:
+            labels = ["overall", "mythic", "raid"]
+            for i, table_el in enumerate(all_tables[:3]):
+                if i < len(labels):
+                    result[labels[i]] = parse_table_element(table_el, warn_unknown_slots=not quiet)
 
     return result
 
@@ -507,6 +547,8 @@ def main():
     parser.add_argument("--delay", type=float, default=2.0, help="Delay between requests (seconds)")
     parser.add_argument("--json", action="store_true", help="Output as JSON instead of Lua")
     parser.add_argument("--quiet", action="store_true", help="Suppress warnings about unknown slot names")
+    parser.add_argument("--playwright", action="store_true",
+                        help="Use Playwright for fetching (handles JS rendering)")
     args = parser.parse_args()
 
     all_data = {}
@@ -539,12 +581,19 @@ def main():
         # Fetch live
         if html is None:
             try:
-                html = fetch_page(slug)
+                url = f"https://www.icy-veins.com/wow/{slug}-gear-best-in-slot"
+                if args.playwright:
+                    from fetch_playwright import fetch_page_sync
+                    print(f"  Fetching {url} (Playwright)...", file=sys.stderr)
+                    html = fetch_page_sync(url)
+                else:
+                    html = fetch_page(slug)
                 if args.save_html:
                     save_dir = Path(args.save_html)
                     save_dir.mkdir(parents=True, exist_ok=True)
                     (save_dir / f"{slug}.html").write_text(html, encoding="utf-8")
-                time.sleep(args.delay)
+                if not args.playwright:
+                    time.sleep(args.delay)
             except Exception as e:
                 print(f"  ERROR: {e}", file=sys.stderr)
                 continue

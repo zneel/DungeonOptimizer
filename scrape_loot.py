@@ -80,9 +80,17 @@ DUNGEONS = {
 # RAID DEFINITIONS
 # ============================================================================
 RAIDS = {
-    "LIBERATION_OF_UNDERMINE": {
-        "name": "Liberation of Undermine",
-        "slug": "liberation-of-undermine",
+    "THE_VOIDSPIRE": {
+        "name": "The Voidspire",
+        "slug": "the-voidspire",
+    },
+    "THE_DREAMRIFT": {
+        "name": "The Dreamrift",
+        "slug": "the-dreamrift",
+    },
+    "MARCH_ON_QUELDANAS": {
+        "name": "March on Quel'Danas",
+        "slug": "march-on-queldanas",
     },
 }
 
@@ -394,16 +402,27 @@ def scrape_content(definitions, content_type, args):
         if html is None:
             try:
                 if content_type == "raid":
-                    html = fetch_raid_page(info["slug"])
+                    url = f"https://www.icy-veins.com/wow/{info['slug']}-loot"
                     save_suffix = f"{info['slug']}-loot.html"
                 else:
-                    html = fetch_dungeon_page(info["slug"])
+                    url = f"https://www.icy-veins.com/wow/{info['slug']}-dungeon-guide"
                     save_suffix = f"{info['slug']}-dungeon-guide.html"
+
+                if args.playwright:
+                    from fetch_playwright import fetch_page_sync
+                    print(f"  Fetching {url} (Playwright)...", file=sys.stderr)
+                    html = fetch_page_sync(url)
+                elif content_type == "raid":
+                    html = fetch_raid_page(info["slug"])
+                else:
+                    html = fetch_dungeon_page(info["slug"])
+
                 if args.save_html:
                     save_dir = Path(args.save_html)
                     save_dir.mkdir(parents=True, exist_ok=True)
                     (save_dir / save_suffix).write_text(html, encoding="utf-8")
-                time.sleep(args.delay)
+                if not args.playwright:
+                    time.sleep(args.delay)
             except Exception as e:
                 print(f"  ERROR: {e}", file=sys.stderr)
                 continue
@@ -464,6 +483,8 @@ def main():
     parser.add_argument("--delay", type=float, default=2.0,
                         help="Delay between requests (seconds)")
     parser.add_argument("--json", action="store_true", help="JSON output")
+    parser.add_argument("--playwright", action="store_true",
+                        help="Use Playwright for fetching (handles JS rendering)")
 
     args = parser.parse_args()
 
