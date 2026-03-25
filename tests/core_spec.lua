@@ -43,6 +43,8 @@ local function resetState()
             excludedDungeons = {},
             showTooltips = true,
             weightByScore = false,
+            upgradeScoring = false,
+            targetKeyLevel = 10,
             offSpec = nil,
             activeTab = "mplus",
         },
@@ -1740,5 +1742,272 @@ describe("GetCurrentAffixes", function()
         local affixes1 = Core:GetCurrentAffixes()
         local affixes2 = Core:GetCurrentAffixes()
         assert.are.equal(affixes1, affixes2) -- same cached table
+    end)
+end)
+
+-- ============================================================================
+-- #43: PlayerNeedsItemUpgrade
+-- ============================================================================
+describe("PlayerNeedsItemUpgrade", function()
+    local origBIS
+
+    before_each(function()
+        resetState()
+        origBIS = NS.BIS_MYTHIC
+        Core.db.profile.upgradeScoring = true
+        _G.C_MythicPlus = {
+            GetRewardLevelFromKeystoneLevel = function(keyLevel)
+                -- Simple linear model: key 2 = 616, key 10 = 640, key 15 = 655
+                return 610 + keyLevel * 3
+            end,
+        }
+    end)
+
+    after_each(function()
+        NS.BIS_MYTHIC = origBIS
+        stub.resetStubs()
+    end)
+
+    it("returns upgrade when equipped ilvl is lower than reward", function()
+        NS.BIS_MYTHIC = { WARRIOR_ARMS = { [16] = 100 } }
+        local player = makePlayer("WARRIOR_ARMS", { [16] = 100 }, {
+            name = "Player", ilvls = { [16] = 620 },
+        })
+        -- Key 10 rewards 640, equipped 620 => delta 20
+        local isUpgrade, score, curIlvl, targetIlvl, slot =
+            Core:PlayerNeedsItemUpgrade(player, 100, 10)
+        assert.is_true(isUpgrade)
+        assert.is_true(score > 0)
+        assert.are.equal(620, curIlvl)
+        assert.are.equal(640, targetIlvl)
+        assert.are.equal(16, slot)
+    end)
+
+    it("returns false when equipped ilvl >= reward", function()
+        NS.BIS_MYTHIC = { WARRIOR_ARMS = { [16] = 100 } }
+        local player = makePlayer("WARRIOR_ARMS", { [16] = 100 }, {
+            name = "Player", ilvls = { [16] = 650 },
+        })
+        -- Key 10 rewards 640, equipped 650 => no upgrade
+        local isUpgrade = Core:PlayerNeedsItemUpgrade(player, 100, 10)
+        assert.is_false(isUpgrade)
+    end)
+
+    it("returns false when upgradeScoring is disabled", function()
+        Core.db.profile.upgradeScoring = false
+        NS.BIS_MYTHIC = { WARRIOR_ARMS = { [16] = 100 } }
+        local player = makePlayer("WARRIOR_ARMS", { [16] = 100 }, {
+            name = "Player", ilvls = { [16] = 600 },
+        })
+        local isUpgrade = Core:PlayerNeedsItemUpgrade(player, 100, 10)
+        assert.is_false(isUpgrade)
+    end)
+
+    it("returns false when ilvl data is missing", function()
+        NS.BIS_MYTHIC = { WARRIOR_ARMS = { [16] = 100 } }
+        local player = makePlayer("WARRIOR_ARMS", { [16] = 100 }, { name = "Player" })
+        local isUpgrade = Core:PlayerNeedsItemUpgrade(player, 100, 10)
+        assert.is_false(isUpgrade)
+    end)
+
+    it("returns false when item is not in BIS list", function()
+        NS.BIS_MYTHIC = { WARRIOR_ARMS = { [16] = 100 } }
+        local player = makePlayer("WARRIOR_ARMS", { [16] = 100 }, {
+            name = "Player", ilvls = { [16] = 600 },
+        })
+        local isUpgrade = Core:PlayerNeedsItemUpgrade(player, 999, 10)
+        assert.is_false(isUpgrade)
+    end)
+
+    it("picks the slot with the largest delta for duplicate items", function()
+        NS.BIS_MYTHIC = { MAGE_FROST = { [11] = 500, [12] = 500 } }
+        local player = makePlayer("MAGE_FROST", { [11] = 500, [12] = 500 }, {
+            name = "Player", class = "MAGE",
+            ilvls = { [11] = 635, [12] = 610 },
+        })
+        -- Key 10 rewards 640; slot 11 delta = 5, slot 12 delta = 30
+        local isUpgrade, score, curIlvl, targetIlvl, slot =
+            Core:PlayerNeedsItemUpgrade(player, 500, 10)
+        assert.is_true(isUpgrade)
+        assert.are.equal(12, slot) -- picks the larger delta
+        assert.are.equal(610, curIlvl)
+    end)
+
+    it("caps score at BASE_WEIGHT for very large deltas", function()
+        NS.BIS_MYTHIC = { WARRIOR_ARMS = { [16] = 100 } }
+        local player = makePlayer("WARRIOR_ARMS", { [16] = 100 }, {
+            name = "Player", ilvls = { [16] = 500 },
+        })
+        -- Key 15 rewards 655, equipped 500 => delta 155 >> 26
+        local _, score = Core:PlayerNeedsItemUpgrade(player, 100, 15)
+        assert.are.equal(0.6, score) -- capped at max
+    end)
+end)
+
+-- ============================================================================
+-- #43: ScoreContent with upgrade scoring
+-- ============================================================================
+describe("ScoreContent with upgrades", function()
+    local origLoot, origBIS
+
+    before_each(function()
+        resetState()
+        origLoot = NS.DUNGEON_LOOT
+        origBIS = NS.BIS_MYTHIC
+        Core.db.profile.upgradeScoring = true
+        _G.C_MythicPlus = {
+            GetRewardLevelFromKeystoneLevel = function(keyLevel)
+                return 610 + keyLevel * 3
+            end,
+            GetOwnedKeystoneChallengeMapID = function() return nil end,
+            GetOwnedKeystoneLevel = function() return nil end,
+        }
+        NS.DUNGEON_LOOT = {
+            TEST_DUNGEON = {
+                { itemId = 100, itemName = "Sword", boss = "Boss A" },
+                { itemId = 200, itemName = "Shield", boss = "Boss B" },
+            },
+        }
+    end)
+
+    after_each(function()
+        NS.DUNGEON_LOOT = origLoot
+        NS.BIS_MYTHIC = origBIS
+        stub.resetStubs()
+    end)
+
+    it("includes upgrade items in score as fractional value", function()
+        NS.BIS_MYTHIC = { WARRIOR_ARMS = { [16] = 100, [17] = 200 } }
+        -- Player has item 100 at low ilvl, missing item 200
+        NS.groupData = {
+            ["Player-Realm"] = makePlayer("WARRIOR_ARMS", { [16] = 100 }, {
+                name = "Player", ilvls = { [16] = 620 },
+            }),
+        }
+        local score, details = Core:ScoreContent(
+            NS.DUNGEON_LOOT.TEST_DUNGEON, NS.BIS_MYTHIC,
+            { targetKeyLevel = 10 }
+        )
+        -- 1.0 for missing item 200, plus fractional for upgrade on item 100
+        assert.is_true(score > 1.0)
+        assert.is_true(score < 2.0)
+        local pd = details["Player-Realm"]
+        assert.are.equal(1, pd.mainSpecCount)
+        assert.are.equal(1, pd.upgradeCount)
+    end)
+
+    it("missing items score higher than upgradeable items", function()
+        NS.BIS_MYTHIC = { WARRIOR_ARMS = { [16] = 100 } }
+        -- Player A: missing item entirely
+        -- Player B: has item but at low ilvl
+        NS.groupData = {
+            ["Missing-Realm"] = makePlayer("WARRIOR_ARMS", {}, { name = "Missing" }),
+            ["Upgrade-Realm"] = makePlayer("WARRIOR_ARMS", { [16] = 100 }, {
+                name = "Upgrade", ilvls = { [16] = 600 },
+            }),
+        }
+        local _, details = Core:ScoreContent(
+            NS.DUNGEON_LOOT.TEST_DUNGEON, NS.BIS_MYTHIC,
+            { targetKeyLevel = 10 }
+        )
+        -- Missing should contribute more than upgrade
+        local missingScore = details["Missing-Realm"].mainSpecCount
+        local upgradeScore = 0
+        for _, item in ipairs(details["Upgrade-Realm"].needed) do
+            if item.isUpgrade then upgradeScore = upgradeScore + item.upgradeScore end
+        end
+        assert.is_true(missingScore > upgradeScore)
+    end)
+
+    it("does not include upgrades when scoring is disabled", function()
+        Core.db.profile.upgradeScoring = false
+        NS.BIS_MYTHIC = { WARRIOR_ARMS = { [16] = 100 } }
+        NS.groupData = {
+            ["Player-Realm"] = makePlayer("WARRIOR_ARMS", { [16] = 100 }, {
+                name = "Player", ilvls = { [16] = 600 },
+            }),
+        }
+        local score, details = Core:ScoreContent(
+            NS.DUNGEON_LOOT.TEST_DUNGEON, NS.BIS_MYTHIC,
+            { targetKeyLevel = 10 }
+        )
+        assert.are.equal(0, score)
+        assert.are.equal(0, details["Player-Realm"].upgradeCount)
+    end)
+end)
+
+-- ============================================================================
+-- #43: GetTargetKeyLevel
+-- ============================================================================
+describe("GetTargetKeyLevel", function()
+    before_each(function()
+        resetState()
+        NS.CHALLENGE_MODE_MAP = { [2773] = "MAGISTER", [2774] = "MAISARA" }
+        _G.C_MythicPlus = {
+            GetOwnedKeystoneChallengeMapID = function() return nil end,
+            GetOwnedKeystoneLevel = function() return nil end,
+        }
+    end)
+    after_each(stub.resetStubs)
+
+    it("returns saved setting as fallback", function()
+        Core.db.profile.targetKeyLevel = 12
+        assert.are.equal(12, Core:GetTargetKeyLevel("MAGISTER"))
+    end)
+
+    it("returns party keystone level when available", function()
+        NS.partyKeystones = {
+            ["Friend-Realm"] = { mapID = 2773, level = 15 },
+        }
+        assert.are.equal(15, Core:GetTargetKeyLevel("MAGISTER"))
+    end)
+
+    it("returns fallback when party key is for different dungeon", function()
+        Core.db.profile.targetKeyLevel = 8
+        NS.partyKeystones = {
+            ["Friend-Realm"] = { mapID = 2774, level = 15 },
+        }
+        assert.are.equal(8, Core:GetTargetKeyLevel("MAGISTER"))
+    end)
+
+    it("returns own keystone level for matching dungeon", function()
+        _G.C_MythicPlus = {
+            GetOwnedKeystoneChallengeMapID = function() return 2773 end,
+            GetOwnedKeystoneLevel = function() return 11 end,
+        }
+        _G.C_ChallengeMode = {
+            GetMapUIInfo = function() return "Magisters' Terrace" end,
+        }
+        assert.are.equal(11, Core:GetTargetKeyLevel("MAGISTER"))
+    end)
+end)
+
+-- ============================================================================
+-- #43: GetRewardIlvlForKey
+-- ============================================================================
+describe("GetRewardIlvlForKey", function()
+    before_each(resetState)
+    after_each(stub.resetStubs)
+
+    it("prefers GetRewardLevelForDifficultyLevel end-of-run ilvl", function()
+        _G.C_MythicPlus = {
+            GetRewardLevelForDifficultyLevel = function(key)
+                return 650 + key * 3, 610 + key * 3  -- weekly, endOfRun
+            end,
+            GetRewardLevelFromKeystoneLevel = function(key) return 999 end, -- should not be used
+        }
+        assert.are.equal(640, Core:GetRewardIlvlForKey(10)) -- endOfRun value
+    end)
+
+    it("falls back to GetRewardLevelFromKeystoneLevel", function()
+        _G.C_MythicPlus = {
+            GetRewardLevelFromKeystoneLevel = function(key) return 610 + key * 3 end,
+        }
+        assert.are.equal(640, Core:GetRewardIlvlForKey(10))
+    end)
+
+    it("returns nil when API unavailable", function()
+        _G.C_MythicPlus = nil
+        assert.is_nil(Core:GetRewardIlvlForKey(10))
     end)
 end)

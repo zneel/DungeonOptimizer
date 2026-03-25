@@ -53,6 +53,11 @@ local L = {
     ["OFF_SPEC_TAG"] = "[OS]",
     ["OFF_SPEC_RESET"] = "Off-spec reset (now your active spec).",
 
+    -- Upgrades (#43)
+    ["UPGRADE_TAG"] = "[UPG]",
+    ["UPGRADE_SCORING_LABEL"] = "Upgrades",
+    ["TARGET_KEY_LABEL"] = "Target Key",
+
     -- Tabs
     ["TAB_MPLUS"] = "Mythic+",
     ["TAB_RAID"] = "Raid",
@@ -136,6 +141,11 @@ local frFR = {
     ["OFF_SPEC_NONE"] = "Aucune",
     ["OFF_SPEC_TAG"] = "[OS]",
     ["OFF_SPEC_RESET"] = "Off-spec r\195\169initialis\195\169e (c'est maintenant votre spec active).",
+
+    -- Upgrades (#43)
+    ["UPGRADE_TAG"] = "[UPG]",
+    ["UPGRADE_SCORING_LABEL"] = "Upgrades",
+    ["TARGET_KEY_LABEL"] = "Cl\195\169 cible",
 
     ["TAB_MPLUS"] = "Mythic+",
     ["TAB_RAID"] = "Raid",

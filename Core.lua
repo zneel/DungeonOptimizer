@@ -25,6 +25,8 @@ local defaults = {
         excludedDungeons = {},
         showTooltips = true,
         weightByScore = true, -- #20: factor M+ score into recommendations
+        upgradeScoring = true, -- #43: factor ilvl upgrades into scoring
+        targetKeyLevel = 10, -- #43: fallback target M+ key level
         offSpec = nil, -- off-spec key (e.g. "WARRIOR_FURY"), nil if disabled
         activeTab = "mplus", -- "mplus" or "raid"
     },
@@ -510,16 +512,56 @@ end
 -- #25: MINIMUM KEY LEVEL FOR UPGRADE
 -- ============================================================================
 function DungeonOptimizer:GetMinKeyForUpgrade(currentIlvl)
-    if not C_MythicPlus or not C_MythicPlus.GetRewardLevelFromKeystoneLevel then
-        return nil
-    end
     for keyLevel = 2, 20 do
-        local rewardIlvl = C_MythicPlus.GetRewardLevelFromKeystoneLevel(keyLevel)
+        local rewardIlvl = self:GetRewardIlvlForKey(keyLevel)
         if rewardIlvl and rewardIlvl > currentIlvl then
             return keyLevel
         end
     end
     return nil
+end
+
+-- ============================================================================
+-- #43: REWARD ILVL FOR A KEY LEVEL
+-- ============================================================================
+function DungeonOptimizer:GetRewardIlvlForKey(keyLevel)
+    if not C_MythicPlus then return nil end
+    -- Prefer GetRewardLevelForDifficultyLevel: returns both weekly and end-of-run ilvl
+    if C_MythicPlus.GetRewardLevelForDifficultyLevel then
+        local _, endOfRunIlvl = C_MythicPlus.GetRewardLevelForDifficultyLevel(keyLevel)
+        if endOfRunIlvl then return endOfRunIlvl end
+    end
+    -- Fallback to older API
+    if C_MythicPlus.GetRewardLevelFromKeystoneLevel then
+        return C_MythicPlus.GetRewardLevelFromKeystoneLevel(keyLevel)
+    end
+    return nil
+end
+
+-- ============================================================================
+-- #43: TARGET KEY LEVEL (auto from party keys, fallback to saved setting)
+-- ============================================================================
+function DungeonOptimizer:GetTargetKeyLevel(dungeonKey)
+    -- Check party keystones for this dungeon
+    if dungeonKey and NS.partyKeystones then
+        for _, keyData in pairs(NS.partyKeystones) do
+            local kDungeonKey = NS.CHALLENGE_MODE_MAP and NS.CHALLENGE_MODE_MAP[keyData.mapID]
+            if kDungeonKey == dungeonKey then
+                return keyData.level
+            end
+        end
+    end
+    -- Check own keystone
+    if dungeonKey then
+        local myKey = self:GetOwnKeystone()
+        if myKey then
+            local myDungeonKey = NS.CHALLENGE_MODE_MAP and NS.CHALLENGE_MODE_MAP[myKey.mapID]
+            if myDungeonKey == dungeonKey then
+                return myKey.level
+            end
+        end
+    end
+    return self.db.profile.targetKeyLevel or 10
 end
 
 -- ============================================================================
@@ -892,6 +934,52 @@ function DungeonOptimizer:PlayerNeedsItemForOffSpec(playerData, itemId, bisTable
     return true
 end
 
+-- ============================================================================
+-- #43: CHECK IF PLAYER COULD UPGRADE AN EXISTING BIS ITEM VIA HIGHER KEY
+-- Returns: isUpgrade, score, currentIlvl, targetIlvl, slot
+-- ============================================================================
+local UPGRADE_BASE_WEIGHT = 0.6
+local UPGRADE_MAX_DELTA = 26
+
+function DungeonOptimizer:PlayerNeedsItemUpgrade(playerData, itemId, targetKeyLevel, bisTable)
+    if not playerData or not playerData.spec or not playerData.ilvls then
+        return false, 0, nil, nil, nil
+    end
+    if not self.db.profile.upgradeScoring then
+        return false, 0, nil, nil, nil
+    end
+
+    bisTable = bisTable or NS.GetActiveBISTable()
+    local bisList = bisTable[playerData.spec]
+    if not bisList then return false, 0, nil, nil, nil end
+
+    local targetIlvl = self:GetRewardIlvlForKey(targetKeyLevel)
+    if not targetIlvl then return false, 0, nil, nil, nil end
+
+    -- Find the BIS slot(s) for this item and pick the one with the biggest delta
+    local bestDelta = 0
+    local bestSlot = nil
+    local bestCurrentIlvl = nil
+    for slot, bisItemId in pairs(bisList) do
+        if bisItemId == itemId and playerData.ilvls[slot] then
+            local equippedIlvl = playerData.ilvls[slot]
+            local delta = targetIlvl - equippedIlvl
+            if delta > bestDelta then
+                bestDelta = delta
+                bestSlot = slot
+                bestCurrentIlvl = equippedIlvl
+            end
+        end
+    end
+
+    if bestDelta <= 0 then
+        return false, 0, nil, nil, nil
+    end
+
+    local score = UPGRADE_BASE_WEIGHT * math.min(bestDelta / UPGRADE_MAX_DELTA, 1.0)
+    return true, score, bestCurrentIlvl, targetIlvl, bestSlot
+end
+
 function DungeonOptimizer:CountMissingBIS(playerData, bisTable)
     if not playerData or not playerData.spec then return 0, 0, 0, 0 end
 
@@ -943,8 +1031,11 @@ end
 -- ============================================================================
 -- Generic content scoring: scores a loot table against a BIS table for all
 -- group members. Used by ScoreDungeon, ScoreRaid, and ScoreOverallContent.
-function DungeonOptimizer:ScoreContent(lootTable, bisTable)
+function DungeonOptimizer:ScoreContent(lootTable, bisTable, opts)
     if not lootTable then return 0, {} end
+
+    opts = opts or {}
+    local targetKeyLevel = opts.targetKeyLevel or self:GetTargetKeyLevel(opts.dungeonKey)
 
     local totalScore = 0
     local playerDetails = {}
@@ -953,19 +1044,42 @@ function DungeonOptimizer:ScoreContent(lootTable, bisTable)
         local needed = {}
         local seenItems = {}
         local offSpecCount = 0
+        local upgradeCount = 0
 
         -- Main-spec items
         for _, drop in ipairs(lootTable) do
-            if not seenItems[drop.itemId] and self:PlayerNeedsItem(playerData, drop.itemId, bisTable) then
-                seenItems[drop.itemId] = true
-                local bisSlot = NS.FindBISSlot(playerData.spec, drop.itemId, bisTable)
-                table.insert(needed, {
-                    itemId = drop.itemId,
-                    slot = bisSlot,
-                    itemName = drop.itemName or ("Item " .. drop.itemId),
-                    slotName = NS.SLOT_NAMES[bisSlot] or "?",
-                    boss = drop.boss or "",
-                })
+            if not seenItems[drop.itemId] then
+                if self:PlayerNeedsItem(playerData, drop.itemId, bisTable) then
+                    -- Missing BIS item
+                    seenItems[drop.itemId] = true
+                    local bisSlot = NS.FindBISSlot(playerData.spec, drop.itemId, bisTable)
+                    table.insert(needed, {
+                        itemId = drop.itemId,
+                        slot = bisSlot,
+                        itemName = drop.itemName or ("Item " .. drop.itemId),
+                        slotName = NS.SLOT_NAMES[bisSlot] or "?",
+                        boss = drop.boss or "",
+                    })
+                else
+                    -- #43: Check for ilvl upgrade on already-owned BIS item
+                    local isUpgrade, upgradeScore, currentIlvl, targetIlvl, upgradeSlot =
+                        self:PlayerNeedsItemUpgrade(playerData, drop.itemId, targetKeyLevel, bisTable)
+                    if isUpgrade then
+                        seenItems[drop.itemId] = true
+                        table.insert(needed, {
+                            itemId = drop.itemId,
+                            slot = upgradeSlot,
+                            itemName = drop.itemName or ("Item " .. drop.itemId),
+                            slotName = NS.SLOT_NAMES[upgradeSlot] or "?",
+                            boss = drop.boss or "",
+                            isUpgrade = true,
+                            upgradeScore = upgradeScore,
+                            currentIlvl = currentIlvl,
+                            targetIlvl = targetIlvl,
+                        })
+                        upgradeCount = upgradeCount + 1
+                    end
+                end
             end
         end
 
@@ -988,7 +1102,7 @@ function DungeonOptimizer:ScoreContent(lootTable, bisTable)
             end
         end
 
-        local mainSpecCount = #needed - offSpecCount
+        local mainSpecCount = #needed - offSpecCount - upgradeCount
 
         -- Always include every group member (even with 0 needs)
         playerDetails[playerName] = {
@@ -996,12 +1110,19 @@ function DungeonOptimizer:ScoreContent(lootTable, bisTable)
             count = #needed,
             mainSpecCount = mainSpecCount,
             offSpecCount = offSpecCount,
+            upgradeCount = upgradeCount,
             class = playerData.class,
             name = playerData.name,
             offSpec = playerData.offSpec,
         }
-        -- Off-spec items count 0.5 each toward the dungeon score
-        totalScore = totalScore + mainSpecCount + (offSpecCount * 0.5)
+        -- Score: missing=1.0, upgrade=fractional, off-spec=0.5
+        local playerScore = mainSpecCount + (offSpecCount * 0.5)
+        for _, item in ipairs(needed) do
+            if item.isUpgrade then
+                playerScore = playerScore + item.upgradeScore
+            end
+        end
+        totalScore = totalScore + playerScore
     end
 
     return totalScore, playerDetails
@@ -1009,7 +1130,7 @@ end
 
 -- Backward-compatible wrappers
 function DungeonOptimizer:ScoreDungeon(dungeonId)
-    return self:ScoreContent(NS.DUNGEON_LOOT[dungeonId], NS.GetActiveBISTable())
+    return self:ScoreContent(NS.DUNGEON_LOOT[dungeonId], NS.GetActiveBISTable(), { dungeonKey = dungeonId })
 end
 
 function DungeonOptimizer:CalculateDungeonRanking()

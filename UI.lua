@@ -187,6 +187,31 @@ function UI:RefreshUI()
     end)
     topGroup:AddChild(scoreToggle)
 
+    -- #43: Upgrade scoring toggle
+    local upgradeToggle = AceGUI:Create("CheckBox")
+    upgradeToggle:SetLabel(NS.L["UPGRADE_SCORING_LABEL"] or "Upgrades")
+    upgradeToggle:SetValue(NS.Core.db.profile.upgradeScoring)
+    upgradeToggle:SetWidth(110)
+    upgradeToggle:SetCallback("OnValueChanged", function(_, _, val)
+        NS.Core.db.profile.upgradeScoring = val
+        NS.Core:RecalculateAllRankings()
+        self:RefreshUI()
+    end)
+    topGroup:AddChild(upgradeToggle)
+
+    -- #43: Target key level slider
+    local keySlider = AceGUI:Create("Slider")
+    keySlider:SetLabel(NS.L["TARGET_KEY_LABEL"] or "Target Key")
+    keySlider:SetSliderValues(2, 15, 1)
+    keySlider:SetValue(NS.Core.db.profile.targetKeyLevel or 10)
+    keySlider:SetWidth(140)
+    keySlider:SetCallback("OnValueChanged", function(_, _, val)
+        NS.Core.db.profile.targetKeyLevel = val
+        NS.Core:RecalculateAllRankings()
+        self:RefreshUI()
+    end)
+    topGroup:AddChild(keySlider)
+
     -- Off-Spec dropdown
     local playerClass = select(2, UnitClass("player"))
     local classSpecs = NS.CLASS_SPECS[playerClass]
@@ -798,7 +823,18 @@ function UI:CreateDungeonEntry(parent, rank, entry)
                     end
 
                     local indent = (bossName ~= "Other" or #bossOrder > 1) and "         " or "      "
-                    if item.isOffSpec then
+                    if item.isUpgrade then
+                        -- #43: Upgrade item (green) with ilvl delta
+                        local upgTag = NS.L["UPGRADE_TAG"] or "[UPG]"
+                        local ilvlStr = ""
+                        if item.currentIlvl and item.targetIlvl then
+                            ilvlStr = string.format(" |cffaaaaaa(%d \226\134\146 %d)|r", item.currentIlvl, item.targetIlvl)
+                        end
+                        itemLabel:SetText(string.format(
+                            "%s|cff00cc00%s [%s]|r |cff88cc88%s|r%s",
+                            indent, upgTag, item.slotName, displayName, ilvlStr
+                        ))
+                    elseif item.isOffSpec then
                         local osTag = NS.L["OFF_SPEC_TAG"] or "[OS]"
                         itemLabel:SetText(string.format(
                             "%s|cffcc88ff%s [%s]|r |cffcc88ff%s|r%s",
