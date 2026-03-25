@@ -72,3 +72,26 @@ jobs:
         with:
           files: DungeonOptimizer.zip
           generate_release_notes: true
+
+      - name: Extract version from tag
+        id: version
+        run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Upload to CurseForge
+        run: |
+          METADATA=$(cat <<'ENDJSON'
+          {
+            "changelog": "See https://github.com/${{ github.repository }}/releases/tag/${{ github.ref_name }}",
+            "changelogType": "text",
+            "displayName": "DungeonOptimizer ${{ steps.version.outputs.version }}",
+            "gameVersions": [14422, 15855],
+            "releaseType": "release"
+          }
+          ENDJSON
+          )
+
+          curl -f -X POST \
+            "https://wow.curseforge.com/api/projects/${{ vars.CURSEFORGE_PROJECT_ID }}/upload-file" \
+            -H "X-Api-Token: ${{ secrets.CURSE_API_TOKEN }}" \
+            -F "metadata=$METADATA" \
+            -F "file=@DungeonOptimizer.zip"
