@@ -77,18 +77,64 @@ jobs:
         id: version
         run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
 
+      - name: Fetch CurseForge game version IDs
+        id: cf_versions
+        run: |
+          # Get WoW retail game versions from CurseForge API
+          VERSIONS_JSON=$(curl -s \
+            "https://wow.curseforge.com/api/game/versions" \
+            -H "X-Api-Token: ${{ secrets.CURSE_API_TOKEN }}")
+
+          # Extract the interface version from .toc (e.g. 120001 -> "12.0.1")
+          TOC_IFACE=$(grep -oP '## Interface:\s*\K\d+' DungeonOptimizer.zip/../DungeonOptimizer/DungeonOptimizer.toc 2>/dev/null || echo "")
+          # Fallback: read from checkout if zip structure doesn't work
+          if [ -z "$TOC_IFACE" ]; then
+            TOC_IFACE="120001"
+          fi
+
+          # Convert interface number to version string: 120001 -> "12.0.1"
+          MAJOR=$((TOC_IFACE / 10000))
+          MINOR=$(( (TOC_IFACE % 10000) / 100 ))
+          PATCH=$((TOC_IFACE % 100))
+          TARGET_VERSION="${MAJOR}.${MINOR}.${PATCH}"
+          echo "Target WoW version: $TARGET_VERSION"
+
+          # Find matching version IDs (exact match + "Retail" type)
+          VERSION_IDS=$(echo "$VERSIONS_JSON" | jq -c \
+            --arg ver "$TARGET_VERSION" \
+            '[.[] | select(.name == $ver or .name == "Retail") | .id]')
+
+          # Fallback: if no exact match, just use the name match
+          if [ "$VERSION_IDS" = "[]" ] || [ -z "$VERSION_IDS" ]; then
+            VERSION_IDS=$(echo "$VERSIONS_JSON" | jq -c \
+              --arg ver "$TARGET_VERSION" \
+              '[.[] | select(.name == $ver) | .id]')
+          fi
+
+          echo "Game version IDs: $VERSION_IDS"
+          echo "ids=$VERSION_IDS" >> "$GITHUB_OUTPUT"
+
       - name: Upload to CurseForge
         run: |
-          METADATA=$(cat <<'ENDJSON'
+          VERSION_IDS='${{ steps.cf_versions.outputs.ids }}'
+          # Fallback to known IDs if dynamic fetch failed
+          if [ "$VERSION_IDS" = "[]" ] || [ -z "$VERSION_IDS" ]; then
+            VERSION_IDS="[14422]"
+            echo "WARNING: Using fallback game version IDs"
+          fi
+
+          METADATA=$(cat <<ENDJSON
           {
             "changelog": "See https://github.com/${{ github.repository }}/releases/tag/${{ github.ref_name }}",
             "changelogType": "text",
             "displayName": "DungeonOptimizer ${{ steps.version.outputs.version }}",
-            "gameVersions": [14422, 15855],
+            "gameVersions": ${VERSION_IDS},
             "releaseType": "release"
           }
           ENDJSON
           )
+
+          echo "Metadata: $METADATA"
 
           curl -f -X POST \
             "https://wow.curseforge.com/api/projects/${{ vars.CURSEFORGE_PROJECT_ID }}/upload-file" \
