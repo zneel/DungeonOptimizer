@@ -62,13 +62,6 @@ local L = {
     ["NO_OVERALL"] = "|cffff0000No overall BIS data available.|r",
     ["OVERALL_RANKING"] = "Overall BIS Ranking (best to worst)",
 
-    -- Loot Trading
-    ["LOOT_TRADEABLE"] = "Tradeable BIS item detected!",
-    ["LOOT_LOOTED_BY"] = "Looted by:",
-    ["LOOT_COULD_BENEFIT"] = "Could benefit:",
-    ["LOOT_ALERTS"] = "Loot Alerts",
-    ["LOOT_NO_ALERTS"] = "|cff888888No recent tradeable loot detected.|r",
-
     -- Catalyst
     ["CATALYST_SUGGEST"] = "Catalyst suggestion: convert %s (%s)",
 
@@ -151,12 +144,6 @@ local frFR = {
     ["NO_RAIDS"] = "|cffff0000Aucune donn\195\169e de raid disponible.|r",
     ["NO_OVERALL"] = "|cffff0000Aucune donn\195\169e BIS Overall disponible.|r",
     ["OVERALL_RANKING"] = "Classement Overall BIS (du meilleur au pire)",
-
-    ["LOOT_TRADEABLE"] = "Item BIS \195\169changeable d\195\169tect\195\169 !",
-    ["LOOT_LOOTED_BY"] = "Loot\195\169 par :",
-    ["LOOT_COULD_BENEFIT"] = "Pourrait b\195\169n\195\169ficier \195\160 :",
-    ["LOOT_ALERTS"] = "Alertes de loot",
-    ["LOOT_NO_ALERTS"] = "|cff888888Aucun loot \195\169changeable d\195\169tect\195\169 r\195\169cemment.|r",
 
     ["CATALYST_SUGGEST"] = "Suggestion catalyst : convertir %s (%s)",
 

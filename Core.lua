@@ -27,7 +27,6 @@ local defaults = {
         weightByScore = true, -- #20: factor M+ score into recommendations
         offSpec = nil, -- off-spec key (e.g. "WARRIOR_FURY"), nil if disabled
         activeTab = "mplus", -- "mplus" or "raid"
-        lootAlertEnabled = true, -- #35: show loot trade notifications
     },
 }
 
@@ -204,8 +203,7 @@ function DungeonOptimizer:OnEnable()
     self:RegisterEvent("CHALLENGE_MODE_COMPLETED")
     -- #27: affix updates
     self:RegisterEvent("MYTHIC_PLUS_CURRENT_AFFIX_UPDATE")
-    -- #34: loot trading detection
-    self:RegisterEvent("CHAT_MSG_LOOT")
+
 
     C_ChatInfo.RegisterAddonMessagePrefix(ADDON_MSG_PREFIX)
     C_ChatInfo.RegisterAddonMessagePrefix(ADDON_MSG_PREFIX_KEY)
@@ -413,110 +411,6 @@ function DungeonOptimizer:GetCurrentAffixes()
 
     NS.currentAffixes = result
     return result
-end
-
--- ============================================================================
--- #34: LOOT TRADING DETECTION
--- ============================================================================
-NS.tradeableLoot = {} -- recent tradeable loot events
-
-function DungeonOptimizer:CHAT_MSG_LOOT(event, message, ...)
-    if not IsInGroup() then return end
-
-    -- Extract item link from loot message
-    local itemLink = message:match("|c%x+|Hitem:[^|]+|h%[.-%]|h|r")
-    if not itemLink then return end
-
-    -- Extract item ID from link
-    local itemId = tonumber(itemLink:match("item:(%d+)"))
-    if not itemId then return end
-
-    -- Extract looter name from message using WoW locale-aware globals
-    -- LOOT_ITEM = "%s receives loot: %s", LOOT_ITEM_SELF = "You receive loot: %s"
-    local looterName
-    local lootPatternOther = LOOT_ITEM and LOOT_ITEM:gsub("%%s", "(.+)", 1):gsub("%%s", ".+") or nil
-    local lootPatternSelf = LOOT_ITEM_SELF and LOOT_ITEM_SELF:gsub("%%s", ".+") or nil
-    if lootPatternOther then
-        looterName = message:match("^" .. lootPatternOther)
-    end
-    if not looterName or looterName == "" then
-        if lootPatternSelf and message:match("^" .. lootPatternSelf) then
-            looterName = NS.Inspect:GetUnitFullName("player")
-        end
-    end
-    if not looterName then return end
-
-    -- Resolve full Name-Realm if needed
-    if not looterName:find("-") then
-        for fullName, _ in pairs(NS.groupData) do
-            if fullName:sub(1, #looterName + 1) == looterName .. "-" then
-                looterName = fullName
-                break
-            end
-        end
-    end
-
-    local looterData = NS.groupData[looterName]
-    if not looterData then return end
-
-    -- Determine item slot from BIS data or loot tables
-    local itemSlot = NS.FindBISSlot(looterData.spec, itemId) or nil
-    -- Try to find slot from dungeon loot tables
-    if not itemSlot then
-        for _, lootTable in pairs(NS.DUNGEON_LOOT) do
-            for _, drop in ipairs(lootTable) do
-                if drop.itemId == itemId then
-                    -- slot not stored in loot table, try BIS for any spec
-                    for _, specKey in pairs(NS.SPEC_MAP) do
-                        itemSlot = NS.FindBISSlot(specKey, itemId)
-                        if itemSlot then break end
-                    end
-                    break
-                end
-            end
-            if itemSlot then break end
-        end
-    end
-
-    -- Check tradeability: item is tradeable if the looter doesn't need it as BIS
-    if not itemSlot then return end
-    local isTradeable = not self:PlayerNeedsItem(looterData, itemId)
-    if not isTradeable then return end
-
-    -- Find candidates who need this item
-    local candidates = self:GetItemCandidates(itemId, itemSlot)
-
-    -- Remove the looter from candidates
-    local filteredCandidates = {}
-    for _, c in ipairs(candidates) do
-        if c.playerName ~= looterName then
-            table.insert(filteredCandidates, c)
-        end
-    end
-
-    if #filteredCandidates == 0 then return end
-
-    -- Store the tradeable loot event
-    local lootEvent = {
-        itemId = itemId,
-        itemLink = itemLink,
-        itemSlot = itemSlot,
-        looter = looterName,
-        looterClass = looterData.class,
-        candidates = filteredCandidates,
-        timestamp = time(),
-    }
-    table.insert(NS.tradeableLoot, lootEvent)
-
-    -- Keep only last 10 events
-    while #NS.tradeableLoot > 10 do
-        table.remove(NS.tradeableLoot, 1)
-    end
-
-    -- Notify UI
-    if NS.UI then
-        NS.UI:OnTradeableLoot(lootEvent)
-    end
 end
 
 -- ============================================================================

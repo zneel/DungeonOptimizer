@@ -21,7 +21,7 @@ function aceAddon:NewAddon(name, ...)
             weightByScore = true,
             offSpec = nil,
             activeTab = "mplus",
-            lootAlertEnabled = true,
+
         },
     }
     return addon

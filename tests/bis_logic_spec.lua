@@ -34,7 +34,6 @@ local function resetState()
     wipe(NS.groupData)
     wipe(NS.partyKeystones)
     wipe(NS.groupCatalyst)
-    NS.tradeableLoot = {}
     NS.UI = nil
     Core.db = {
         profile = {
@@ -44,7 +43,6 @@ local function resetState()
             weightByScore = false,
             offSpec = nil,
             activeTab = "mplus",
-            lootAlertEnabled = true,
         },
     }
 end
