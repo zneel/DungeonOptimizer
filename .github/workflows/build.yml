@@ -85,11 +85,11 @@ jobs:
             "https://wow.curseforge.com/api/game/versions" \
             -H "X-Api-Token: ${{ secrets.CURSE_API_TOKEN }}")
 
-          # Extract the interface version from .toc (e.g. 120001 -> "12.0.1")
-          TOC_IFACE=$(grep -oP '## Interface:\s*\K\d+' DungeonOptimizer.zip/../DungeonOptimizer/DungeonOptimizer.toc 2>/dev/null || echo "")
-          # Fallback: read from checkout if zip structure doesn't work
+          # Extract the interface version from .toc (e.g. 120005 -> "12.0.5")
+          TOC_IFACE=$(grep -oP '## Interface:\s*\K\d+' DungeonOptimizer.toc 2>/dev/null || echo "")
+          # Fallback: try Mainline toc
           if [ -z "$TOC_IFACE" ]; then
-            TOC_IFACE="120001"
+            TOC_IFACE=$(grep -oP '## Interface:\s*\K\d+' DungeonOptimizer_Mainline.toc 2>/dev/null || echo "120005")
           fi
 
           # Convert interface number to version string: 120001 -> "12.0.1"
