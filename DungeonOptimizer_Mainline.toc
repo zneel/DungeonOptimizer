@@ -1,4 +1,4 @@
-## Interface: 120001
+## Interface: 120005
 ## Title: Dungeon Optimizer
 ## Notes: M+ dashboard: ranks dungeons by gear upgrades + RIO score gains for your group.
 ## Notes-frFR: Dashboard M+ : classe les donjons par upgrades de stuff + gains de score RIO pour votre groupe.
