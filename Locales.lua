@@ -82,6 +82,15 @@ local L = {
     ["READYCHECK_SCANNING"] = "Running BIS ready check...",
     ["READYCHECK_RANGE"] = "|cff888888(out of range)|r",
 
+    -- V4 Dashboard
+    ["DASHBOARD_NO_KEYS"] = "No keystones detected",
+    ["DASHBOARD_NO_DATA"] = "No data available. Scan the group to start.",
+    ["DASHBOARD_RIO_STALE"] = "RIO formula may be outdated - using gear scoring only",
+    ["DASHBOARD_VAULT_UNCLAIMED"] = "Unclaimed rewards!",
+    ["DASHBOARD_VAULT_NEED_MORE"] = "Need more keys",
+    ["DASHBOARD_VAULT_COMPLETE"] = "All slots filled!",
+    ["DASHBOARD_BACK"] = "Back to Dashboard",
+
     -- Slot names
     ["SLOT_HEAD"] = "Head",
     ["SLOT_NECK"] = "Neck",
@@ -156,6 +165,15 @@ local frFR = {
     ["OVERALL_RANKING"] = "Classement Overall BIS (du meilleur au pire)",
 
     ["CATALYST_SUGGEST"] = "Suggestion catalyst : convertir %s (%s)",
+
+    -- V4 Dashboard
+    ["DASHBOARD_NO_KEYS"] = "Aucune cl\195\169 d\195\169tect\195\169e",
+    ["DASHBOARD_NO_DATA"] = "Aucune donn\195\169e disponible. Scannez le groupe.",
+    ["DASHBOARD_RIO_STALE"] = "Formule RIO peut-\195\170tre obsol\195\168te - scoring gear uniquement",
+    ["DASHBOARD_VAULT_UNCLAIMED"] = "R\195\169compenses non r\195\169clam\195\169es !",
+    ["DASHBOARD_VAULT_NEED_MORE"] = "Besoin de plus de cl\195\169s",
+    ["DASHBOARD_VAULT_COMPLETE"] = "Tous les slots remplis !",
+    ["DASHBOARD_BACK"] = "Retour au tableau de bord",
 
     ["READYCHECK_TITLE"] = "V\195\169rification BIS",
     ["READYCHECK_ENCHANTS"] = "Enchantements",

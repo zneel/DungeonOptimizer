@@ -24,11 +24,16 @@ local defaults = {
         minimap = { hide = false },
         excludedDungeons = {},
         showTooltips = true,
-        weightByScore = true, -- #20: factor M+ score into recommendations
+        weightByScore = true, -- #20: factor M+ score into recommendations (legacy, kept for compat)
         upgradeScoring = true, -- #43: factor ilvl upgrades into scoring
         targetKeyLevel = 10, -- #43: fallback target M+ key level
         offSpec = nil, -- off-spec key (e.g. "WARRIOR_FURY"), nil if disabled
-        activeTab = "mplus", -- "mplus" or "raid"
+        activeTab = "mplus", -- "mplus" or "raid" (legacy alias for activeMode)
+        -- V4: new scoring weights
+        gearWeight = 0.6, -- gear is the primary scoring factor
+        rioWeight = 0.4, -- RIO score gain as secondary factor
+        activeMode = "mplus", -- "mplus" or "raid"
+        profileVersion = 4, -- for saved variable migration
     },
 }
 
@@ -37,9 +42,13 @@ local ADDON_MSG_PREFIX_KEY = "DOptKey"    -- #21: keystone sync
 local ADDON_MSG_PREFIX_COMP = "DOptComp"  -- per-player completion sync
 local ADDON_MSG_PREFIX_OFFSPEC = "DOptOff" -- off-spec sync
 local ADDON_MSG_PREFIX_CATALYST = "DOptCat" -- #37: catalyst sync
+local ADDON_MSG_PREFIX_RIO = "DOptRIO"     -- V4: per-dungeon RIO score sync
 
 -- Per-player dungeon completions: { ["Name-Realm"] = { MAGISTER=true, ... } }
 NS.groupCompletions = {}
+
+-- V4: Per-player per-dungeon RIO scores: { ["Name-Realm"] = { [mapID] = score, ... } }
+NS.groupRIOData = {}
 
 -- Returns the M+ BIS table
 function NS.GetActiveBISTable()
@@ -159,6 +168,30 @@ function DungeonOptimizer:SeedLocalCompletions()
 end
 
 -- ============================================================================
+-- V4: SAVED VARIABLE MIGRATION
+-- ============================================================================
+function DungeonOptimizer:MigrateProfileV4()
+    local profile = self.db.profile
+    if profile.profileVersion and profile.profileVersion >= 4 then return end
+
+    -- Migrate activeTab → activeMode
+    if profile.activeTab then
+        local tabMap = { mplus = "mplus", raid = "raid", overall = "mplus" }
+        profile.activeMode = tabMap[profile.activeTab] or "mplus"
+    end
+
+    -- Set new defaults if missing
+    if not profile.gearWeight then profile.gearWeight = 0.6 end
+    if not profile.rioWeight then profile.rioWeight = 0.4 end
+
+    -- upgradeScoring is now always on
+    profile.upgradeScoring = true
+
+    -- Mark as migrated
+    profile.profileVersion = 4
+end
+
+-- ============================================================================
 -- INITIALIZATION
 -- ============================================================================
 function DungeonOptimizer:OnInitialize()
@@ -192,6 +225,9 @@ function DungeonOptimizer:OnInitialize()
     self:RegisterChatCommand("dopt", "SlashCommand")
     self:RegisterChatCommand("dungeonopt", "SlashCommand")
 
+    -- V4: Saved variable migration
+    self:MigrateProfileV4()
+
     self:Print(NS.L["ADDON_LOADED"])
 end
 
@@ -212,6 +248,7 @@ function DungeonOptimizer:OnEnable()
     C_ChatInfo.RegisterAddonMessagePrefix(ADDON_MSG_PREFIX_COMP)
     C_ChatInfo.RegisterAddonMessagePrefix(ADDON_MSG_PREFIX_OFFSPEC)
     C_ChatInfo.RegisterAddonMessagePrefix(ADDON_MSG_PREFIX_CATALYST)
+    C_ChatInfo.RegisterAddonMessagePrefix(ADDON_MSG_PREFIX_RIO)
     -- Register gear sync prefix
     NS.Inspect:RegisterSync()
     -- Off-spec: listen for spec changes to auto-reset
@@ -229,6 +266,7 @@ function DungeonOptimizer:OnEnable()
             self:BroadcastCompletions()
             self:BroadcastOffSpec()
             self:BroadcastCatalyst()
+            self:BroadcastRIOScores()
         end, 2)
     end
     -- #27: Request current affixes
@@ -314,6 +352,7 @@ function DungeonOptimizer:GROUP_ROSTER_UPDATE()
         wipe(NS.groupData)
         wipe(NS.skippedPlayers)
         wipe(NS.partyKeystones)
+        wipe(NS.groupRIOData)
         -- Keep only local player's completions
         self:PruneCompletions()
         -- Re-scan just the player if solo
@@ -338,6 +377,7 @@ function DungeonOptimizer:GROUP_ROSTER_UPDATE()
         self:BroadcastKeystone()
         self:BroadcastOffSpec()
         self:BroadcastCatalyst()
+        self:BroadcastRIOScores()
     end, 2)
 end
 
@@ -448,6 +488,153 @@ function DungeonOptimizer:GetDungeonScoreData(mapID)
     end
 
     return data
+end
+
+-- ============================================================================
+-- V4: RIO SCORE CALCULATION & SIMULATION
+-- ============================================================================
+
+-- Blizzard M+ score formula (community reverse-engineered)
+-- Isolated for easy updates when formula changes between seasons.
+-- Returns the projected dungeon score for a given key level.
+-- @param keyLevel number: the M+ key level (2-30+)
+-- @param timed boolean: whether the key was timed (true) or not (false)
+-- @return number: the projected dungeon score
+function DungeonOptimizer:CalculateDungeonMPlusScore(keyLevel, timed)
+    if not keyLevel or keyLevel < 2 then return 0 end
+    local baseScore = keyLevel * 7.5 + 40
+    if timed then
+        return baseScore * 1.1  -- +10% bonus for timing
+    else
+        return baseScore * 0.9  -- -10% penalty for not timing
+    end
+end
+
+-- Validate the RIO formula against the actual overall score from Blizzard.
+-- If computed total diverges too much, the formula is likely outdated.
+-- @return boolean: true if formula is valid, false if stale
+function DungeonOptimizer:ValidateRIOFormula()
+    if not C_ChallengeMode or not C_ChallengeMode.GetOverallDungeonScore then
+        return false
+    end
+    if not C_MythicPlus or not C_MythicPlus.GetSeasonBestForMap then
+        return false
+    end
+    if not NS.DYNAMIC_DUNGEONS or #NS.DYNAMIC_DUNGEONS == 0 then
+        return false
+    end
+
+    local actualTotal = C_ChallengeMode.GetOverallDungeonScore()
+    if not actualTotal or actualTotal == 0 then
+        return true  -- no data to validate against, assume valid
+    end
+
+    local computedTotal = 0
+    local hasDungeonData = false
+    for _, dd in ipairs(NS.DYNAMIC_DUNGEONS) do
+        local scoreData = self:GetDungeonScoreData(dd.mapID)
+        if scoreData and scoreData.seasonBest then
+            hasDungeonData = true
+            computedTotal = computedTotal + (scoreData.seasonBest.score or 0)
+        end
+    end
+
+    if not hasDungeonData then return true end
+
+    -- Use 2% tolerance (percentage-based)
+    local tolerance = actualTotal * 0.02
+    if tolerance < 20 then tolerance = 20 end  -- minimum 20 points
+    return math.abs(computedTotal - actualTotal) <= tolerance
+end
+
+-- Simulate the RIO gain from timing a specific dungeon at a target key level.
+-- Uses local player data only (API limitation).
+-- @param mapID number: the challenge mode map ID
+-- @param targetKeyLevel number: the key level to simulate
+-- @return rioDelta number, projectedTotal number, currentDungeonScore number
+function DungeonOptimizer:SimulateRIOGain(mapID, targetKeyLevel)
+    if not mapID or not targetKeyLevel then return 0, 0, 0 end
+
+    local scoreData = self:GetDungeonScoreData(mapID)
+    local currentDungeonScore = 0
+    if scoreData and scoreData.seasonBest then
+        currentDungeonScore = scoreData.seasonBest.score or 0
+    end
+
+    -- Project the new score (assume timed)
+    local projectedDungeonScore = self:CalculateDungeonMPlusScore(targetKeyLevel, true)
+
+    -- Only count as a gain if the projected score is higher than current best
+    local delta = projectedDungeonScore - currentDungeonScore
+    if delta <= 0 then return 0, 0, currentDungeonScore end
+
+    -- Get current total and compute projected total
+    local currentTotal = 0
+    if C_ChallengeMode and C_ChallengeMode.GetOverallDungeonScore then
+        currentTotal = C_ChallengeMode.GetOverallDungeonScore() or 0
+    end
+    local projectedTotal = currentTotal + delta
+
+    return delta, projectedTotal, currentDungeonScore
+end
+
+-- Get the RIO simulation data for a dungeon by its dungeon key (e.g. "STONEVAULT")
+-- Returns: { delta, projectedTotal, currentDungeonScore, currentTotal, mapID }
+function DungeonOptimizer:GetDungeonRIOSimulation(dungeonKey, targetKeyLevel)
+    if not NS.CHALLENGE_MODE_MAP then return nil end
+
+    local mapID = nil
+    for mid, dk in pairs(NS.CHALLENGE_MODE_MAP) do
+        if dk == dungeonKey then
+            mapID = mid
+            break
+        end
+    end
+    if not mapID then return nil end
+
+    local delta, projectedTotal, currentDungeonScore = self:SimulateRIOGain(mapID, targetKeyLevel)
+    local currentTotal = 0
+    if C_ChallengeMode and C_ChallengeMode.GetOverallDungeonScore then
+        currentTotal = C_ChallengeMode.GetOverallDungeonScore() or 0
+    end
+
+    return {
+        delta = delta,
+        projectedTotal = projectedTotal,
+        currentDungeonScore = currentDungeonScore,
+        currentTotal = currentTotal,
+        mapID = mapID,
+    }
+end
+
+-- ============================================================================
+-- V4: VAULT-AWARE SCORING
+-- ============================================================================
+
+-- Check if running one more dungeon would cross a vault threshold.
+-- @return boolean: true if it crosses a threshold, number: the threshold crossed
+function DungeonOptimizer:WouldCrossVaultThreshold()
+    local vault = self:GetVaultProgress()
+    if not vault or not vault.slots then return false, nil end
+
+    for _, slot in ipairs(vault.slots) do
+        if slot.progress and slot.threshold and slot.progress < slot.threshold then
+            -- Running one more would help toward this threshold
+            if slot.progress + 1 >= slot.threshold then
+                return true, slot.threshold
+            end
+        end
+    end
+    return false, nil
+end
+
+-- ============================================================================
+-- V4: SCORE VERSION COUNTER (cache invalidation)
+-- ============================================================================
+NS.scoreVersion = 0
+
+function NS.IncrementScoreVersion()
+    NS.scoreVersion = NS.scoreVersion + 1
 end
 
 -- ============================================================================
@@ -1135,40 +1322,59 @@ end
 
 function DungeonOptimizer:CalculateDungeonRanking()
     local ranking = {}
+    local numPlayers = 0
+    for _ in pairs(NS.groupData) do numPlayers = numPlayers + 1 end
+    local maxPossibleGear = math.max(numPlayers * 16, 1) -- avoid division by zero
+
+    -- V4: Check if RIO formula is valid; if not, zero out RIO weight
+    local gearWeight = self.db.profile.gearWeight or 0.6
+    local rioWeight = self.db.profile.rioWeight or 0.4
+    local rioFormulaValid = self:ValidateRIOFormula()
+    if not rioFormulaValid then
+        rioWeight = 0
+        gearWeight = 0.9  -- fill weight to maintain consistent score range
+    end
+
+    -- V4: Vault threshold check (same for all dungeons this tick)
+    local crossesVault, vaultThreshold = self:WouldCrossVaultThreshold()
+    local vaultBonus = crossesVault and 0.1 or 0
 
     for _, dungeon in ipairs(NS.DUNGEONS) do
         if not self:IsDungeonExcluded(dungeon.id) then
-            local score, details = self:ScoreDungeon(dungeon.id)
+            local rawGearScore, details = self:ScoreDungeon(dungeon.id)
 
-            -- #20: Score weighting by M+ rating opportunity
-            local ratingBonus = 0
-            if self.db.profile.weightByScore and NS.DYNAMIC_DUNGEONS then
-                for _, dd in ipairs(NS.DYNAMIC_DUNGEONS) do
-                    if dd.dungeonKey == dungeon.id then
-                        local scoreData = self:GetDungeonScoreData(dd.mapID)
-                        if scoreData then
-                            local seasonLevel = scoreData.seasonBest and scoreData.seasonBest.level or 0
-                            -- Lower season best = higher rating opportunity
-                            if seasonLevel < 5 then
-                                ratingBonus = 3
-                            elseif seasonLevel < 10 then
-                                ratingBonus = 2
-                            elseif seasonLevel < 15 then
-                                ratingBonus = 1
-                            end
-                        else
-                            ratingBonus = 3 -- never done = high priority
-                        end
-                        break
-                    end
+            -- V4: Normalized gear score (0.0 to 1.0)
+            local normalizedGear = rawGearScore / maxPossibleGear
+
+            -- V4: RIO simulation (local player only)
+            local rioDelta = 0
+            local rioSimulation = nil
+            if rioWeight > 0 then
+                local targetKeyLevel = self:GetTargetKeyLevel(dungeon.id)
+                rioSimulation = self:GetDungeonRIOSimulation(dungeon.id, targetKeyLevel)
+                if rioSimulation then
+                    rioDelta = rioSimulation.delta
                 end
             end
+            -- Normalize RIO: cap at 50 points (see design doc for rationale)
+            local normalizedRIO = math.min(rioDelta / 50, 1.0)
+
+            -- V4: Combined score
+            local combinedScore = (gearWeight * normalizedGear) + (rioWeight * normalizedRIO) + vaultBonus
 
             table.insert(ranking, {
                 dungeon = dungeon,
-                score = score + ratingBonus,
-                bisScore = score,
-                ratingBonus = ratingBonus,
+                score = combinedScore,
+                -- V4: detailed breakdown for UI
+                bisScore = rawGearScore,
+                normalizedGear = normalizedGear,
+                rioDelta = rioDelta,
+                normalizedRIO = normalizedRIO,
+                rioSimulation = rioSimulation,
+                vaultBonus = vaultBonus,
+                gearWeight = gearWeight,
+                rioWeight = rioWeight,
+                ratingBonus = rioDelta, -- backward compat: UI reads this
                 details = details,
             })
         end
@@ -1178,11 +1384,11 @@ function DungeonOptimizer:CalculateDungeonRanking()
     return ranking
 end
 
--- Recalculate all rankings (dungeon, raid, overall)
+-- Recalculate all rankings (dungeon + raid; overall removed in v4)
 function DungeonOptimizer:RecalculateAllRankings()
     self.lastRanking = self:CalculateDungeonRanking()
     self.lastRaidRanking = self:CalculateRaidRanking()
-    self.lastOverallRanking = self:CalculateOverallRanking()
+    self.lastOverallRanking = self:CalculateOverallRanking() -- kept for backward compat
 end
 
 -- ============================================================================
@@ -1563,6 +1769,29 @@ function DungeonOptimizer:BroadcastKeystone()
     self:BroadcastToGroup(ADDON_MSG_PREFIX_KEY, string.format("%d:%d:%s", key.mapID, key.level, key.dungeonName))
 end
 
+-- V4: Broadcast per-dungeon RIO scores to group
+-- Format: "mapID1:score1,mapID2:score2,..." (fits in 255 bytes for 8 dungeons)
+function DungeonOptimizer:BroadcastRIOScores()
+    if not NS.DYNAMIC_DUNGEONS or #NS.DYNAMIC_DUNGEONS == 0 then return end
+    if not C_MythicPlus or not C_MythicPlus.GetSeasonBestForMap then return end
+
+    local parts = {}
+    for _, dd in ipairs(NS.DYNAMIC_DUNGEONS) do
+        local scoreData = self:GetDungeonScoreData(dd.mapID)
+        local score = 0
+        if scoreData and scoreData.seasonBest then
+            score = scoreData.seasonBest.score or 0
+        end
+        if score > 0 then
+            table.insert(parts, string.format("%d:%d", dd.mapID, score))
+        end
+    end
+
+    if #parts > 0 then
+        self:BroadcastToGroup(ADDON_MSG_PREFIX_RIO, table.concat(parts, ","))
+    end
+end
+
 -- Returns true if sender is the local player (used to skip own messages)
 local function isOwnMessage(sender)
     if not sender then return true end
@@ -1635,6 +1864,22 @@ local messageHandlers = {
                 charges = tonumber(charges),
                 tierCount = tonumber(tierCount),
             }
+            if NS.UI then NS.UI:RefreshIfVisible() end
+        end
+    end,
+
+    [ADDON_MSG_PREFIX_RIO] = function(self, message, sender)
+        if isOwnMessage(sender) then return end
+        local rioData = {}
+        for entry in message:gmatch("[^,]+") do
+            local mapID, score = entry:match("^(%d+):(%d+)$")
+            if mapID and score then
+                rioData[tonumber(mapID)] = tonumber(score)
+            end
+        end
+        if next(rioData) then
+            NS.groupRIOData[sender] = rioData
+            NS.IncrementScoreVersion()
             if NS.UI then NS.UI:RefreshIfVisible() end
         end
     end,

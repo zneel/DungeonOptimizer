@@ -12,3 +12,4 @@ Libs/
 
 # Snapshots (scraped data)
 snapshots/
+.gstack/

@@ -2011,3 +2011,280 @@ describe("GetRewardIlvlForKey", function()
         assert.is_nil(Core:GetRewardIlvlForKey(10))
     end)
 end)
+
+-- ============================================================================
+-- V4: CalculateDungeonMPlusScore (RIO formula)
+-- ============================================================================
+describe("CalculateDungeonMPlusScore", function()
+    before_each(resetState)
+
+    it("returns 0 for nil key level", function()
+        assert.are.equal(0, Core:CalculateDungeonMPlusScore(nil, true))
+    end)
+
+    it("returns 0 for key level below 2", function()
+        assert.are.equal(0, Core:CalculateDungeonMPlusScore(1, true))
+        assert.are.equal(0, Core:CalculateDungeonMPlusScore(0, true))
+    end)
+
+    it("calculates timed score correctly", function()
+        -- +10 timed: (10 * 7.5 + 40) * 1.1 = 115 * 1.1 = 126.5
+        local score = Core:CalculateDungeonMPlusScore(10, true)
+        assert.are.near(126.5, score, 0.01)
+    end)
+
+    it("calculates untimed score correctly", function()
+        -- +10 untimed: (10 * 7.5 + 40) * 0.9 = 115 * 0.9 = 103.5
+        local score = Core:CalculateDungeonMPlusScore(10, false)
+        assert.are.near(103.5, score, 0.01)
+    end)
+
+    it("scales with key level", function()
+        local score10 = Core:CalculateDungeonMPlusScore(10, true)
+        local score15 = Core:CalculateDungeonMPlusScore(15, true)
+        assert.is_true(score15 > score10)
+    end)
+
+    it("timed score is higher than untimed", function()
+        local timed = Core:CalculateDungeonMPlusScore(12, true)
+        local untimed = Core:CalculateDungeonMPlusScore(12, false)
+        assert.is_true(timed > untimed)
+    end)
+end)
+
+-- ============================================================================
+-- V4: SimulateRIOGain
+-- ============================================================================
+describe("SimulateRIOGain", function()
+    before_each(function()
+        resetState()
+        _G.C_MythicPlus = {
+            GetSeasonBestForMap = function(mapID)
+                if mapID == 2773 then
+                    return { level = 12, dungeonScore = 130 }, nil
+                end
+                return nil, nil
+            end,
+        }
+        _G.C_ChallengeMode = {
+            GetOverallDungeonScore = function() return 800 end,
+        }
+    end)
+    after_each(stub.resetStubs)
+
+    it("returns 0 for nil inputs", function()
+        local delta = Core:SimulateRIOGain(nil, 14)
+        assert.are.equal(0, delta)
+    end)
+
+    it("calculates positive delta when target is higher than season best", function()
+        -- Current season best for 2773: score 130
+        -- Target +14 timed: (14 * 7.5 + 40) * 1.1 = 145 * 1.1 = 159.5
+        -- Delta = 159.5 - 130 = 29.5
+        local delta, projectedTotal = Core:SimulateRIOGain(2773, 14)
+        assert.are.near(29.5, delta, 0.01)
+        assert.are.near(829.5, projectedTotal, 0.01) -- 800 + 29.5
+    end)
+
+    it("returns 0 delta when target would not improve score", function()
+        -- Target +2 timed: (2 * 7.5 + 40) * 1.1 = 55 * 1.1 = 60.5
+        -- Current: 130, so delta = 60.5 - 130 = negative -> 0
+        local delta = Core:SimulateRIOGain(2773, 2)
+        assert.are.equal(0, delta)
+    end)
+
+    it("handles dungeon with no prior runs", function()
+        -- mapID 9999 has no season best -> currentDungeonScore = 0
+        local delta, projectedTotal = Core:SimulateRIOGain(9999, 10)
+        -- +10 timed: 126.5. Delta = 126.5 - 0 = 126.5
+        assert.are.near(126.5, delta, 0.01)
+        assert.are.near(926.5, projectedTotal, 0.01) -- 800 + 126.5
+    end)
+end)
+
+-- ============================================================================
+-- V4: ValidateRIOFormula
+-- ============================================================================
+describe("ValidateRIOFormula", function()
+    before_each(function()
+        resetState()
+        NS.DYNAMIC_DUNGEONS = {
+            { mapID = 2773, dungeonKey = "STONEVAULT" },
+            { mapID = 2774, dungeonKey = "SIEGE" },
+        }
+    end)
+    after_each(stub.resetStubs)
+
+    it("returns false when C_ChallengeMode is nil", function()
+        _G.C_ChallengeMode = nil
+        assert.is_false(Core:ValidateRIOFormula())
+    end)
+
+    it("returns true when no actual score data (fresh character)", function()
+        _G.C_ChallengeMode = {
+            GetOverallDungeonScore = function() return 0 end,
+        }
+        _G.C_MythicPlus = {
+            GetSeasonBestForMap = function() return nil, nil end,
+        }
+        assert.is_true(Core:ValidateRIOFormula())
+    end)
+
+    it("returns true when computed total matches actual", function()
+        _G.C_ChallengeMode = {
+            GetOverallDungeonScore = function() return 260 end,
+        }
+        _G.C_MythicPlus = {
+            GetSeasonBestForMap = function(mapID)
+                if mapID == 2773 then return { level = 10, dungeonScore = 130 }, nil end
+                if mapID == 2774 then return { level = 10, dungeonScore = 130 }, nil end
+                return nil, nil
+            end,
+        }
+        assert.is_true(Core:ValidateRIOFormula())
+    end)
+
+    it("returns false when computed total diverges too much", function()
+        _G.C_ChallengeMode = {
+            GetOverallDungeonScore = function() return 500 end,
+        }
+        _G.C_MythicPlus = {
+            GetSeasonBestForMap = function(mapID)
+                if mapID == 2773 then return { level = 10, dungeonScore = 130 }, nil end
+                if mapID == 2774 then return { level = 10, dungeonScore = 130 }, nil end
+                return nil, nil
+            end,
+        }
+        -- Actual: 500, computed: 260, delta: 240, tolerance: max(500*0.02, 20) = 20 -> false
+        assert.is_false(Core:ValidateRIOFormula())
+    end)
+end)
+
+-- ============================================================================
+-- V4: WouldCrossVaultThreshold
+-- ============================================================================
+describe("WouldCrossVaultThreshold", function()
+    before_each(resetState)
+    after_each(stub.resetStubs)
+
+    it("returns false when no vault data", function()
+        _G.C_WeeklyRewards = nil
+        local crosses = Core:WouldCrossVaultThreshold()
+        assert.is_false(crosses)
+    end)
+
+    it("returns true when one more run crosses a threshold", function()
+        _G.C_WeeklyRewards = {
+            GetActivities = function()
+                return {
+                    { threshold = 1, progress = 1, level = 15 },  -- already met
+                    { threshold = 4, progress = 3, level = 12 },  -- 3/4, one more = cross!
+                    { threshold = 8, progress = 3, level = 10 },  -- 3/8, not crossing
+                }
+            end,
+            HasAvailableRewards = function() return false end,
+        }
+        local crosses, threshold = Core:WouldCrossVaultThreshold()
+        assert.is_true(crosses)
+        assert.are.equal(4, threshold)
+    end)
+
+    it("returns false when no threshold would be crossed", function()
+        _G.C_WeeklyRewards = {
+            GetActivities = function()
+                return {
+                    { threshold = 1, progress = 1, level = 15 },
+                    { threshold = 4, progress = 4, level = 12 },
+                    { threshold = 8, progress = 5, level = 10 },
+                }
+            end,
+            HasAvailableRewards = function() return false end,
+        }
+        local crosses = Core:WouldCrossVaultThreshold()
+        assert.is_false(crosses)
+    end)
+end)
+
+-- ============================================================================
+-- V4: CalculateDungeonRanking with combined formula
+-- ============================================================================
+describe("CalculateDungeonRanking V4", function()
+    before_each(function()
+        resetState()
+        Core.db.profile.gearWeight = 0.6
+        Core.db.profile.rioWeight = 0.4
+        -- Mock RIO APIs as unavailable (gear-only mode)
+        _G.C_MythicPlus = nil
+        _G.C_ChallengeMode = nil
+    end)
+    after_each(stub.resetStubs)
+
+    it("each entry has V4 scoring fields", function()
+        local ranking = Core:CalculateDungeonRanking()
+        if #ranking > 0 then
+            local entry = ranking[1]
+            assert.is_number(entry.score)
+            assert.is_number(entry.bisScore)
+            assert.is_number(entry.normalizedGear)
+            assert.is_number(entry.normalizedRIO)
+            assert.is_number(entry.rioDelta)
+            assert.is_number(entry.vaultBonus)
+            assert.is_number(entry.gearWeight)
+            assert.is_number(entry.rioWeight)
+        end
+    end)
+
+    it("scores are normalized between 0 and ~1.1", function()
+        local ranking = Core:CalculateDungeonRanking()
+        for _, entry in ipairs(ranking) do
+            assert.is_true(entry.score >= 0)
+            assert.is_true(entry.score <= 1.2) -- 1.0 + 0.1 vault + margin
+        end
+    end)
+
+    it("sorts by combined score descending", function()
+        local ranking = Core:CalculateDungeonRanking()
+        for i = 2, #ranking do
+            assert.is_true(ranking[i - 1].score >= ranking[i].score)
+        end
+    end)
+
+    it("falls back to gear-only when RIO formula invalid", function()
+        NS.DYNAMIC_DUNGEONS = {
+            { mapID = 2773, dungeonKey = "STONEVAULT" },
+        }
+        NS.CHALLENGE_MODE_MAP = { [2773] = "STONEVAULT" }
+        _G.C_ChallengeMode = {
+            GetOverallDungeonScore = function() return 500 end,
+        }
+        _G.C_MythicPlus = {
+            GetSeasonBestForMap = function()
+                return { level = 10, dungeonScore = 100 }, nil
+            end,
+            GetOwnedKeystoneChallengeMapID = function() return nil end,
+            GetOwnedKeystoneLevel = function() return nil end,
+        }
+        -- Formula invalid (actual 500 vs computed 100)
+        local ranking = Core:CalculateDungeonRanking()
+        if #ranking > 0 then
+            -- RIO weight should be 0, gear weight should be 0.9
+            assert.are.equal(0.9, ranking[1].gearWeight)
+            assert.are.equal(0, ranking[1].rioWeight)
+        end
+    end)
+
+    it("includes vault bonus when threshold would be crossed", function()
+        _G.C_WeeklyRewards = {
+            GetActivities = function()
+                return {
+                    { threshold = 1, progress = 0, level = 10 },
+                }
+            end,
+            HasAvailableRewards = function() return false end,
+        }
+        local ranking = Core:CalculateDungeonRanking()
+        if #ranking > 0 then
+            assert.are.equal(0.1, ranking[1].vaultBonus)
+        end
+    end)
+end)

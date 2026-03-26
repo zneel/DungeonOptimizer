@@ -1,9 +1,9 @@
 ## Interface: 120001
 ## Title: Dungeon Optimizer
-## Notes: Scans group gear and recommends the most optimal Mythic+ dungeon to farm based on BIS lists.
-## Notes-frFR: Analyse le stuff du groupe et recommande le donjon mythique+ le plus optimal à farmer.
+## Notes: M+ dashboard: ranks dungeons by gear upgrades + RIO score gains for your group.
+## Notes-frFR: Dashboard M+ : classe les donjons par upgrades de stuff + gains de score RIO pour votre groupe.
 ## Author: BIS-Group
-## Version: 3.4.0
+## Version: 4.0.0
 ## SavedVariables: DungeonOptimizerDB
 ## Category: Dungeons
 ## IconTexture: Interface\Icons\INV_Misc_Map_01
