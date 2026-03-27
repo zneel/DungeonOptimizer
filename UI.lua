@@ -1,11 +1,9 @@
 -- ============================================================================
 -- DungeonOptimizer - UI.lua
--- V4: Hybrid AceGUI/CreateFrame dashboard
--- AceGUI handles outer frame (drag/resize/close), CreateFrame for inner components
+-- V4: Pure CreateFrame dashboard (no AceGUI)
 -- ============================================================================
 
 local ADDON_NAME, NS = ...
-local AceGUI = LibStub("AceGUI-3.0")
 
 NS.UI = {}
 local UI = NS.UI
@@ -122,20 +120,92 @@ function UI:Show()
 end
 
 -- ============================================================================
--- MAIN FRAME (AceGUI outer shell)
+-- MAIN FRAME (pure CreateFrame)
 -- ============================================================================
 function UI:CreateMainFrame()
-    local frame = AceGUI:Create("Frame")
-    frame:SetTitle("DungeonOptimizer")
-    frame:SetStatusText(NS.L["STATUS_TEXT"])
-    frame:SetLayout("Fill")
-    frame:SetWidth(760)
-    frame:SetHeight(750)
-    frame:SetCallback("OnClose", function(widget) widget:Hide() end)
-    self.mainFrame = frame
+    local frame = CreateFrame("Frame", "DungeonOptimizerFrame", UIParent, "BackdropTemplate")
+    frame:SetSize(760, 750)
+    frame:SetPoint("CENTER")
+    frame:SetFrameStrata("HIGH")
+    frame:SetFrameLevel(100)
+    frame:SetClampedToScreen(true)
 
-    -- Get the underlying WoW frame for parenting CreateFrame widgets
-    self._innerParent = frame.frame
+    -- Dark background
+    frame:SetBackdrop({
+        bgFile = "Interface\\Buttons\\WHITE8x8",
+        edgeFile = "Interface\\Buttons\\WHITE8x8",
+        edgeSize = 1,
+        insets = { left = 1, right = 1, top = 1, bottom = 1 },
+    })
+    frame:SetBackdropColor(0.06, 0.06, 0.14, 0.97)
+    frame:SetBackdropBorderColor(0.23, 0.23, 0.36, 1)
+
+    -- Make draggable
+    frame:SetMovable(true)
+    frame:EnableMouse(true)
+    frame:RegisterForDrag("LeftButton")
+    frame:SetScript("OnDragStart", function(f) f:StartMoving() end)
+    frame:SetScript("OnDragStop", function(f) f:StopMovingOrSizing() end)
+
+    -- Make resizable
+    frame:SetResizable(true)
+    frame:SetResizeBounds(600, 500, 1200, 1000)
+    local resizeGrip = CreateFrame("Button", nil, frame)
+    resizeGrip:SetSize(16, 16)
+    resizeGrip:SetPoint("BOTTOMRIGHT", -2, 2)
+    resizeGrip:SetNormalTexture("Interface\\ChatFrame\\UI-ChatIM-SizeGrabber-Up")
+    resizeGrip:SetHighlightTexture("Interface\\ChatFrame\\UI-ChatIM-SizeGrabber-Highlight")
+    resizeGrip:SetPushedTexture("Interface\\ChatFrame\\UI-ChatIM-SizeGrabber-Down")
+    resizeGrip:SetScript("OnMouseDown", function() frame:StartSizing("BOTTOMRIGHT") end)
+    resizeGrip:SetScript("OnMouseUp", function()
+        frame:StopMovingOrSizing()
+        if UI._dashboardBuilt then
+            UI._dashboardBuilt = false  -- force rebuild on resize
+            UI:RefreshUI()
+        end
+    end)
+
+    -- Title bar
+    local titleBar = CreateFrame("Frame", nil, frame, "BackdropTemplate")
+    titleBar:SetHeight(28)
+    titleBar:SetPoint("TOPLEFT", frame, "TOPLEFT", 0, 0)
+    titleBar:SetPoint("TOPRIGHT", frame, "TOPRIGHT", 0, 0)
+    titleBar:SetBackdrop({ bgFile = "Interface\\Buttons\\WHITE8x8" })
+    titleBar:SetBackdropColor(0.1, 0.08, 0.2, 1)
+
+    local titleText = CreateText(titleBar, 13, unpack(C.gold))
+    titleText:SetPoint("LEFT", titleBar, "LEFT", 12, 0)
+    titleText:SetText("DungeonOptimizer")
+
+    -- Close button
+    local closeBtn = CreateFrame("Button", nil, titleBar)
+    closeBtn:SetSize(20, 20)
+    closeBtn:SetPoint("RIGHT", titleBar, "RIGHT", -6, 0)
+    closeBtn:SetNormalTexture("Interface\\Buttons\\UI-Panel-MinimizeButton-Up")
+    closeBtn:SetPushedTexture("Interface\\Buttons\\UI-Panel-MinimizeButton-Down")
+    closeBtn:SetHighlightTexture("Interface\\Buttons\\UI-Panel-MinimizeButton-Highlight")
+    closeBtn:SetScript("OnClick", function() frame:Hide() end)
+
+    -- Status bar
+    local statusBar = CreateFrame("Frame", nil, frame, "BackdropTemplate")
+    statusBar:SetHeight(20)
+    statusBar:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", 0, 0)
+    statusBar:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", 0, 0)
+    statusBar:SetBackdrop({ bgFile = "Interface\\Buttons\\WHITE8x8" })
+    statusBar:SetBackdropColor(0.05, 0.05, 0.1, 1)
+
+    local statusText = CreateText(statusBar, 9, unpack(C.dim))
+    statusText:SetPoint("LEFT", statusBar, "LEFT", 8, 0)
+    statusText:SetText(NS.L["STATUS_TEXT"])
+
+    -- ESC to close
+    table.insert(UISpecialFrames, "DungeonOptimizerFrame")
+
+    -- Mouse wheel scrolling (will be connected in BuildDashboard)
+    frame._mouseWheelEnabled = true
+
+    self.mainFrame = frame
+    self._innerParent = frame
 end
 
 -- ============================================================================
@@ -145,10 +215,10 @@ function UI:BuildDashboard()
     if self._dashboardBuilt then return end
 
     local parent = self._innerParent
-    -- Content area: offset from AceGUI title/statusbar
+    -- Content area: below title bar, above status bar
     local content = CreateFrame("Frame", nil, parent)
-    content:SetPoint("TOPLEFT", parent, "TOPLEFT", 12, -28)
-    content:SetPoint("BOTTOMRIGHT", parent, "BOTTOMRIGHT", -12, 28)
+    content:SetPoint("TOPLEFT", parent, "TOPLEFT", 8, -30)
+    content:SetPoint("BOTTOMRIGHT", parent, "BOTTOMRIGHT", -8, 22)
     self._content = content
 
     -- Scrollable container
@@ -157,12 +227,21 @@ function UI:BuildDashboard()
     scroll:SetPoint("BOTTOMRIGHT", -24, 0)
     self._scroll = scroll
 
+    -- Enable mouse wheel scrolling on the main frame
+    parent:EnableMouseWheel(true)
+    parent:SetScript("OnMouseWheel", function(_, delta)
+        local current = scroll:GetVerticalScroll()
+        local maxScroll = scroll:GetVerticalScrollRange()
+        local newScroll = current - (delta * 40)
+        newScroll = math.max(0, math.min(newScroll, maxScroll))
+        scroll:SetVerticalScroll(newScroll)
+    end)
+
     local scrollChild = CreateFrame("Frame", nil, scroll)
-    scrollChild:SetWidth(scroll:GetWidth() or 700)
+    scrollChild:SetWidth(content:GetWidth() or 700)
     scroll:SetScrollChild(scrollChild)
     self._scrollChild = scrollChild
 
-    -- We'll set scrollChild height dynamically in RefreshUI
     self._dashboardBuilt = true
 end
 
@@ -917,117 +996,170 @@ function UI:RenderActionButtons(parent, yOffset, width)
 end
 
 -- ============================================================================
--- SEASON HISTORY TAB (kept from v3)
+-- SEASON HISTORY TAB (pure CreateFrame)
 -- ============================================================================
 function UI:ShowHistoryTab()
     if not self.mainFrame then self:CreateMainFrame() end
     self.mainFrame:Show()
 
-    -- Hide dashboard, show history via AceGUI
+    -- Hide dashboard content
     if self._content then self._content:Hide() end
 
-    -- Use AceGUI for this secondary view
-    self.mainFrame:ReleaseChildren()
+    -- Clean up previous overlay
+    if self._overlayFrame then self._overlayFrame:Hide() end
 
-    local heading = AceGUI:Create("Heading")
-    heading:SetText("Season Run History")
-    heading:SetFullWidth(true)
-    self.mainFrame:AddChild(heading)
+    local parent = self._innerParent
+    local overlay = CreateFrame("Frame", nil, parent)
+    overlay:SetPoint("TOPLEFT", parent, "TOPLEFT", 8, -30)
+    overlay:SetPoint("BOTTOMRIGHT", parent, "BOTTOMRIGHT", -8, 22)
+    overlay:SetFrameLevel(parent:GetFrameLevel() + 10)
+    self._overlayFrame = overlay
+
+    -- Title
+    local title = CreateText(overlay, 14, unpack(C.gold))
+    title:SetPoint("TOPLEFT", 8, -8)
+    title:SetText("Season Run History")
+
+    -- Back button
+    local backBtn = CreateFrame("Button", nil, overlay, "BackdropTemplate")
+    backBtn:SetSize(130, 22)
+    backBtn:SetPoint("TOPRIGHT", overlay, "TOPRIGHT", -8, -6)
+    backBtn:SetBackdrop({
+        bgFile = "Interface\\Buttons\\WHITE8x8",
+        edgeFile = "Interface\\Buttons\\WHITE8x8",
+        edgeSize = 1,
+    })
+    backBtn:SetBackdropColor(0.23, 0.17, 0.43, 1)
+    backBtn:SetBackdropBorderColor(0.35, 0.29, 0.56, 1)
+    local backLabel = CreateText(backBtn, 10, unpack(C.gold))
+    backLabel:SetPoint("CENTER")
+    backLabel:SetText(NS.L["DASHBOARD_BACK"])
+    backBtn:SetScript("OnClick", function()
+        overlay:Hide()
+        if self._content then self._content:Show() end
+        self:RefreshUI()
+    end)
 
     local history = NS.Core:GetSeasonHistory()
     if not next(history) then
-        local lbl = AceGUI:Create("Label")
-        lbl:SetText("|cff888888No M+ runs found this season.|r")
-        lbl:SetFullWidth(true)
-        self.mainFrame:AddChild(lbl)
-
-        local backBtn = AceGUI:Create("Button")
-        backBtn:SetText("Back to Dashboard")
-        backBtn:SetWidth(150)
-        backBtn:SetCallback("OnClick", function()
-            self.mainFrame:ReleaseChildren()
-            if self._content then self._content:Show() end
-            self:RefreshUI()
-        end)
-        self.mainFrame:AddChild(backBtn)
+        local emptyLabel = CreateText(overlay, 11, unpack(C.dim))
+        emptyLabel:SetPoint("TOPLEFT", 8, -36)
+        emptyLabel:SetText("No M+ runs found this season.")
         return
     end
 
-    local scroll = AceGUI:Create("ScrollFrame")
-    scroll:SetFullWidth(true)
-    scroll:SetFullHeight(true)
-    scroll:SetLayout("Flow")
-    self.mainFrame:AddChild(scroll)
+    -- Scroll area
+    local scroll = CreateFrame("ScrollFrame", nil, overlay, "UIPanelScrollFrameTemplate")
+    scroll:SetPoint("TOPLEFT", 0, -32)
+    scroll:SetPoint("BOTTOMRIGHT", -24, 0)
 
+    local scrollChild = CreateFrame("Frame", nil, scroll)
+    scrollChild:SetWidth(scroll:GetWidth() or 680)
+    scroll:SetScrollChild(scrollChild)
+
+    -- Sort by best score descending
     local sorted = {}
     for mapID, data in pairs(history) do
         local name = ""
         if C_ChallengeMode and C_ChallengeMode.GetMapUIInfo then
             name = C_ChallengeMode.GetMapUIInfo(mapID) or ("Map " .. mapID)
         end
-        table.insert(sorted, { mapID = mapID, name = name, runs = data.runs, bestLevel = data.bestLevel, bestScore = data.bestScore })
+        table.insert(sorted, { name = name, runs = data.runs, bestLevel = data.bestLevel, bestScore = data.bestScore })
     end
     table.sort(sorted, function(a, b) return a.bestScore > b.bestScore end)
 
+    local yOff = 0
     for _, entry in ipairs(sorted) do
-        local lbl = AceGUI:Create("Label")
+        local row = CreateFrame("Frame", nil, scrollChild)
+        row:SetSize(scrollChild:GetWidth(), 20)
+        row:SetPoint("TOPLEFT", scrollChild, "TOPLEFT", 0, yOff)
+
+        local lbl = CreateText(row, 11, unpack(C.white))
+        lbl:SetPoint("LEFT", 8, 0)
         lbl:SetText(string.format(
-            "  |cff00ff00%s|r  -  %d runs  -  Best: +%d  (Score: %d)",
+            "|cff00ff00%s|r  -  %d runs  -  Best: +%d  (Score: %d)",
             entry.name, entry.runs, entry.bestLevel, entry.bestScore
         ))
-        lbl:SetFullWidth(true)
-        scroll:AddChild(lbl)
+        yOff = yOff - 22
     end
 
-    local backBtn = AceGUI:Create("Button")
-    backBtn:SetText("Back to Dashboard")
-    backBtn:SetWidth(150)
-    backBtn:SetCallback("OnClick", function()
-        self.mainFrame:ReleaseChildren()
-        if self._content then self._content:Show() end
-        self:RefreshUI()
-    end)
-    self.mainFrame:AddChild(backBtn)
+    scrollChild:SetHeight(math.abs(yOff) + 10)
 end
 
 -- ============================================================================
--- READY CHECK RESULTS (kept from v3)
+-- READY CHECK RESULTS (pure CreateFrame)
 -- ============================================================================
 function UI:ShowReadyCheckResults(results)
     if not self.mainFrame then self:CreateMainFrame() end
     self.mainFrame:Show()
 
     if self._content then self._content:Hide() end
-    self.mainFrame:ReleaseChildren()
+    if self._overlayFrame then self._overlayFrame:Hide() end
 
-    local heading = AceGUI:Create("Heading")
-    heading:SetText(NS.L["READYCHECK_TITLE"])
-    heading:SetFullWidth(true)
-    self.mainFrame:AddChild(heading)
+    local parent = self._innerParent
+    local overlay = CreateFrame("Frame", nil, parent)
+    overlay:SetPoint("TOPLEFT", parent, "TOPLEFT", 8, -30)
+    overlay:SetPoint("BOTTOMRIGHT", parent, "BOTTOMRIGHT", -8, 22)
+    overlay:SetFrameLevel(parent:GetFrameLevel() + 10)
+    self._overlayFrame = overlay
 
-    local scroll = AceGUI:Create("ScrollFrame")
-    scroll:SetFullWidth(true)
-    scroll:SetFullHeight(true)
-    scroll:SetLayout("Flow")
-    self.mainFrame:AddChild(scroll)
+    -- Title
+    local title = CreateText(overlay, 14, unpack(C.gold))
+    title:SetPoint("TOPLEFT", 8, -8)
+    title:SetText(NS.L["READYCHECK_TITLE"])
 
+    -- Back button
+    local backBtn = CreateFrame("Button", nil, overlay, "BackdropTemplate")
+    backBtn:SetSize(130, 22)
+    backBtn:SetPoint("TOPRIGHT", overlay, "TOPRIGHT", -8, -6)
+    backBtn:SetBackdrop({
+        bgFile = "Interface\\Buttons\\WHITE8x8",
+        edgeFile = "Interface\\Buttons\\WHITE8x8",
+        edgeSize = 1,
+    })
+    backBtn:SetBackdropColor(0.23, 0.17, 0.43, 1)
+    backBtn:SetBackdropBorderColor(0.35, 0.29, 0.56, 1)
+    local backLabel = CreateText(backBtn, 10, unpack(C.gold))
+    backLabel:SetPoint("CENTER")
+    backLabel:SetText(NS.L["DASHBOARD_BACK"])
+    backBtn:SetScript("OnClick", function()
+        overlay:Hide()
+        if self._content then self._content:Show() end
+        self:RefreshUI()
+    end)
+
+    -- Scroll area
+    local scroll = CreateFrame("ScrollFrame", nil, overlay, "UIPanelScrollFrameTemplate")
+    scroll:SetPoint("TOPLEFT", 0, -32)
+    scroll:SetPoint("BOTTOMRIGHT", -24, 0)
+
+    local scrollChild = CreateFrame("Frame", nil, scroll)
+    scrollChild:SetWidth(scroll:GetWidth() or 680)
+    scroll:SetScrollChild(scrollChild)
+
+    local yOff = 0
     for _, result in ipairs(results) do
         local classColor = NS.CLASS_COLORS[result.class] or "ffffff"
 
-        local playerGroup = AceGUI:Create("InlineGroup")
-        playerGroup:SetFullWidth(true)
-        playerGroup:SetTitle(string.format(
-            "|cff%s%s|r  [%d/%d]",
-            classColor, result.name, result.passCount, result.totalChecks
-        ))
-        playerGroup:SetLayout("Flow")
-        scroll:AddChild(playerGroup)
+        -- Player header
+        local headerFrame = CreatePanel(scrollChild, 0.1, 0.08, 0.2, 0.8)
+        headerFrame:SetSize(scrollChild:GetWidth(), 22)
+        headerFrame:SetPoint("TOPLEFT", scrollChild, "TOPLEFT", 0, yOff)
+
+        local headerText = CreateText(headerFrame, 12, unpack(C.white))
+        headerText:SetPoint("LEFT", 8, 0)
+        headerText:SetText(string.format("|cff%s%s|r  [%d/%d]",
+            classColor, result.name, result.passCount, result.totalChecks))
+        yOff = yOff - 24
 
         if not result.inRange then
-            local rangeLabel = AceGUI:Create("Label")
-            rangeLabel:SetText("   " .. NS.L["READYCHECK_RANGE"])
-            rangeLabel:SetFullWidth(true)
-            playerGroup:AddChild(rangeLabel)
+            local rangeFrame = CreateFrame("Frame", nil, scrollChild)
+            rangeFrame:SetSize(scrollChild:GetWidth(), 16)
+            rangeFrame:SetPoint("TOPLEFT", scrollChild, "TOPLEFT", 0, yOff)
+            local rangeLbl = CreateText(rangeFrame, 10, unpack(C.dim))
+            rangeLbl:SetPoint("LEFT", 16, 0)
+            rangeLbl:SetText(NS.L["READYCHECK_RANGE"])
+            yOff = yOff - 18
         else
             local checks = {
                 { key = "enchants", label = NS.L["READYCHECK_ENCHANTS"] },
@@ -1044,23 +1176,20 @@ function UI:ShowReadyCheckResults(results)
                 if not data.pass and data.missing and #data.missing > 0 then
                     extra = " (" .. table.concat(data.missing, ", ") .. ")"
                 end
-                local lbl = AceGUI:Create("Label")
-                lbl:SetText(string.format("   %s %s: %s%s", icon, check.label, status, extra))
-                lbl:SetFullWidth(true)
-                playerGroup:AddChild(lbl)
+
+                local checkFrame = CreateFrame("Frame", nil, scrollChild)
+                checkFrame:SetSize(scrollChild:GetWidth(), 16)
+                checkFrame:SetPoint("TOPLEFT", scrollChild, "TOPLEFT", 0, yOff)
+                local checkLbl = CreateText(checkFrame, 10, unpack(C.white))
+                checkLbl:SetPoint("LEFT", 16, 0)
+                checkLbl:SetText(string.format("%s %s: %s%s", icon, check.label, status, extra))
+                yOff = yOff - 18
             end
         end
+        yOff = yOff - 6  -- spacing between players
     end
 
-    local backBtn = AceGUI:Create("Button")
-    backBtn:SetText("Back to Dashboard")
-    backBtn:SetWidth(150)
-    backBtn:SetCallback("OnClick", function()
-        self.mainFrame:ReleaseChildren()
-        if self._content then self._content:Show() end
-        self:RefreshUI()
-    end)
-    self.mainFrame:AddChild(backBtn)
+    scrollChild:SetHeight(math.abs(yOff) + 10)
 end
 
 -- ============================================================================
