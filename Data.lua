@@ -2826,25 +2826,106 @@ NS.ACTION_TYPES = {
 
 -- Craftable BIS items per spec. Graceful degradation: specs without entries
 -- simply have no CRAFT_ITEM actions in their roadmap.
+-- Auto-extracted from BIS_MYTHIC comments containing "Crafted".
 -- Format: { slot, itemId, name, sparkCost, crestType, crestCost, resultIlvl, profession }
 NS.CRAFTABLE_BIS = {
-    -- Warrior specs (example data — extend with scraper later)
-    WARRIOR_FURY = {
-        { slot = 17, itemId = 237847, name = "Blood Knight's Impetus", sparkCost = 1,
-          crestType = "GILDED", crestCost = 120, resultIlvl = 636, profession = "Blacksmithing" },
-        { slot = 9, itemId = 237834, name = "Spellbreaker's Bracers", sparkCost = 1,
-          crestType = "GILDED", crestCost = 60, resultIlvl = 636, profession = "Blacksmithing" },
+    DEATHKNIGHT_FROST = {
+        { slot = 15, itemId = 239656, name = "Adherent's Silken Shroud", sparkCost = 1, crestType = "GILDED", crestCost = 60, resultIlvl = 636, profession = "Leatherworking" },
+        { slot = 9, itemId = 237834, name = "Spellbreaker's Bracers", sparkCost = 1, crestType = "GILDED", crestCost = 60, resultIlvl = 636, profession = "Blacksmithing" },
+    },
+    DEATHKNIGHT_UNHOLY = {
+        { slot = 15, itemId = 239656, name = "Adherent's Silken Shroud", sparkCost = 1, crestType = "GILDED", crestCost = 60, resultIlvl = 636, profession = "Leatherworking" },
+        { slot = 9, itemId = 237834, name = "Spellbreaker's Bracers", sparkCost = 1, crestType = "GILDED", crestCost = 60, resultIlvl = 636, profession = "Blacksmithing" },
+    },
+    DEMONHUNTER_VENGEANCE = {
+        { slot = 17, itemId = 237840, name = "Spellbreaker's Warglaive", sparkCost = 1, crestType = "GILDED", crestCost = 120, resultIlvl = 636, profession = "Blacksmithing" },
+        { slot = 9, itemId = 244576, name = "Silvermoon Agent's Deflectors", sparkCost = 1, crestType = "GILDED", crestCost = 60, resultIlvl = 636, profession = "Leatherworking" },
+    },
+    DRUID_GUARDIAN = {
+        { slot = 9, itemId = 244576, name = "Silvermoon Agent's Deflectors", sparkCost = 1, crestType = "GILDED", crestCost = 60, resultIlvl = 636, profession = "Leatherworking" },
+        { slot = 6, itemId = 244573, name = "Silvermoon Agent's Utility Belt", sparkCost = 1, crestType = "GILDED", crestCost = 60, resultIlvl = 636, profession = "Leatherworking" },
+    },
+    EVOKER_AUGMENTATION = {
+        { slot = 15, itemId = 239656, name = "Adherent's Silken Shroud", sparkCost = 1, crestType = "GILDED", crestCost = 60, resultIlvl = 636, profession = "Tailoring" },
+        { slot = 9, itemId = 244584, name = "Farstrider's Plated Bracers", sparkCost = 1, crestType = "GILDED", crestCost = 60, resultIlvl = 636, profession = "Leatherworking" },
+    },
+    EVOKER_DEVASTATION = {
+        { slot = 15, itemId = 239656, name = "Adherent's Silken Shroud", sparkCost = 1, crestType = "GILDED", crestCost = 60, resultIlvl = 636, profession = "Tailoring" },
+    },
+    EVOKER_PRESERVATION = {
+        { slot = 6, itemId = 244611, name = "World Tender's Barkclasp", sparkCost = 1, crestType = "GILDED", crestCost = 60, resultIlvl = 636, profession = "Leatherworking" },
+        { slot = 8, itemId = 244610, name = "World Tender's Rootslippers", sparkCost = 1, crestType = "GILDED", crestCost = 75, resultIlvl = 636, profession = "Leatherworking" },
+    },
+    MAGE_ARCANE = {
+        { slot = 15, itemId = 239661, name = "Arcanoweave Cloak", sparkCost = 1, crestType = "GILDED", crestCost = 60, resultIlvl = 636, profession = "Tailoring" },
+        { slot = 9, itemId = 239660, name = "Arcanoweave Bracers", sparkCost = 1, crestType = "GILDED", crestCost = 60, resultIlvl = 636, profession = "Tailoring" },
+    },
+    MAGE_FIRE = {
+        { slot = 15, itemId = 239656, name = "Adherent's Silken Shroud", sparkCost = 1, crestType = "GILDED", crestCost = 60, resultIlvl = 636, profession = "Tailoring" },
+        { slot = 9, itemId = 239648, name = "Martyr's Bindings", sparkCost = 1, crestType = "GILDED", crestCost = 60, resultIlvl = 636, profession = "Tailoring" },
+    },
+    MONK_MISTWEAVER = {
+        { slot = 15, itemId = 239656, name = "Adherent's Silken Shroud", sparkCost = 1, crestType = "GILDED", crestCost = 60, resultIlvl = 636, profession = "Tailoring" },
+        { slot = 9, itemId = 244576, name = "Silvermoon Agent's Deflectors", sparkCost = 1, crestType = "GILDED", crestCost = 60, resultIlvl = 636, profession = "Leatherworking" },
+    },
+    PALADIN_HOLY = {
+        { slot = 15, itemId = 239656, name = "Adherent's Silken Shroud", sparkCost = 1, crestType = "GILDED", crestCost = 60, resultIlvl = 636, profession = "Tailoring" },
+        { slot = 9, itemId = 237834, name = "Spellbreaker's Bracers", sparkCost = 1, crestType = "GILDED", crestCost = 60, resultIlvl = 636, profession = "Blacksmithing" },
+    },
+    PALADIN_PROTECTION = {
+        { slot = 9, itemId = 237834, name = "Spellbreaker's Bracers", sparkCost = 1, crestType = "GILDED", crestCost = 60, resultIlvl = 636, profession = "Blacksmithing" },
+        { slot = 12, itemId = 251513, name = "Loa Worshiper's Band", sparkCost = 1, crestType = "GILDED", crestCost = 60, resultIlvl = 636, profession = "Jewelcrafting" },
+    },
+    PALADIN_RETRIBUTION = {
+        { slot = 15, itemId = 239656, name = "Adherent's Silken Shroud", sparkCost = 1, crestType = "GILDED", crestCost = 60, resultIlvl = 636, profession = "Tailoring" },
+        { slot = 9, itemId = 237834, name = "Spellbreaker's Bracers", sparkCost = 1, crestType = "GILDED", crestCost = 60, resultIlvl = 636, profession = "Blacksmithing" },
+    },
+    PRIEST_DISCIPLINE = {
+        { slot = 17, itemId = 245769, name = "Aln'hara Lantern", sparkCost = 1, crestType = "GILDED", crestCost = 120, resultIlvl = 636, profession = "Inscription" },
+        { slot = 6, itemId = 239664, name = "Arcanoweave Cord", sparkCost = 1, crestType = "GILDED", crestCost = 60, resultIlvl = 636, profession = "Tailoring" },
+    },
+    PRIEST_HOLY = {
+        { slot = 16, itemId = 245770, name = "Aln'hara Cane", sparkCost = 1, crestType = "GILDED", crestCost = 120, resultIlvl = 636, profession = "Inscription" },
+        { slot = 6, itemId = 239664, name = "Arcanoweave Cord", sparkCost = 1, crestType = "GILDED", crestCost = 60, resultIlvl = 636, profession = "Tailoring" },
+    },
+    ROGUE_ASSASSINATION = {
+        { slot = 17, itemId = 237837, name = "Farstrider's Mercy", sparkCost = 1, crestType = "GILDED", crestCost = 120, resultIlvl = 636, profession = "Blacksmithing" },
+        { slot = 9, itemId = 244576, name = "Silvermoon Agent's Deflectors", sparkCost = 1, crestType = "GILDED", crestCost = 60, resultIlvl = 636, profession = "Leatherworking" },
+    },
+    ROGUE_OUTLAW = {
+        { slot = 8, itemId = 244569, name = "Silvermoon Agent's Sneakers", sparkCost = 1, crestType = "GILDED", crestCost = 75, resultIlvl = 636, profession = "Leatherworking" },
+        { slot = 12, itemId = 240949, name = "Masterwork Sin'dorei Band", sparkCost = 1, crestType = "GILDED", crestCost = 60, resultIlvl = 636, profession = "Jewelcrafting" },
+    },
+    SHAMAN_ELEMENTAL = {
+        { slot = 6, itemId = 244611, name = "World Tender's Barkclasp", sparkCost = 1, crestType = "GILDED", crestCost = 60, resultIlvl = 636, profession = "Leatherworking" },
+        { slot = 8, itemId = 244610, name = "World Tender's Rootslippers", sparkCost = 1, crestType = "GILDED", crestCost = 75, resultIlvl = 636, profession = "Leatherworking" },
+    },
+    SHAMAN_RESTORATION = {
+        { slot = 6, itemId = 244611, name = "World Tender's Barkclasp", sparkCost = 1, crestType = "GILDED", crestCost = 60, resultIlvl = 636, profession = "Leatherworking" },
+        { slot = 8, itemId = 244610, name = "World Tender's Rootslippers", sparkCost = 1, crestType = "GILDED", crestCost = 75, resultIlvl = 636, profession = "Leatherworking" },
+    },
+    WARLOCK_AFFLICTION = {
+        { slot = 15, itemId = 239656, name = "Adherent's Silken Shroud", sparkCost = 1, crestType = "GILDED", crestCost = 60, resultIlvl = 636, profession = "Tailoring" },
+        { slot = 9, itemId = 239648, name = "Martyr's Bindings", sparkCost = 1, crestType = "GILDED", crestCost = 60, resultIlvl = 636, profession = "Tailoring" },
+    },
+    WARLOCK_DEMONOLOGY = {
+        { slot = 15, itemId = 239656, name = "Adherent's Silken Shroud", sparkCost = 1, crestType = "GILDED", crestCost = 60, resultIlvl = 636, profession = "Tailoring" },
+        { slot = 9, itemId = 239648, name = "Martyr's Bindings", sparkCost = 1, crestType = "GILDED", crestCost = 60, resultIlvl = 636, profession = "Tailoring" },
+    },
+    WARLOCK_DESTRUCTION = {
+        { slot = 15, itemId = 239656, name = "Adherent's Silken Shroud", sparkCost = 1, crestType = "GILDED", crestCost = 60, resultIlvl = 636, profession = "Tailoring" },
+        { slot = 9, itemId = 239648, name = "Martyr's Bindings", sparkCost = 1, crestType = "GILDED", crestCost = 60, resultIlvl = 636, profession = "Tailoring" },
     },
     WARRIOR_ARMS = {
-        { slot = 15, itemId = 239656, name = "Adherent's Silken Shroud", sparkCost = 1,
-          crestType = "GILDED", crestCost = 60, resultIlvl = 636, profession = "Tailoring" },
-        { slot = 9, itemId = 237834, name = "Spellbreaker's Bracers", sparkCost = 1,
-          crestType = "GILDED", crestCost = 60, resultIlvl = 636, profession = "Blacksmithing" },
+        { slot = 15, itemId = 239656, name = "Adherent's Silken Shroud", sparkCost = 1, crestType = "GILDED", crestCost = 60, resultIlvl = 636, profession = "Tailoring" },
+        { slot = 9, itemId = 237834, name = "Spellbreaker's Bracers", sparkCost = 1, crestType = "GILDED", crestCost = 60, resultIlvl = 636, profession = "Blacksmithing" },
+    },
+    WARRIOR_FURY = {
+        { slot = 17, itemId = 237847, name = "Blood Knight's Impetus", sparkCost = 1, crestType = "GILDED", crestCost = 120, resultIlvl = 636, profession = "Blacksmithing" },
+        { slot = 9, itemId = 237834, name = "Spellbreaker's Bracers", sparkCost = 1, crestType = "GILDED", crestCost = 60, resultIlvl = 636, profession = "Blacksmithing" },
     },
     WARRIOR_PROTECTION = {
-        { slot = 15, itemId = 239656, name = "Adherent's Silken Shroud", sparkCost = 1,
-          crestType = "GILDED", crestCost = 60, resultIlvl = 636, profession = "Tailoring" },
-        { slot = 9, itemId = 237834, name = "Spellbreaker's Bracers", sparkCost = 1,
-          crestType = "GILDED", crestCost = 60, resultIlvl = 636, profession = "Blacksmithing" },
+        { slot = 15, itemId = 239656, name = "Adherent's Silken Shroud", sparkCost = 1, crestType = "GILDED", crestCost = 60, resultIlvl = 636, profession = "Tailoring" },
+        { slot = 9, itemId = 237834, name = "Spellbreaker's Bracers", sparkCost = 1, crestType = "GILDED", crestCost = 60, resultIlvl = 636, profession = "Blacksmithing" },
     },
 }
