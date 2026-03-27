@@ -89,7 +89,7 @@ jobs:
           TOC_IFACE=$(grep -oP '## Interface:\s*\K\d+' DungeonOptimizer.toc 2>/dev/null || echo "")
           # Fallback: try Mainline toc
           if [ -z "$TOC_IFACE" ]; then
-            TOC_IFACE=$(grep -oP '## Interface:\s*\K\d+' DungeonOptimizer_Mainline.toc 2>/dev/null || echo "120005")
+            TOC_IFACE=$(grep -oP '## Interface:\s*\K\d+' DungeonOptimizer_Mainline.toc 2>/dev/null || echo "120001")
           fi
 
           # Convert interface number to version string: 120001 -> "12.0.1"
