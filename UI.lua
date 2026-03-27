@@ -43,6 +43,40 @@ local function RankColor(rank)
     return RANK_COLORS[rank] or "ff4444"
 end
 
+-- Simplified RaiderIO score-to-color tiers (based on raiderio-addon score_tiers)
+local RIO_SCORE_TIERS = {
+    { score = 3350, r = 1.00, g = 0.50, b = 0.00 }, -- Orange (top)
+    { score = 3000, r = 0.88, g = 0.34, b = 0.30 }, -- Red-orange
+    { score = 2525, r = 0.64, g = 0.21, b = 0.93 }, -- Purple
+    { score = 2050, r = 0.00, g = 0.44, b = 0.87 }, -- Blue
+    { score = 1590, r = 0.35, g = 0.63, b = 0.67 }, -- Teal
+    { score = 1200, r = 0.00, g = 0.80, b = 0.20 }, -- Green
+    { score = 825,  r = 0.12, g = 1.00, b = 0.00 }, -- Bright green
+    { score = 200,  r = 1.00, g = 1.00, b = 1.00 }, -- White
+    { score = 0,    r = 0.60, g = 0.60, b = 0.60 }, -- Gray
+}
+
+-- Returns r,g,b for a given M+ score, interpolating between tiers
+local function GetRIOScoreColor(score)
+    score = score or 0
+    -- Find the two tiers to interpolate between
+    for i = 1, #RIO_SCORE_TIERS - 1 do
+        local upper = RIO_SCORE_TIERS[i]
+        local lower = RIO_SCORE_TIERS[i + 1]
+        if score >= lower.score then
+            if score >= upper.score then
+                return upper.r, upper.g, upper.b
+            end
+            local t = (score - lower.score) / (upper.score - lower.score)
+            return lower.r + t * (upper.r - lower.r),
+                   lower.g + t * (upper.g - lower.g),
+                   lower.b + t * (upper.b - lower.b)
+        end
+    end
+    local last = RIO_SCORE_TIERS[#RIO_SCORE_TIERS]
+    return last.r, last.g, last.b
+end
+
 local function ClassColorHex(class)
     return NS.CLASS_COLORS[class] or "ffffff"
 end
@@ -304,7 +338,7 @@ function UI:RefreshUI()
     -- === KPI HEADER ===
     yOffset = self:RenderKPIHeader(sc, yOffset, contentWidth, activeMode)
 
-    if activeMode == "mplus" then
+    if activeMode == "mplus" or activeMode == "overall" then
         -- === GROUP KEYSTONES ===
         yOffset = self:RenderGroupKeystones(sc, yOffset, contentWidth)
 
@@ -315,7 +349,7 @@ function UI:RefreshUI()
     -- === DUNGEON / RAID RANKINGS ===
     yOffset = self:RenderRankings(sc, yOffset, contentWidth, activeMode)
 
-    if activeMode == "mplus" then
+    if activeMode == "mplus" or activeMode == "overall" then
         -- === GREAT VAULT ===
         yOffset = self:RenderVaultProgress(sc, yOffset, contentWidth)
     end
@@ -340,6 +374,7 @@ function UI:RenderModeToggle(parent, yOffset, width, activeMode)
     local modes = {
         { key = "mplus", label = "M+" },
         { key = "raid", label = "Raid" },
+        { key = "overall", label = "Overall" },
     }
 
     local btnWidth = 70
@@ -396,14 +431,15 @@ function UI:RenderKPIHeader(parent, yOffset, width, activeMode)
 
     -- Card 1: M+ Score or Raid Progress
     local card1 = self:CreateKPICard(headerFrame, 0, 0, cardWidth)
-    if activeMode == "mplus" then
+    if activeMode == "mplus" or activeMode == "overall" then
         local overallScore = 0
         if C_ChallengeMode and C_ChallengeMode.GetOverallDungeonScore then
             overallScore = C_ChallengeMode.GetOverallDungeonScore() or 0
         end
-        self:SetKPICard(card1, "M+ Score", tostring(overallScore), nil, unpack(C.orange))
+        local rioR, rioG, rioB = GetRIOScoreColor(overallScore)
+        self:SetKPICard(card1, "M+ Score", tostring(overallScore), nil, rioR, rioG, rioB)
     else
-        self:SetKPICard(card1, "Raid", "Gear", nil, unpack(C.purple))
+        self:SetKPICard(card1, "Raid", "BIS", nil, unpack(C.purple))
     end
 
     -- Card 2: BIS Progress
@@ -584,6 +620,8 @@ function UI:RenderRankings(parent, yOffset, width, activeMode)
     local ranking
     if activeMode == "mplus" then
         ranking = NS.Core.lastRanking or {}
+    elseif activeMode == "overall" then
+        ranking = NS.Core.lastOverallRanking or {}
     else
         ranking = NS.Core.lastRaidRanking or {}
     end
@@ -596,7 +634,8 @@ function UI:RenderRankings(parent, yOffset, width, activeMode)
 
     local titleText = CreateText(titleFrame, 9, unpack(C.gold))
     titleText:SetPoint("LEFT", 4, 0)
-    local titleStr = activeMode == "mplus" and "DUNGEON RANKINGS" or "RAID RANKINGS"
+    local titleStr = activeMode == "mplus" and "DUNGEON RANKINGS"
+        or activeMode == "overall" and "OVERALL RANKINGS" or "RAID RANKINGS"
     titleText:SetText(titleStr)
 
     yOffset = yOffset - 22
@@ -697,6 +736,34 @@ function UI:RenderDungeonEntry(parent, yOffset, width, rank, entry, activeMode)
         displayScore = entry.bisScore or entry.score
     end
     scoreLabel:SetText(string.format("%.1f", displayScore))
+
+    -- Score tooltip (explain what the score means)
+    scoreLabel:EnableMouse(true)
+    scoreLabel:SetScript("OnEnter", function(self)
+        GameTooltip:SetOwner(self, "ANCHOR_LEFT")
+        GameTooltip:SetText("Dungeon Score", 1, 0.82, 0.2)
+        if activeMode == "mplus" then
+            local gearPart = (entry.gearWeight or 0.6) * (entry.normalizedGear or 0)
+            local rioPart = (entry.rioWeight or 0.4) * (entry.normalizedRIO or 0)
+            local vb = entry.vaultBonus or 0
+            GameTooltip:AddLine(" ")
+            GameTooltip:AddDoubleLine("Gear score", string.format("%.2f", gearPart), 0.64, 0.21, 0.93, 1, 1, 1)
+            GameTooltip:AddLine("  BIS items your group can loot here", 0.5, 0.5, 0.5, true)
+            GameTooltip:AddDoubleLine("RIO score", string.format("%.2f", rioPart), 1, 0.55, 0, 1, 1, 1)
+            GameTooltip:AddLine("  M+ rating gain from timing this key", 0.5, 0.5, 0.5, true)
+            if vb > 0 then
+                GameTooltip:AddDoubleLine("Vault bonus", string.format("+%.1f", vb), 0, 0.8, 1, 1, 1, 1)
+                GameTooltip:AddLine("  Running this crosses a Great Vault threshold", 0.5, 0.5, 0.5, true)
+            end
+            GameTooltip:AddLine(" ")
+            GameTooltip:AddDoubleLine("Combined", string.format("%.1f", displayScore), 0.91, 0.72, 0.29, 1, 1, 1)
+        else
+            GameTooltip:AddLine(" ")
+            GameTooltip:AddLine("Number of BIS items your group can loot", 0.5, 0.5, 0.5, true)
+        end
+        GameTooltip:Show()
+    end)
+    scoreLabel:SetScript("OnLeave", function() GameTooltip:Hide() end)
 
     -- Score breakdown
     local breakdownLabel = CreateText(entryFrame, 9, unpack(C.dim))
@@ -922,10 +989,16 @@ function UI:RenderVaultProgress(parent, yOffset, width)
         local rewardLabel = CreateText(card, 11, unpack(C.blue))
         rewardLabel:SetPoint("BOTTOM", card, "BOTTOM", 0, 6)
         if slot.progress >= slot.threshold then
+            local rewardIlvl = nil
             if slot.level and slot.level > 0 then
-                rewardLabel:SetText("ilvl " .. (NS.Core:GetRewardIlvlForKey(slot.level) or "?"))
+                rewardIlvl = NS.Core:GetRewardIlvlForKey(slot.level)
+            end
+            if rewardIlvl and rewardIlvl > 0 then
+                rewardLabel:SetText("ilvl " .. rewardIlvl)
+                rewardLabel:SetTextColor(unpack(C.green))
             else
                 rewardLabel:SetText("Complete")
+                rewardLabel:SetTextColor(unpack(C.green))
             end
         else
             rewardLabel:SetText(slot.progress .. "/" .. slot.threshold)
