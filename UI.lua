@@ -923,7 +923,7 @@ function UI:RenderVaultProgress(parent, yOffset, width)
         rewardLabel:SetPoint("BOTTOM", card, "BOTTOM", 0, 6)
         if slot.progress >= slot.threshold then
             if slot.level and slot.level > 0 then
-                rewardLabel:SetText("ilvl " .. NS.Core:GetRewardIlvlForKey(slot.level) or "?")
+                rewardLabel:SetText("ilvl " .. (NS.Core:GetRewardIlvlForKey(slot.level) or "?"))
             else
                 rewardLabel:SetText("Complete")
             end

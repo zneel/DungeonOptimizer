@@ -399,7 +399,7 @@ function DungeonOptimizer:CHALLENGE_MODE_COMPLETED()
     if C_ChallengeMode then
         local mapID = self._activeChallengeMapID
         self._activeChallengeMapID = nil
-        local dungeonKey = NS.CHALLENGE_MODE_MAP[mapID]
+        local dungeonKey = mapID and NS.CHALLENGE_MODE_MAP[mapID]
         if dungeonKey then
             self.db.profile.excludedDungeons[dungeonKey] = true
             local myName = NS.Inspect:GetUnitFullName("player")
@@ -1796,7 +1796,7 @@ end
 local function isOwnMessage(sender)
     if not sender then return true end
     local myFullName = NS.Inspect:GetUnitFullName("player")
-    return myFullName and sender == myFullName
+    return myFullName ~= nil and sender == myFullName
 end
 
 -- Parses a comma-separated list of dungeon IDs, validating against NS.DUNGEONS
