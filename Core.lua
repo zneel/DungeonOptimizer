@@ -1894,8 +1894,10 @@ local messageHandlers = {
 }
 
 function DungeonOptimizer:CHAT_MSG_ADDON(event, prefix, message, channel, sender)
-    local handler = messageHandlers[prefix]
-    if handler then
+    -- Guard against tainted strings (e.g. CHAT_MSG_LOOT dispatched through AceEvent)
+    if type(prefix) ~= "string" then return end
+    local ok, handler = pcall(function() return messageHandlers[prefix] end)
+    if ok and handler then
         handler(self, message, sender)
     end
 end
