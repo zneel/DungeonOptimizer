@@ -32,7 +32,8 @@ local defaults = {
         -- V4: new scoring weights
         gearWeight = 0.6, -- gear is the primary scoring factor
         rioWeight = 0.4, -- RIO score gain as secondary factor
-        activeMode = "mplus", -- "mplus" or "raid"
+        activeMode = "mplus", -- "mplus" or "raid" or "roadmap"
+        rioIlvlFactor = 0.15, -- roadmap: 1 RIO point = 0.15 equivalent ilvl
         profileVersion = 4, -- for saved variable migration
     },
 }
@@ -242,6 +243,10 @@ function DungeonOptimizer:OnEnable()
     -- #27: affix updates
     self:RegisterEvent("MYTHIC_PLUS_CURRENT_AFFIX_UPDATE")
 
+
+    -- Roadmap: recompute when gear or currency changes
+    self:RegisterEvent("PLAYER_EQUIPMENT_CHANGED", "InvalidateRoadmap")
+    self:RegisterEvent("CURRENCY_DISPLAY_UPDATE", "InvalidateRoadmap")
 
     C_ChatInfo.RegisterAddonMessagePrefix(ADDON_MSG_PREFIX)
     C_ChatInfo.RegisterAddonMessagePrefix(ADDON_MSG_PREFIX_KEY)
@@ -845,6 +850,9 @@ function DungeonOptimizer:OnScanComplete()
     self:SeedLocalOffSpec()
 
     self:RecalculateAllRankings()
+    -- Invalidate roadmap after scan (new gear data)
+    roadmapDirty = true
+    NS.lastRoadmap = nil
     if NS.UI then NS.UI:RefreshIfVisible() end
 end
 
@@ -1790,6 +1798,379 @@ function DungeonOptimizer:BroadcastRIOScores()
     if #parts > 0 then
         self:BroadcastToGroup(ADDON_MSG_PREFIX_RIO, table.concat(parts, ","))
     end
+end
+
+-- ============================================================================
+-- UPGRADE ROADMAP ENGINE
+-- Computes a prioritized list of upgrade actions mixing gear drops, crafts,
+-- crest upgrades, and RIO pushes into a single ranked list.
+-- ============================================================================
+
+NS.lastRoadmap = nil  -- cached roadmap result
+local roadmapDirty = true  -- flag for debounced recomputation
+
+-- Read the player's crest budget from the currency API.
+-- Returns: { WEATHERED=n, CARVED=n, RUNED=n, GILDED=n }
+function DungeonOptimizer:GetCrestBudget()
+    local budget = {}
+    if not C_CurrencyInfo or not C_CurrencyInfo.GetCurrencyInfo then
+        for _, key in ipairs(NS.CREST_ORDER) do budget[key] = 0 end
+        return budget
+    end
+    for _, key in ipairs(NS.CREST_ORDER) do
+        local info = C_CurrencyInfo.GetCurrencyInfo(NS.CREST_TYPES[key].id)
+        budget[key] = info and info.quantity or 0
+    end
+    return budget
+end
+
+-- Read the player's spark count.
+function DungeonOptimizer:GetSparkCount()
+    if not C_CurrencyInfo or not C_CurrencyInfo.GetCurrencyInfo then return 0 end
+    local info = C_CurrencyInfo.GetCurrencyInfo(NS.SPARK_CURRENCY_ID)
+    return info and info.quantity or 0
+end
+
+-- Infer the upgrade track and current level from an item's ilvl.
+-- Returns: trackName, currentLevel, maxLevel, remainingUpgrades
+function DungeonOptimizer:InferUpgradeTrack(ilvl)
+    if not ilvl or ilvl <= 0 then return nil end
+    for _, trackName in ipairs(NS.TRACK_ORDER) do
+        local track = NS.UPGRADE_TRACKS[trackName]
+        if ilvl >= track.base and ilvl <= track.max then
+            local step = track.levels > 1 and (track.max - track.base) / (track.levels - 1) or 0
+            local level = step > 0 and math.floor((ilvl - track.base) / step + 0.5) + 1 or 1
+            level = math.max(1, math.min(level, track.levels))
+            return trackName, level, track.levels, track.levels - level
+        end
+    end
+    -- Above max track
+    if ilvl > NS.UPGRADE_TRACKS.MYTH.max then
+        return "MYTH", NS.UPGRADE_TRACKS.MYTH.levels, NS.UPGRADE_TRACKS.MYTH.levels, 0
+    end
+    return nil
+end
+
+-- Score a single roadmap action. Returns a normalized "equivalent ilvl gain" score.
+function DungeonOptimizer:ScoreRoadmapAction(action, budget)
+    local ilvlGain = action.ilvlGain or 0
+    local actionType = action.actionType
+
+    if actionType == NS.ACTION_TYPES.DUNGEON_DROP then
+        -- Probabilistic: ~50% expected value discount
+        return ilvlGain * 0.5
+
+    elseif actionType == NS.ACTION_TYPES.CRAFT_ITEM then
+        -- Guaranteed but costs resources
+        return ilvlGain * 0.9
+
+    elseif actionType == NS.ACTION_TYPES.UPGRADE_ITEM then
+        -- Affordability-weighted: cheap upgrades rank higher
+        local crestType = action.crestType or "GILDED"
+        local crestCost = action.crestCost or 60
+        local available = budget and budget[crestType] or 0
+        local factor
+        if available <= 0 then
+            factor = 0.2
+        else
+            factor = 1.0 - (crestCost / available)
+            factor = math.max(0.2, math.min(0.8, factor))
+        end
+        return ilvlGain * factor
+
+    elseif actionType == NS.ACTION_TYPES.RIO_PUSH then
+        -- Convert RIO points to equivalent ilvl (configurable factor)
+        local rioFactor = self.db.profile.rioIlvlFactor or 0.15
+        return (action.rioDelta or 0) * rioFactor
+    end
+
+    return 0
+end
+
+-- Compute the full upgrade roadmap for the local player.
+-- Returns a sorted list of actions: { actionType, slot, ilvlGain, score, ... }
+function DungeonOptimizer:ComputeUpgradeRoadmap()
+    local myName = NS.Inspect:GetUnitFullName("player")
+    if not myName or not NS.groupData[myName] then return {} end
+
+    local playerData = NS.groupData[myName]
+    if not playerData.spec then return {} end
+
+    local bisTable = NS.GetActiveBISTable()
+    local bisList = bisTable[playerData.spec]
+    if not bisList then return {} end
+
+    local budget = self:GetCrestBudget()
+    local sparks = self:GetSparkCount()
+    local actions = {}
+
+    -- === GEAR-BASED ACTIONS (per slot) ===
+    for _, slotId in ipairs(NS.SLOT_DISPLAY_ORDER) do
+        local equippedIlvl = playerData.ilvls and playerData.ilvls[slotId]
+        local bisItemId = bisList[slotId]
+        if not bisItemId then -- skip slots without BIS data
+            goto continue_slot
+        end
+
+        local equippedItemId = playerData.gear and playerData.gear[slotId]
+        local hasBIS = equippedItemId and equippedItemId == bisItemId
+
+        -- For paired slots (rings, trinkets): only act on the weaker one
+        local pairSlot = NS.PAIRED_SLOTS[slotId]
+        if pairSlot and bisList[pairSlot] == bisItemId then
+            -- Same BIS item in both paired slots: only process the weaker slot
+            local pairIlvl = playerData.ilvls and playerData.ilvls[pairSlot] or 0
+            local thisIlvl = equippedIlvl or 0
+            if thisIlvl > pairIlvl and slotId > pairSlot then
+                goto continue_slot  -- skip the stronger slot, process weaker one
+            end
+        end
+
+        -- Action: DUNGEON_DROP (BIS item drops from a dungeon and player doesn't have it)
+        if not hasBIS and NS.IsFromContent(bisItemId) then
+            local dungeons = NS.ITEM_TO_DUNGEONS and NS.ITEM_TO_DUNGEONS[bisItemId]
+            local sourceName = ""
+            if dungeons and #dungeons > 0 then
+                for _, d in ipairs(NS.DUNGEONS) do
+                    if d.id == dungeons[1] then sourceName = d.name; break end
+                end
+                if sourceName == "" then
+                    for _, r in ipairs(NS.RAIDS) do
+                        if r.id == dungeons[1] then sourceName = r.name; break end
+                    end
+                end
+            end
+
+            -- Estimate ilvl gain: BIS ilvl (from target key) vs current
+            local targetKeyLevel = self:GetTargetKeyLevel(dungeons and dungeons[1])
+            local targetIlvl = self:GetRewardIlvlForKey(targetKeyLevel)
+            local currentIlvl = equippedIlvl or 0
+            local gain = targetIlvl and (targetIlvl - currentIlvl) or 13  -- fallback estimate
+
+            if gain > 0 then
+                local action = {
+                    actionType = NS.ACTION_TYPES.DUNGEON_DROP,
+                    slot = slotId,
+                    slotName = NS.SLOT_NAMES[slotId],
+                    itemId = bisItemId,
+                    itemName = "",
+                    source = sourceName,
+                    sourceKey = dungeons and dungeons[1] or nil,
+                    ilvlGain = gain,
+                    currentIlvl = currentIlvl,
+                    targetIlvl = targetIlvl,
+                }
+                action.score = self:ScoreRoadmapAction(action, budget)
+                table.insert(actions, action)
+            end
+        end
+
+        -- Action: UPGRADE_ITEM (player has BIS but can upgrade it with crests)
+        if hasBIS and equippedIlvl then
+            local trackName, currentLevel, maxLevel, remaining = self:InferUpgradeTrack(equippedIlvl)
+            if trackName and remaining and remaining > 0 then
+                local track = NS.UPGRADE_TRACKS[trackName]
+                local step = (track.max - track.base) / math.max(track.levels - 1, 1)
+                local nextIlvl = math.floor(equippedIlvl + step + 0.5)
+                local gain = nextIlvl - equippedIlvl
+                local crestCost = NS.CREST_COSTS[slotId] or 60
+
+                local action = {
+                    actionType = NS.ACTION_TYPES.UPGRADE_ITEM,
+                    slot = slotId,
+                    slotName = NS.SLOT_NAMES[slotId],
+                    itemId = bisItemId,
+                    ilvlGain = gain,
+                    currentIlvl = equippedIlvl,
+                    targetIlvl = nextIlvl,
+                    crestType = track.crest,
+                    crestCost = crestCost,
+                    trackName = trackName,
+                    currentLevel = currentLevel,
+                    maxLevel = maxLevel,
+                }
+                action.score = self:ScoreRoadmapAction(action, budget)
+                table.insert(actions, action)
+            end
+        end
+
+        ::continue_slot::
+    end
+
+    -- === CRAFT ACTIONS ===
+    local craftBIS = NS.CRAFTABLE_BIS[playerData.spec]
+    if craftBIS and sparks > 0 then
+        local sparksUsed = 0
+        for _, craft in ipairs(craftBIS) do
+            if sparksUsed >= sparks then break end
+            local equippedItemId = playerData.gear and playerData.gear[craft.slot]
+            -- Only suggest craft if player doesn't already have this item
+            if equippedItemId ~= craft.itemId then
+                local currentIlvl = playerData.ilvls and playerData.ilvls[craft.slot] or 0
+                local gain = craft.resultIlvl - currentIlvl
+                if gain > 0 then
+                    local action = {
+                        actionType = NS.ACTION_TYPES.CRAFT_ITEM,
+                        slot = craft.slot,
+                        slotName = NS.SLOT_NAMES[craft.slot],
+                        itemId = craft.itemId,
+                        itemName = craft.name,
+                        ilvlGain = gain,
+                        currentIlvl = currentIlvl,
+                        targetIlvl = craft.resultIlvl,
+                        sparkCost = craft.sparkCost,
+                        crestType = craft.crestType,
+                        crestCost = craft.crestCost,
+                        profession = craft.profession,
+                    }
+                    action.score = self:ScoreRoadmapAction(action, budget)
+                    table.insert(actions, action)
+                    sparksUsed = sparksUsed + craft.sparkCost
+                end
+            end
+        end
+    end
+
+    -- === RIO PUSH ACTIONS ===
+    if NS.DYNAMIC_DUNGEONS then
+        for _, dd in ipairs(NS.DYNAMIC_DUNGEONS) do
+            local targetKeyLevel = self:GetTargetKeyLevel(NS.CHALLENGE_MODE_MAP[dd.mapID])
+            local rioDelta, projectedTotal, currentScore = self:SimulateRIOGain(dd.mapID, targetKeyLevel)
+            if rioDelta > 0 then
+                local dungeonName = dd.name or ""
+                if dungeonName == "" and C_ChallengeMode and C_ChallengeMode.GetMapUIInfo then
+                    dungeonName = C_ChallengeMode.GetMapUIInfo(dd.mapID) or ""
+                end
+                -- Check if group also needs loot from this dungeon (group bonus)
+                local dungeonKey = NS.CHALLENGE_MODE_MAP[dd.mapID]
+                local groupBonus = 0
+                if dungeonKey then
+                    local _, details = self:ScoreDungeon(dungeonKey)
+                    if details then
+                        for _, pInfo in pairs(details) do
+                            if pInfo.count and pInfo.count > 0 then
+                                groupBonus = groupBonus + 0.1
+                            end
+                        end
+                    end
+                end
+
+                local action = {
+                    actionType = NS.ACTION_TYPES.RIO_PUSH,
+                    rioDelta = rioDelta,
+                    projectedTotal = projectedTotal,
+                    currentScore = currentScore,
+                    mapID = dd.mapID,
+                    dungeonName = dungeonName,
+                    dungeonKey = dungeonKey,
+                    targetKeyLevel = targetKeyLevel,
+                    groupBonus = groupBonus,
+                    ilvlGain = 0,
+                }
+                action.score = self:ScoreRoadmapAction(action, budget) + groupBonus
+                table.insert(actions, action)
+            end
+        end
+    end
+
+    -- Sort by score descending, take top 10
+    table.sort(actions, function(a, b) return a.score > b.score end)
+    local topActions = {}
+    for i = 1, math.min(10, #actions) do
+        topActions[i] = actions[i]
+    end
+
+    return topActions
+end
+
+-- Build the per-slot detail view for the roadmap.
+-- Returns: { { slotId, slotName, currentIlvl, bisIlvl, trackName, level, maxLevel, source } }
+function DungeonOptimizer:GetSlotDetails()
+    local myName = NS.Inspect:GetUnitFullName("player")
+    if not myName or not NS.groupData[myName] then return {} end
+
+    local playerData = NS.groupData[myName]
+    if not playerData.spec then return {} end
+
+    local bisTable = NS.GetActiveBISTable()
+    local bisList = bisTable[playerData.spec]
+    if not bisList then return {} end
+
+    local slots = {}
+    for _, slotId in ipairs(NS.SLOT_DISPLAY_ORDER) do
+        local bisItemId = bisList[slotId]
+        if bisItemId then
+            local currentIlvl = playerData.ilvls and playerData.ilvls[slotId] or 0
+            local equippedItemId = playerData.gear and playerData.gear[slotId]
+            local hasBIS = equippedItemId and equippedItemId == bisItemId
+
+            local trackName, currentLevel, maxLevel = nil, nil, nil
+            if currentIlvl > 0 then
+                trackName, currentLevel, maxLevel = self:InferUpgradeTrack(currentIlvl)
+            end
+
+            -- Determine source
+            local source = "Unknown"
+            if NS.IsFromDungeon and NS.IsFromDungeon(bisItemId) then
+                local dungeons = NS.ITEM_TO_DUNGEONS and NS.ITEM_TO_DUNGEONS[bisItemId]
+                if dungeons and #dungeons > 0 then
+                    for _, d in ipairs(NS.DUNGEONS) do
+                        if d.id == dungeons[1] then source = d.name; break end
+                    end
+                end
+            elseif NS.IsFromContent and NS.IsFromContent(bisItemId) then
+                source = "Raid"
+            end
+            -- Check if craftable
+            local craftBIS = NS.CRAFTABLE_BIS[playerData.spec]
+            if craftBIS then
+                for _, craft in ipairs(craftBIS) do
+                    if craft.itemId == bisItemId then
+                        source = "Crafted (" .. craft.profession .. ")"
+                        break
+                    end
+                end
+            end
+
+            table.insert(slots, {
+                slotId = slotId,
+                slotName = NS.SLOT_NAMES[slotId],
+                currentIlvl = currentIlvl,
+                hasBIS = hasBIS,
+                trackName = trackName,
+                currentLevel = currentLevel,
+                maxLevel = maxLevel,
+                source = source,
+                bisItemId = bisItemId,
+            })
+        end
+    end
+
+    return slots
+end
+
+-- Mark roadmap dirty (called from event handlers)
+function DungeonOptimizer:InvalidateRoadmap()
+    roadmapDirty = true
+    -- Debounce: recompute after 0.5s to batch rapid events (gear swaps)
+    if self._roadmapTimer then
+        self:CancelTimer(self._roadmapTimer)
+    end
+    self._roadmapTimer = self:ScheduleTimer(function()
+        self._roadmapTimer = nil
+        NS.lastRoadmap = self:ComputeUpgradeRoadmap()
+        roadmapDirty = false
+        if NS.UI then NS.UI:RefreshIfVisible() end
+    end, 0.5)
+end
+
+-- Get the cached roadmap (recompute if dirty)
+function DungeonOptimizer:GetRoadmap()
+    if roadmapDirty or not NS.lastRoadmap then
+        NS.lastRoadmap = self:ComputeUpgradeRoadmap()
+        roadmapDirty = false
+    end
+    return NS.lastRoadmap
 end
 
 -- Returns true if sender is the local player (used to skip own messages)

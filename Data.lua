@@ -2757,3 +2757,94 @@ NS.BIS_OVERALL = {
         [14] = 193701, -- Algeth'ar Puzzle Box (Algeth'ar Academy , only BiS if you can use it consistently.)
     },
 }
+
+-- ============================================================================
+-- UPGRADE ROADMAP DATA — Crest types, upgrade tracks, costs
+-- ============================================================================
+
+-- Crest types and currency IDs (Midnight Season 1)
+-- NOTE: Currency IDs are best-effort; verified at runtime via GetCrestBudget().
+NS.CREST_TYPES = {
+    WEATHERED = { id = 2914, name = "Weathered Crest", color = {0.6, 0.6, 0.6} },
+    CARVED    = { id = 2915, name = "Carved Crest",    color = {0.0, 0.8, 0.0} },
+    RUNED     = { id = 2916, name = "Runed Crest",     color = {0.0, 0.4, 1.0} },
+    GILDED    = { id = 2917, name = "Gilded Crest",    color = {0.8, 0.5, 0.0} },
+}
+
+-- Ordered crest tiers (low to high) for iteration
+NS.CREST_ORDER = { "WEATHERED", "CARVED", "RUNED", "GILDED" }
+
+-- Upgrade tracks: base/max ilvl, number of upgrade levels, required crest type
+NS.UPGRADE_TRACKS = {
+    EXPLORER   = { base = 558, max = 571, levels = 8, crest = "WEATHERED" },
+    ADVENTURER = { base = 571, max = 584, levels = 8, crest = "CARVED" },
+    VETERAN    = { base = 584, max = 597, levels = 8, crest = "RUNED" },
+    CHAMPION   = { base = 597, max = 610, levels = 8, crest = "RUNED" },
+    HERO       = { base = 610, max = 623, levels = 6, crest = "GILDED" },
+    MYTH       = { base = 623, max = 639, levels = 4, crest = "GILDED" },
+}
+
+-- Ordered track names (low to high) for iteration
+NS.TRACK_ORDER = { "EXPLORER", "ADVENTURER", "VETERAN", "CHAMPION", "HERO", "MYTH" }
+
+-- Crest cost per upgrade step, keyed by numeric slot ID (matches NS.SLOT_IDS)
+NS.CREST_COSTS = {
+    [16] = 120, -- MAINHANDSLOT
+    [17] = 120, -- SECONDARYHANDSLOT
+    [1]  = 90,  -- HEADSLOT
+    [5]  = 90,  -- CHESTSLOT
+    [7]  = 90,  -- LEGSSLOT
+    [3]  = 75,  -- SHOULDERSLOT
+    [10] = 75,  -- HANDSSLOT
+    [8]  = 75,  -- FEETSLOT
+    [6]  = 60,  -- WAISTSLOT
+    [9]  = 60,  -- WRISTSLOT
+    [15] = 60,  -- BACKSLOT
+    [2]  = 60,  -- NECKSLOT
+    [11] = 60,  -- FINGER0SLOT
+    [12] = 60,  -- FINGER1SLOT
+    [13] = 60,  -- TRINKET0SLOT
+    [14] = 60,  -- TRINKET1SLOT
+}
+
+-- Spark currency ID (Midnight S1)
+NS.SPARK_CURRENCY_ID = 2921
+
+-- Paired slots: slot pairs that share a BIS item type (rings, trinkets)
+NS.PAIRED_SLOTS = {
+    [11] = 12, [12] = 11,  -- rings
+    [13] = 14, [14] = 13,  -- trinkets
+}
+
+-- Action type constants for the roadmap
+NS.ACTION_TYPES = {
+    DUNGEON_DROP = "dungeon",
+    CRAFT_ITEM   = "craft",
+    UPGRADE_ITEM = "upgrade",
+    RIO_PUSH     = "rio",
+}
+
+-- Craftable BIS items per spec. Graceful degradation: specs without entries
+-- simply have no CRAFT_ITEM actions in their roadmap.
+-- Format: { slot, itemId, name, sparkCost, crestType, crestCost, resultIlvl, profession }
+NS.CRAFTABLE_BIS = {
+    -- Warrior specs (example data — extend with scraper later)
+    WARRIOR_FURY = {
+        { slot = 17, itemId = 237847, name = "Blood Knight's Impetus", sparkCost = 1,
+          crestType = "GILDED", crestCost = 120, resultIlvl = 636, profession = "Blacksmithing" },
+        { slot = 9, itemId = 237834, name = "Spellbreaker's Bracers", sparkCost = 1,
+          crestType = "GILDED", crestCost = 60, resultIlvl = 636, profession = "Blacksmithing" },
+    },
+    WARRIOR_ARMS = {
+        { slot = 15, itemId = 239656, name = "Adherent's Silken Shroud", sparkCost = 1,
+          crestType = "GILDED", crestCost = 60, resultIlvl = 636, profession = "Tailoring" },
+        { slot = 9, itemId = 237834, name = "Spellbreaker's Bracers", sparkCost = 1,
+          crestType = "GILDED", crestCost = 60, resultIlvl = 636, profession = "Blacksmithing" },
+    },
+    WARRIOR_PROTECTION = {
+        { slot = 15, itemId = 239656, name = "Adherent's Silken Shroud", sparkCost = 1,
+          crestType = "GILDED", crestCost = 60, resultIlvl = 636, profession = "Tailoring" },
+        { slot = 9, itemId = 237834, name = "Spellbreaker's Bracers", sparkCost = 1,
+          crestType = "GILDED", crestCost = 60, resultIlvl = 636, profession = "Blacksmithing" },
+    },
+}

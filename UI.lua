@@ -335,27 +335,32 @@ function UI:RefreshUI()
     -- === MODE TOGGLE ===
     yOffset = self:RenderModeToggle(sc, yOffset, contentWidth, activeMode)
 
-    -- === KPI HEADER ===
-    yOffset = self:RenderKPIHeader(sc, yOffset, contentWidth, activeMode)
+    if activeMode == "roadmap" then
+        -- === ROADMAP VIEW ===
+        yOffset = self:RenderRoadmap(sc, yOffset, contentWidth)
+    else
+        -- === KPI HEADER ===
+        yOffset = self:RenderKPIHeader(sc, yOffset, contentWidth, activeMode)
 
-    if activeMode == "mplus" or activeMode == "overall" then
-        -- === GROUP KEYSTONES ===
-        yOffset = self:RenderGroupKeystones(sc, yOffset, contentWidth)
+        if activeMode == "mplus" or activeMode == "overall" then
+            -- === GROUP KEYSTONES ===
+            yOffset = self:RenderGroupKeystones(sc, yOffset, contentWidth)
 
-        -- === BEST PICK CALLOUT ===
-        yOffset = self:RenderBestPickCallout(sc, yOffset, contentWidth)
+            -- === BEST PICK CALLOUT ===
+            yOffset = self:RenderBestPickCallout(sc, yOffset, contentWidth)
+        end
+
+        -- === DUNGEON / RAID RANKINGS ===
+        yOffset = self:RenderRankings(sc, yOffset, contentWidth, activeMode)
+
+        if activeMode == "mplus" or activeMode == "overall" then
+            -- === GREAT VAULT ===
+            yOffset = self:RenderVaultProgress(sc, yOffset, contentWidth)
+        end
+
+        -- === ACTION BUTTONS ===
+        yOffset = self:RenderActionButtons(sc, yOffset, contentWidth)
     end
-
-    -- === DUNGEON / RAID RANKINGS ===
-    yOffset = self:RenderRankings(sc, yOffset, contentWidth, activeMode)
-
-    if activeMode == "mplus" or activeMode == "overall" then
-        -- === GREAT VAULT ===
-        yOffset = self:RenderVaultProgress(sc, yOffset, contentWidth)
-    end
-
-    -- === ACTION BUTTONS ===
-    yOffset = self:RenderActionButtons(sc, yOffset, contentWidth)
 
     -- Set scroll child height
     sc:SetHeight(math.abs(yOffset) + 20)
@@ -375,6 +380,7 @@ function UI:RenderModeToggle(parent, yOffset, width, activeMode)
         { key = "mplus", label = "M+" },
         { key = "raid", label = "Raid" },
         { key = "overall", label = "Overall" },
+        { key = "roadmap", label = "Roadmap" },
     }
 
     local btnWidth = 70
@@ -1263,6 +1269,379 @@ function UI:ShowReadyCheckResults(results)
     end
 
     scrollChild:SetHeight(math.abs(yOff) + 10)
+end
+
+-- ============================================================================
+-- ROADMAP VIEW
+-- ============================================================================
+function UI:RenderRoadmap(parent, yOffset, width)
+    local myName = NS.Inspect and NS.Inspect.GetUnitFullName and NS.Inspect:GetUnitFullName("player")
+    local playerData = myName and NS.groupData[myName]
+
+    -- Empty state: no scan data
+    if not playerData or not playerData.spec then
+        local emptyFrame = CreateFrame("Frame", nil, parent)
+        emptyFrame:SetSize(width, 60)
+        emptyFrame:SetPoint("TOPLEFT", parent, "TOPLEFT", 0, yOffset)
+        table.insert(self._dynamicFrames, emptyFrame)
+
+        local emptyText = CreateText(emptyFrame, 12, unpack(C.dim))
+        emptyText:SetPoint("CENTER")
+        emptyText:SetText("Scan your group to generate your upgrade roadmap.")
+
+        -- Scan button
+        local scanBtn = CreateFrame("Button", nil, emptyFrame, "BackdropTemplate")
+        scanBtn:SetSize(100, 22)
+        scanBtn:SetPoint("TOP", emptyText, "BOTTOM", 0, -8)
+        scanBtn:SetBackdrop({
+            bgFile = "Interface\\Buttons\\WHITE8x8",
+            edgeFile = "Interface\\Buttons\\WHITE8x8",
+            edgeSize = 1,
+        })
+        scanBtn:SetBackdropColor(0.23, 0.17, 0.43, 1)
+        scanBtn:SetBackdropBorderColor(0.35, 0.29, 0.56, 1)
+        local scanLabel = CreateText(scanBtn, 10, unpack(C.gold))
+        scanLabel:SetPoint("CENTER")
+        scanLabel:SetText("Scan Group")
+        scanBtn:SetScript("OnClick", function() NS.Core:ScanGroup() end)
+
+        return yOffset - 90
+    end
+
+    -- === CURRENCY BUDGET BAR ===
+    yOffset = self:RenderCurrencyBudget(parent, yOffset, width)
+
+    -- === TOP ACTIONS ===
+    yOffset = self:RenderTopActions(parent, yOffset, width)
+
+    -- === SLOT-BY-SLOT DETAIL ===
+    yOffset = self:RenderSlotDetails(parent, yOffset, width)
+
+    -- === REFRESH BUTTON ===
+    local btnFrame = CreateFrame("Frame", nil, parent)
+    btnFrame:SetSize(width, 30)
+    btnFrame:SetPoint("TOPLEFT", parent, "TOPLEFT", 0, yOffset)
+    table.insert(self._dynamicFrames, btnFrame)
+
+    local refreshBtn = CreateFrame("Button", nil, btnFrame, "BackdropTemplate")
+    refreshBtn:SetSize(100, 22)
+    refreshBtn:SetPoint("LEFT", 4, 0)
+    refreshBtn:SetBackdrop({
+        bgFile = "Interface\\Buttons\\WHITE8x8",
+        edgeFile = "Interface\\Buttons\\WHITE8x8",
+        edgeSize = 1,
+    })
+    refreshBtn:SetBackdropColor(0.23, 0.17, 0.43, 1)
+    refreshBtn:SetBackdropBorderColor(0.35, 0.29, 0.56, 1)
+    local refreshLabel = CreateText(refreshBtn, 10, unpack(C.gold))
+    refreshLabel:SetPoint("CENTER")
+    refreshLabel:SetText("Refresh")
+    refreshBtn:SetScript("OnClick", function()
+        NS.Core:InvalidateRoadmap()
+    end)
+    refreshBtn:SetScript("OnEnter", function(self) self:SetBackdropColor(0.3, 0.24, 0.55, 1) end)
+    refreshBtn:SetScript("OnLeave", function(self) self:SetBackdropColor(0.23, 0.17, 0.43, 1) end)
+
+    local scanBtn2 = CreateFrame("Button", nil, btnFrame, "BackdropTemplate")
+    scanBtn2:SetSize(100, 22)
+    scanBtn2:SetPoint("LEFT", refreshBtn, "RIGHT", 6, 0)
+    scanBtn2:SetBackdrop({
+        bgFile = "Interface\\Buttons\\WHITE8x8",
+        edgeFile = "Interface\\Buttons\\WHITE8x8",
+        edgeSize = 1,
+    })
+    scanBtn2:SetBackdropColor(0.23, 0.17, 0.43, 1)
+    scanBtn2:SetBackdropBorderColor(0.35, 0.29, 0.56, 1)
+    local scanLabel2 = CreateText(scanBtn2, 10, unpack(C.gold))
+    scanLabel2:SetPoint("CENTER")
+    scanLabel2:SetText("Scan Group")
+    scanBtn2:SetScript("OnClick", function() NS.Core:ScanGroup() end)
+    scanBtn2:SetScript("OnEnter", function(self) self:SetBackdropColor(0.3, 0.24, 0.55, 1) end)
+    scanBtn2:SetScript("OnLeave", function(self) self:SetBackdropColor(0.23, 0.17, 0.43, 1) end)
+
+    return yOffset - 36
+end
+
+-- Currency budget bar: shows crest and spark counts
+function UI:RenderCurrencyBudget(parent, yOffset, width)
+    local budgetFrame = CreatePanel(parent, unpack(C.section))
+    budgetFrame:SetSize(width, 36)
+    budgetFrame:SetPoint("TOPLEFT", parent, "TOPLEFT", 0, yOffset)
+    table.insert(self._dynamicFrames, budgetFrame)
+
+    local titleLabel = CreateText(budgetFrame, 9, unpack(C.gold))
+    titleLabel:SetPoint("TOPLEFT", 8, -4)
+    titleLabel:SetText("YOUR RESOURCES")
+
+    local budget = NS.Core:GetCrestBudget()
+    local sparks = NS.Core:GetSparkCount()
+
+    -- Build resource string
+    local parts = {}
+    for _, key in ipairs(NS.CREST_ORDER) do
+        local crest = NS.CREST_TYPES[key]
+        local count = budget[key] or 0
+        if count > 0 then
+            local cr, cg, cb = unpack(crest.color)
+            table.insert(parts, string.format("|cff%s%d %s|r",
+                Hex(cr, cg, cb), count, crest.name))
+        end
+    end
+    if sparks > 0 then
+        table.insert(parts, string.format("|cffff8c00%d Spark(s)|r", sparks))
+    end
+
+    local resourceStr = #parts > 0 and table.concat(parts, "  |cff444444||  ") or "|cff555555No currency data (open currency tab in-game)|r"
+
+    local resourceLabel = CreateText(budgetFrame, 10, unpack(C.white))
+    resourceLabel:SetPoint("TOPLEFT", 8, -18)
+    resourceLabel:SetText(resourceStr)
+
+    return yOffset - 42
+end
+
+-- Top actions list
+function UI:RenderTopActions(parent, yOffset, width)
+    local roadmap = NS.Core:GetRoadmap()
+
+    -- Section title
+    local titleFrame = CreateFrame("Frame", nil, parent)
+    titleFrame:SetSize(width, 18)
+    titleFrame:SetPoint("TOPLEFT", parent, "TOPLEFT", 0, yOffset)
+    table.insert(self._dynamicFrames, titleFrame)
+
+    local titleText = CreateText(titleFrame, 9, unpack(C.gold))
+    titleText:SetPoint("LEFT", 4, 0)
+    titleText:SetText("YOUR UPGRADE ROADMAP")
+
+    yOffset = yOffset - 22
+
+    -- Empty state
+    if not roadmap or #roadmap == 0 then
+        local emptyFrame = CreateFrame("Frame", nil, parent)
+        emptyFrame:SetSize(width, 30)
+        emptyFrame:SetPoint("TOPLEFT", parent, "TOPLEFT", 0, yOffset)
+        table.insert(self._dynamicFrames, emptyFrame)
+
+        local emptyLabel = CreateText(emptyFrame, 11, unpack(C.dim))
+        emptyLabel:SetPoint("LEFT", 8, 0)
+        emptyLabel:SetText("You're fully geared! Time to help your group.")
+        return yOffset - 34
+    end
+
+    -- Render each action
+    for i, action in ipairs(roadmap) do
+        yOffset = self:RenderRoadmapAction(parent, yOffset, width, i, action)
+    end
+
+    return yOffset - 4
+end
+
+-- Render a single roadmap action entry
+function UI:RenderRoadmapAction(parent, yOffset, width, rank, action)
+    local entryHeight = 40
+    local entryFrame = CreatePanel(parent, 0.06, 0.06, 0.14, 0.5)
+    entryFrame:SetBackdropBorderColor(0.1, 0.1, 0.2, 1)
+    entryFrame:SetSize(width, entryHeight)
+    entryFrame:SetPoint("TOPLEFT", parent, "TOPLEFT", 0, yOffset)
+    table.insert(self._dynamicFrames, entryFrame)
+
+    -- Rank number
+    local rankLabel = CreateText(entryFrame, 14, unpack(C.gold))
+    rankLabel:SetPoint("LEFT", 8, 0)
+    rankLabel:SetText("#" .. rank)
+
+    -- Action icon + description
+    local iconStr, mainText, subText
+    local r, g, b = unpack(C.white)
+
+    if action.actionType == NS.ACTION_TYPES.CRAFT_ITEM then
+        iconStr = "|cffff8c00[CRAFT]|r"
+        r, g, b = unpack(C.orange)
+        mainText = action.itemName or "Crafted Item"
+        local costParts = {}
+        if action.sparkCost then table.insert(costParts, action.sparkCost .. " Spark") end
+        if action.crestCost and action.crestType then
+            table.insert(costParts, action.crestCost .. " " .. (NS.CREST_TYPES[action.crestType] and NS.CREST_TYPES[action.crestType].name or action.crestType))
+        end
+        subText = string.format("[%s] %s", action.slotName or "?", table.concat(costParts, " + "))
+
+    elseif action.actionType == NS.ACTION_TYPES.DUNGEON_DROP then
+        iconStr = "|cffa335ee[DROP]|r"
+        r, g, b = unpack(C.purple)
+        mainText = action.source or "Dungeon"
+        subText = string.format("[%s] BIS item", action.slotName or "?")
+
+    elseif action.actionType == NS.ACTION_TYPES.UPGRADE_ITEM then
+        iconStr = "|cff00ccff[UPGRADE]|r"
+        r, g, b = unpack(C.blue)
+        mainText = string.format("%s (%s %d/%d)",
+            action.slotName or "?", action.trackName or "?", action.currentLevel or 0, action.maxLevel or 0)
+        local crestName = NS.CREST_TYPES[action.crestType] and NS.CREST_TYPES[action.crestType].name or action.crestType or "?"
+        subText = string.format("%d %s", action.crestCost or 0, crestName)
+
+    elseif action.actionType == NS.ACTION_TYPES.RIO_PUSH then
+        iconStr = "|cffff5500[RIO]|r"
+        r, g, b = 1, 0.33, 0
+        mainText = string.format("%s +%d", action.dungeonName or "Dungeon", action.targetKeyLevel or 0)
+        subText = string.format("+%d RIO", math.floor(action.rioDelta or 0))
+    end
+
+    local iconLabel = CreateText(entryFrame, 10, unpack(C.white))
+    iconLabel:SetPoint("LEFT", 36, 6)
+    iconLabel:SetText(iconStr or "")
+
+    local mainLabel = CreateText(entryFrame, 12, r, g, b)
+    mainLabel:SetPoint("LEFT", iconLabel, "RIGHT", 6, 0)
+    mainLabel:SetText(mainText or "")
+
+    local subLabel = CreateText(entryFrame, 10, unpack(C.dim))
+    subLabel:SetPoint("TOPLEFT", iconLabel, "BOTTOMLEFT", 0, -2)
+    subLabel:SetText(subText or "")
+
+    -- Right side: ilvl gain or RIO gain
+    local gainLabel = CreateText(entryFrame, 14, unpack(C.green))
+    gainLabel:SetPoint("RIGHT", entryFrame, "RIGHT", -12, 0)
+
+    if action.actionType == NS.ACTION_TYPES.RIO_PUSH then
+        gainLabel:SetText(string.format("+%d", math.floor(action.rioDelta or 0)))
+        gainLabel:SetTextColor(1, 0.55, 0)
+    else
+        local gain = action.ilvlGain or 0
+        if gain > 0 then
+            gainLabel:SetText(string.format("+%d ilvl", gain))
+        end
+    end
+
+    -- Hover highlight
+    entryFrame:EnableMouse(true)
+    entryFrame:SetScript("OnEnter", function(self) self:SetBackdropColor(0.1, 0.1, 0.22, 0.8) end)
+    entryFrame:SetScript("OnLeave", function(self) self:SetBackdropColor(0.06, 0.06, 0.14, 0.5) end)
+
+    -- Tooltip on hover
+    entryFrame:SetScript("OnEnter", function(self)
+        self:SetBackdropColor(0.1, 0.1, 0.22, 0.8)
+        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+        if action.actionType == NS.ACTION_TYPES.DUNGEON_DROP then
+            GameTooltip:SetText("BIS Drop", 0.64, 0.21, 0.93)
+            if action.itemId then
+                GameTooltip:AddLine(" ")
+                GameTooltip:SetItemByID(action.itemId)
+            end
+        elseif action.actionType == NS.ACTION_TYPES.CRAFT_ITEM then
+            GameTooltip:SetText("Craft: " .. (action.itemName or ""), 1, 0.55, 0)
+            GameTooltip:AddLine(string.format("Profession: %s", action.profession or "?"), 0.8, 0.8, 0.8)
+            GameTooltip:AddLine(string.format("Result: ilvl %d", action.targetIlvl or 0), 0.5, 1, 0.5)
+        elseif action.actionType == NS.ACTION_TYPES.UPGRADE_ITEM then
+            GameTooltip:SetText("Upgrade: " .. (action.slotName or ""), 0, 0.8, 1)
+            GameTooltip:AddLine(string.format("%d -> %d ilvl", action.currentIlvl or 0, action.targetIlvl or 0), 0.5, 1, 0.5)
+        elseif action.actionType == NS.ACTION_TYPES.RIO_PUSH then
+            GameTooltip:SetText("RIO Push: " .. (action.dungeonName or ""), 1, 0.33, 0)
+            GameTooltip:AddLine(string.format("Score: %d -> %d (+%d)",
+                action.currentScore or 0, action.projectedTotal or 0, math.floor(action.rioDelta or 0)),
+                0.5, 1, 0.5)
+            if action.groupBonus and action.groupBonus > 0 then
+                GameTooltip:AddLine("Group members also need loot here!", 0.8, 0.8, 0)
+            end
+        end
+        GameTooltip:Show()
+    end)
+    entryFrame:SetScript("OnLeave", function(self)
+        self:SetBackdropColor(0.06, 0.06, 0.14, 0.5)
+        GameTooltip:Hide()
+    end)
+
+    return yOffset - entryHeight - 2
+end
+
+-- Slot-by-slot detail view
+function UI:RenderSlotDetails(parent, yOffset, width)
+    -- Toggle state
+    local isExpanded = self._roadmapSlotsExpanded
+
+    local toggleFrame = CreateFrame("Button", nil, parent, "BackdropTemplate")
+    toggleFrame:SetSize(width, 22)
+    toggleFrame:SetPoint("TOPLEFT", parent, "TOPLEFT", 0, yOffset)
+    toggleFrame:SetBackdrop({
+        bgFile = "Interface\\Buttons\\WHITE8x8",
+        edgeFile = "Interface\\Buttons\\WHITE8x8",
+        edgeSize = 1,
+    })
+    toggleFrame:SetBackdropColor(0.08, 0.08, 0.16, 0.8)
+    toggleFrame:SetBackdropBorderColor(unpack(C.cardBord))
+    table.insert(self._dynamicFrames, toggleFrame)
+
+    local arrow = isExpanded and "\226\150\188" or "\226\150\182"  -- ▼ or ▶
+    local toggleLabel = CreateText(toggleFrame, 10, unpack(C.gold))
+    toggleLabel:SetPoint("LEFT", 8, 0)
+    toggleLabel:SetText(arrow .. " SLOT-BY-SLOT DETAILS")
+
+    toggleFrame:SetScript("OnClick", function()
+        self._roadmapSlotsExpanded = not self._roadmapSlotsExpanded
+        self:RefreshUI()
+    end)
+    toggleFrame:SetScript("OnEnter", function(self) self:SetBackdropColor(0.12, 0.12, 0.24, 0.9) end)
+    toggleFrame:SetScript("OnLeave", function(self) self:SetBackdropColor(0.08, 0.08, 0.16, 0.8) end)
+
+    yOffset = yOffset - 26
+
+    if not isExpanded then return yOffset end
+
+    local slots = NS.Core:GetSlotDetails()
+    if not slots or #slots == 0 then
+        local emptyFrame = CreateFrame("Frame", nil, parent)
+        emptyFrame:SetSize(width, 20)
+        emptyFrame:SetPoint("TOPLEFT", parent, "TOPLEFT", 0, yOffset)
+        table.insert(self._dynamicFrames, emptyFrame)
+        local emptyLabel = CreateText(emptyFrame, 10, unpack(C.dim))
+        emptyLabel:SetPoint("LEFT", 8, 0)
+        emptyLabel:SetText("No slot data available.")
+        return yOffset - 24
+    end
+
+    for _, slot in ipairs(slots) do
+        local slotFrame = CreateFrame("Frame", nil, parent)
+        slotFrame:SetSize(width, 18)
+        slotFrame:SetPoint("TOPLEFT", parent, "TOPLEFT", 0, yOffset)
+        table.insert(self._dynamicFrames, slotFrame)
+
+        local slotLabel = CreateText(slotFrame, 10, unpack(C.white))
+        slotLabel:SetPoint("LEFT", 12, 0)
+
+        local statusColor = slot.hasBIS and C.green or C.orange
+        local statusIcon = slot.hasBIS and "|cff00ff00+|r" or "|cffff8800-|r"
+
+        local trackInfo = ""
+        if slot.trackName and slot.currentLevel and slot.maxLevel then
+            trackInfo = string.format(" (%s %d/%d)", slot.trackName, slot.currentLevel, slot.maxLevel)
+        end
+
+        local ilvlStr = slot.currentIlvl > 0 and tostring(slot.currentIlvl) or "?"
+
+        slotLabel:SetText(string.format("%s |cff%s%s|r  ilvl %s%s  |cff666666%s|r",
+            statusIcon,
+            Hex(unpack(statusColor)),
+            slot.slotName or "?",
+            ilvlStr,
+            trackInfo,
+            slot.source or ""))
+
+        -- Item tooltip on hover
+        if slot.bisItemId then
+            slotFrame:EnableMouse(true)
+            local capturedId = slot.bisItemId
+            slotFrame:SetScript("OnEnter", function(self)
+                GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+                GameTooltip:SetItemByID(capturedId)
+                GameTooltip:Show()
+            end)
+            slotFrame:SetScript("OnLeave", function() GameTooltip:Hide() end)
+        end
+
+        yOffset = yOffset - 18
+    end
+
+    return yOffset - 4
 end
 
 -- ============================================================================
