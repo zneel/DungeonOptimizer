@@ -268,7 +268,7 @@ end
 function UI:SetKPICard(card, label, value, sub, r, g, b)
     card._label:SetText(string.upper(label))
     card._value:SetText(value)
-    card._value:SetTextColor(r or unpack(C.gold))
+    card._value:SetTextColor(r or 0.91, g or 0.72, b or 0.29)
     card._sub:SetText(sub or "")
 end
 
