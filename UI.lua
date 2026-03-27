@@ -70,6 +70,8 @@ end
 local function CreateText(parent, size, r, g, b, justify)
     local fs = parent:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     fs:SetFont(STANDARD_TEXT_FONT, size or 12, "")
+    -- Guard: if justify got a number (from unpack leaking alpha), ignore it
+    if type(justify) == "number" then justify = nil end
     fs:SetTextColor(r or 0.88, g or 0.88, b or 0.88, 1)
     if justify then fs:SetJustifyH(justify) end
     fs:SetWordWrap(false)
