@@ -1381,7 +1381,7 @@ function UI:RenderCurrencyBudget(parent, yOffset, width)
     for _, key in ipairs(NS.CREST_ORDER) do
         local crest = NS.CREST_TYPES[key]
         local count = budget[key] or 0
-        if count > 0 then
+        if count > 0 and crest then
             local cr, cg, cb = unpack(crest.color)
             table.insert(parts, string.format("|cff%s%d %s|r",
                 Hex(cr, cg, cb), count, crest.name))

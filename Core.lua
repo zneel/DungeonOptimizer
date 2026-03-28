@@ -1818,8 +1818,13 @@ function DungeonOptimizer:GetCrestBudget()
         return budget
     end
     for _, key in ipairs(NS.CREST_ORDER) do
-        local info = C_CurrencyInfo.GetCurrencyInfo(NS.CREST_TYPES[key].id)
-        budget[key] = info and info.quantity or 0
+        local crestDef = NS.CREST_TYPES[key]
+        if crestDef then
+            local info = C_CurrencyInfo.GetCurrencyInfo(crestDef.id)
+            budget[key] = info and info.quantity or 0
+        else
+            budget[key] = 0
+        end
     end
     return budget
 end
