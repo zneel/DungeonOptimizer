@@ -302,7 +302,7 @@ end
 function UI:SetKPICard(card, label, value, sub, r, g, b)
     card._label:SetText(string.upper(label))
     card._value:SetText(value)
-    card._value:SetTextColor(r or 0.91, g or 0.72, b or 0.29)
+    card._value:SetTextColor(r or 0.91, g or 0.72, b or 0.29, 1)
     card._sub:SetText(sub or "")
 end
 
@@ -1425,7 +1425,16 @@ function UI:RenderTopActions(parent, yOffset, width)
 
         local emptyLabel = CreateText(emptyFrame, 11, unpack(C.dim))
         emptyLabel:SetPoint("LEFT", 8, 0)
-        emptyLabel:SetText("You're fully geared! Time to help your group.")
+
+        -- Check if ilvl data exists to distinguish "fully geared" from "no data"
+        local myName = NS.Inspect and NS.Inspect.GetUnitFullName and NS.Inspect:GetUnitFullName("player")
+        local pd = myName and NS.groupData[myName]
+        local hasIlvls = pd and pd.ilvls and next(pd.ilvls)
+        if hasIlvls then
+            emptyLabel:SetText("You're fully geared! Time to help your group.")
+        else
+            emptyLabel:SetText("Scan your group first to generate upgrade actions.")
+        end
         return yOffset - 34
     end
 

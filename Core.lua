@@ -1911,95 +1911,93 @@ function DungeonOptimizer:ComputeUpgradeRoadmap()
 
     -- === GEAR-BASED ACTIONS (per slot) ===
     for _, slotId in ipairs(NS.SLOT_DISPLAY_ORDER) do
-        local equippedIlvl = playerData.ilvls and playerData.ilvls[slotId]
         local bisItemId = bisList[slotId]
-        if not bisItemId then -- skip slots without BIS data
-            goto continue_slot
-        end
+        if bisItemId then -- skip slots without BIS data
+            local equippedIlvl = playerData.ilvls and playerData.ilvls[slotId]
+            local skipSlot = false
 
-        local equippedItemId = playerData.gear and playerData.gear[slotId]
-        local hasBIS = equippedItemId and equippedItemId == bisItemId
-
-        -- For paired slots (rings, trinkets): only act on the weaker one
-        local pairSlot = NS.PAIRED_SLOTS[slotId]
-        if pairSlot and bisList[pairSlot] == bisItemId then
-            -- Same BIS item in both paired slots: only process the weaker slot
-            local pairIlvl = playerData.ilvls and playerData.ilvls[pairSlot] or 0
-            local thisIlvl = equippedIlvl or 0
-            if thisIlvl > pairIlvl and slotId > pairSlot then
-                goto continue_slot  -- skip the stronger slot, process weaker one
-            end
-        end
-
-        -- Action: DUNGEON_DROP (BIS item drops from a dungeon and player doesn't have it)
-        if not hasBIS and NS.IsFromContent(bisItemId) then
-            local dungeons = NS.ITEM_TO_DUNGEONS and NS.ITEM_TO_DUNGEONS[bisItemId]
-            local sourceName = ""
-            if dungeons and #dungeons > 0 then
-                for _, d in ipairs(NS.DUNGEONS) do
-                    if d.id == dungeons[1] then sourceName = d.name; break end
+            -- For paired slots (rings, trinkets): only act on the weaker one
+            local pairSlot = NS.PAIRED_SLOTS[slotId]
+            if pairSlot and bisList[pairSlot] == bisItemId then
+                local pairIlvl = playerData.ilvls and playerData.ilvls[pairSlot] or 0
+                local thisIlvl = equippedIlvl or 0
+                if thisIlvl > pairIlvl and slotId > pairSlot then
+                    skipSlot = true
                 end
-                if sourceName == "" then
-                    for _, r in ipairs(NS.RAIDS) do
-                        if r.id == dungeons[1] then sourceName = r.name; break end
+            end
+
+            if not skipSlot then
+                local equippedItemId = playerData.gear and playerData.gear[slotId]
+                local hasBIS = equippedItemId and equippedItemId == bisItemId
+
+                -- Action: DUNGEON_DROP (BIS item drops from content and player doesn't have it)
+                if not hasBIS and NS.IsFromContent(bisItemId) then
+                    local dungeons = NS.ITEM_TO_DUNGEONS and NS.ITEM_TO_DUNGEONS[bisItemId]
+                    local sourceName = ""
+                    if dungeons and #dungeons > 0 then
+                        for _, d in ipairs(NS.DUNGEONS) do
+                            if d.id == dungeons[1] then sourceName = d.name; break end
+                        end
+                        if sourceName == "" then
+                            for _, r in ipairs(NS.RAIDS) do
+                                if r.id == dungeons[1] then sourceName = r.name; break end
+                            end
+                        end
+                    end
+
+                    local targetKeyLevel = self:GetTargetKeyLevel(dungeons and dungeons[1])
+                    local targetIlvl = self:GetRewardIlvlForKey(targetKeyLevel)
+                    local currentIlvl = equippedIlvl or 0
+                    local gain = targetIlvl and (targetIlvl - currentIlvl) or 13
+
+                    if gain > 0 then
+                        local action = {
+                            actionType = NS.ACTION_TYPES.DUNGEON_DROP,
+                            slot = slotId,
+                            slotName = NS.SLOT_NAMES[slotId],
+                            itemId = bisItemId,
+                            itemName = "",
+                            source = sourceName,
+                            sourceKey = dungeons and dungeons[1] or nil,
+                            ilvlGain = gain,
+                            currentIlvl = currentIlvl,
+                            targetIlvl = targetIlvl,
+                        }
+                        action.score = self:ScoreRoadmapAction(action, budget)
+                        table.insert(actions, action)
+                    end
+                end
+
+                -- Action: UPGRADE_ITEM (player has BIS but can upgrade it with crests)
+                if hasBIS and equippedIlvl then
+                    local trackName, currentLevel, maxLevel, remaining = self:InferUpgradeTrack(equippedIlvl)
+                    if trackName and remaining and remaining > 0 then
+                        local track = NS.UPGRADE_TRACKS[trackName]
+                        local step = (track.max - track.base) / math.max(track.levels - 1, 1)
+                        local nextIlvl = math.floor(equippedIlvl + step + 0.5)
+                        local gain = nextIlvl - equippedIlvl
+                        local crestCost = NS.CREST_COSTS[slotId] or 60
+
+                        local action = {
+                            actionType = NS.ACTION_TYPES.UPGRADE_ITEM,
+                            slot = slotId,
+                            slotName = NS.SLOT_NAMES[slotId],
+                            itemId = bisItemId,
+                            ilvlGain = gain,
+                            currentIlvl = equippedIlvl,
+                            targetIlvl = nextIlvl,
+                            crestType = track.crest,
+                            crestCost = crestCost,
+                            trackName = trackName,
+                            currentLevel = currentLevel,
+                            maxLevel = maxLevel,
+                        }
+                        action.score = self:ScoreRoadmapAction(action, budget)
+                        table.insert(actions, action)
                     end
                 end
             end
-
-            -- Estimate ilvl gain: BIS ilvl (from target key) vs current
-            local targetKeyLevel = self:GetTargetKeyLevel(dungeons and dungeons[1])
-            local targetIlvl = self:GetRewardIlvlForKey(targetKeyLevel)
-            local currentIlvl = equippedIlvl or 0
-            local gain = targetIlvl and (targetIlvl - currentIlvl) or 13  -- fallback estimate
-
-            if gain > 0 then
-                local action = {
-                    actionType = NS.ACTION_TYPES.DUNGEON_DROP,
-                    slot = slotId,
-                    slotName = NS.SLOT_NAMES[slotId],
-                    itemId = bisItemId,
-                    itemName = "",
-                    source = sourceName,
-                    sourceKey = dungeons and dungeons[1] or nil,
-                    ilvlGain = gain,
-                    currentIlvl = currentIlvl,
-                    targetIlvl = targetIlvl,
-                }
-                action.score = self:ScoreRoadmapAction(action, budget)
-                table.insert(actions, action)
-            end
         end
-
-        -- Action: UPGRADE_ITEM (player has BIS but can upgrade it with crests)
-        if hasBIS and equippedIlvl then
-            local trackName, currentLevel, maxLevel, remaining = self:InferUpgradeTrack(equippedIlvl)
-            if trackName and remaining and remaining > 0 then
-                local track = NS.UPGRADE_TRACKS[trackName]
-                local step = (track.max - track.base) / math.max(track.levels - 1, 1)
-                local nextIlvl = math.floor(equippedIlvl + step + 0.5)
-                local gain = nextIlvl - equippedIlvl
-                local crestCost = NS.CREST_COSTS[slotId] or 60
-
-                local action = {
-                    actionType = NS.ACTION_TYPES.UPGRADE_ITEM,
-                    slot = slotId,
-                    slotName = NS.SLOT_NAMES[slotId],
-                    itemId = bisItemId,
-                    ilvlGain = gain,
-                    currentIlvl = equippedIlvl,
-                    targetIlvl = nextIlvl,
-                    crestType = track.crest,
-                    crestCost = crestCost,
-                    trackName = trackName,
-                    currentLevel = currentLevel,
-                    maxLevel = maxLevel,
-                }
-                action.score = self:ScoreRoadmapAction(action, budget)
-                table.insert(actions, action)
-            end
-        end
-
-        ::continue_slot::
     end
 
     -- === CRAFT ACTIONS ===
