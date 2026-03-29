@@ -144,13 +144,18 @@ function UI:Show()
         self:CreateMainFrame()
     end
     self.mainFrame:Show()
-    self:RefreshUI()
 
-    if NS.Inspect:GetScannedCount() == 0 then
-        NS.Core:ScanGroup()
+    -- Scan first if no data, so RefreshUI has something to render
+    if not next(NS.groupData) then
+        NS.Core:ScanGroup()  -- synchronous for solo; triggers OnScanComplete -> RefreshUI
+    else
+        self:RefreshUI()
     end
-    NS.Core:BroadcastKeystone()
-    NS.Core:BroadcastOffSpec()
+
+    if IsInGroup() then
+        NS.Core:BroadcastKeystone()
+        NS.Core:BroadcastOffSpec()
+    end
 end
 
 -- ============================================================================
@@ -653,7 +658,27 @@ function UI:RenderRankings(parent, yOffset, width, activeMode)
         table.insert(self._dynamicFrames, emptyFrame)
         local emptyLabel = CreateText(emptyFrame, 11, unpack(C.dim))
         emptyLabel:SetPoint("LEFT", 8, 0)
-        emptyLabel:SetText("No data available. Scan the group to start.")
+
+        -- Distinguish "all completed" from "no data"
+        local hasGroupData = next(NS.groupData) ~= nil
+        local allExcluded = hasGroupData
+        if allExcluded then
+            local dungeonList = (activeMode == "raid") and NS.RAIDS or NS.DUNGEONS
+            for _, d in ipairs(dungeonList) do
+                if not NS.Core:IsDungeonExcluded(d.id) then
+                    allExcluded = false
+                    break
+                end
+            end
+        end
+
+        if allExcluded then
+            emptyLabel:SetText(NS.L["DASHBOARD_ALL_COMPLETED"])
+        elseif IsInGroup() then
+            emptyLabel:SetText(NS.L["DASHBOARD_NO_DATA"])
+        else
+            emptyLabel:SetText(NS.L["DASHBOARD_NO_DATA_SOLO"])
+        end
         return yOffset - 34
     end
 
@@ -1023,23 +1048,29 @@ function UI:RenderActionButtons(parent, yOffset, width)
     btnFrame:SetPoint("TOPLEFT", parent, "TOPLEFT", 0, yOffset)
     table.insert(self._dynamicFrames, btnFrame)
 
+    local scanLabel = IsInGroup() and NS.L["SCAN_GROUP"] or NS.L["SCAN_SOLO"]
     local buttons = {
-        { text = NS.L["SCAN_GROUP"], width = 100, fn = function() NS.Core:ScanGroup() end },
-        { text = "Sync", width = 60, fn = function()
+        { text = scanLabel, width = IsInGroup() and 100 or 60, fn = function() NS.Core:ScanGroup() end },
+    }
+
+    -- Sync only makes sense in a group
+    if IsInGroup() then
+        table.insert(buttons, { text = "Sync", width = 60, fn = function()
             NS.Core:BroadcastCompletions()
             NS.Core:BroadcastKeystone()
             NS.Core:Print("Synced to group.")
-        end },
-        { text = "History", width = 70, fn = function() self:ShowHistoryTab() end },
-        { text = NS.L["RESET_EXCLUSIONS"], width = 140, fn = function()
-            wipe(NS.Core.db.profile.excludedDungeons)
-            local myName = NS.Inspect:GetUnitFullName("player")
-            if myName then NS.groupCompletions[myName] = {} end
-            NS.Core:RecalculateAllRankings()
-            self:RefreshUI()
-            NS.Core:BroadcastCompletions()
-        end },
-    }
+        end })
+    end
+
+    table.insert(buttons, { text = "History", width = 70, fn = function() self:ShowHistoryTab() end })
+    table.insert(buttons, { text = NS.L["RESET_EXCLUSIONS"], width = 140, fn = function()
+        wipe(NS.Core.db.profile.excludedDungeons)
+        local myName = NS.Inspect:GetUnitFullName("player")
+        if myName then NS.groupCompletions[myName] = {} end
+        NS.Core:RecalculateAllRankings()
+        self:RefreshUI()
+        NS.Core:BroadcastCompletions()
+    end })
 
     local xPos = 4
     for _, btnDef in ipairs(buttons) do
@@ -1302,7 +1333,7 @@ function UI:RenderRoadmap(parent, yOffset, width)
         scanBtn:SetBackdropBorderColor(0.35, 0.29, 0.56, 1)
         local scanLabel = CreateText(scanBtn, 10, unpack(C.gold))
         scanLabel:SetPoint("CENTER")
-        scanLabel:SetText("Scan Group")
+        scanLabel:SetText(IsInGroup() and NS.L["SCAN_GROUP"] or NS.L["SCAN_SOLO"])
         scanBtn:SetScript("OnClick", function() NS.Core:ScanGroup() end)
 
         return yOffset - 90
@@ -1354,7 +1385,7 @@ function UI:RenderRoadmap(parent, yOffset, width)
     scanBtn2:SetBackdropBorderColor(0.35, 0.29, 0.56, 1)
     local scanLabel2 = CreateText(scanBtn2, 10, unpack(C.gold))
     scanLabel2:SetPoint("CENTER")
-    scanLabel2:SetText("Scan Group")
+    scanLabel2:SetText(IsInGroup() and NS.L["SCAN_GROUP"] or NS.L["SCAN_SOLO"])
     scanBtn2:SetScript("OnClick", function() NS.Core:ScanGroup() end)
     scanBtn2:SetScript("OnEnter", function(self) self:SetBackdropColor(0.3, 0.24, 0.55, 1) end)
     scanBtn2:SetScript("OnLeave", function(self) self:SetBackdropColor(0.23, 0.17, 0.43, 1) end)
@@ -1431,9 +1462,12 @@ function UI:RenderTopActions(parent, yOffset, width)
         local pd = myName and NS.groupData[myName]
         local hasIlvls = pd and pd.ilvls and next(pd.ilvls)
         if hasIlvls then
-            emptyLabel:SetText("You're fully geared! Time to help your group.")
+            local gearMsg = IsInGroup() and NS.L["ROADMAP_FULLY_GEARED_GROUP"] or NS.L["ROADMAP_FULLY_GEARED"]
+            emptyLabel:SetText(gearMsg)
+        elseif IsInGroup() then
+            emptyLabel:SetText(NS.L["ROADMAP_NO_DATA"])
         else
-            emptyLabel:SetText("Scan your group first to generate upgrade actions.")
+            emptyLabel:SetText(NS.L["ROADMAP_NO_DATA_SOLO"])
         end
         return yOffset - 34
     end

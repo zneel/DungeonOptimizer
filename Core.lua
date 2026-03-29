@@ -215,7 +215,7 @@ function DungeonOptimizer:OnInitialize()
             tooltip:AddLine("|cff00ff00Dungeon Optimizer|r")
             tooltip:AddLine(" ")
             tooltip:AddLine(NS.L["TOOLTIP_LEFT"])
-            tooltip:AddLine(NS.L["TOOLTIP_RIGHT"])
+            tooltip:AddLine(IsInGroup() and NS.L["TOOLTIP_RIGHT"] or NS.L["TOOLTIP_RIGHT_SOLO"])
         end,
     })
 
@@ -273,6 +273,13 @@ function DungeonOptimizer:OnEnable()
             self:BroadcastCatalyst()
             self:BroadcastRIOScores()
         end, 2)
+    else
+        -- Solo: auto-scan player gear so data is ready when UI opens
+        self:ScheduleTimer(function()
+            if not IsInGroup() and not next(NS.groupData) then
+                NS.Inspect:ScanGroup()
+            end
+        end, 1)
     end
     -- #27: Request current affixes
     if C_MythicPlus and C_MythicPlus.RequestCurrentAffixes then
@@ -360,11 +367,12 @@ function DungeonOptimizer:GROUP_ROSTER_UPDATE()
         wipe(NS.groupRIOData)
         -- Keep only local player's completions
         self:PruneCompletions()
-        -- Re-scan just the player if solo
+        -- Re-scan just the player if solo (OnScanComplete handles UI refresh)
         if not IsInGroup() and not IsInRaid() then
-            NS.Inspect:ScanGroup()
+            self:ScanGroup()
+        elseif NS.UI then
+            NS.UI:RefreshIfVisible()
         end
-        if NS.UI then NS.UI:RefreshIfVisible() end
         return
     end
 
@@ -819,7 +827,8 @@ end
 -- GROUP SCANNING
 -- ============================================================================
 function DungeonOptimizer:ScanGroup()
-    self:Print(NS.L["SCANNING_GROUP"])
+    local msg = IsInGroup() and NS.L["SCANNING_GROUP"] or NS.L["SCANNING_SOLO"]
+    self:Print(msg)
     NS.Inspect:ScanGroup()
 end
 

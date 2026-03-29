@@ -12,6 +12,7 @@ local L = {
     -- Core
     ["ADDON_LOADED"] = "|cff00ff00Dungeon Optimizer|r loaded. Type |cffeda55f/do|r to open.",
     ["SCANNING_GROUP"] = "Scanning group...",
+    ["SCANNING_SOLO"] = "Scanning your gear...",
     ["SCAN_COMPLETE"] = "Scan complete: |cff00ff00%d|r member(s) scanned.",
     ["SKIPPED"] = "Skipped:",
     ["EXCLUDED_RESET"] = "Your dungeon completions have been reset.",
@@ -25,11 +26,13 @@ local L = {
     -- Minimap tooltip
     ["TOOLTIP_LEFT"] = "|cffeda55fLeft-click|r : Open/Close window",
     ["TOOLTIP_RIGHT"] = "|cffeda55fRight-click|r : Scan group",
+    ["TOOLTIP_RIGHT_SOLO"] = "|cffeda55fRight-click|r : Scan gear",
 
     -- UI
     ["WINDOW_TITLE"] = "Dungeon Optimizer - Midnight Season 1",
     ["STATUS_TEXT"] = "Right-click minimap icon to scan | /do help",
     ["SCAN_GROUP"] = "Scan Group",
+    ["SCAN_SOLO"] = "Scan",
     ["SCANNED_COUNT"] = "  |cff00ff00%d|r / %d scanned",
     ["BIS_MODE"] = "BIS Mode",
     ["RESET_EXCLUSIONS"] = "Reset My Completions",
@@ -85,6 +88,12 @@ local L = {
     -- V4 Dashboard
     ["DASHBOARD_NO_KEYS"] = "No keystones detected",
     ["DASHBOARD_NO_DATA"] = "No data available. Scan the group to start.",
+    ["DASHBOARD_NO_DATA_SOLO"] = "No data available. Click Scan to start.",
+    ["DASHBOARD_ALL_COMPLETED"] = "All dungeons completed this week! Reset completions to see rankings.",
+    ["ROADMAP_FULLY_GEARED"] = "You're fully BIS geared! Check the M+ tab for dungeon rankings.",
+    ["ROADMAP_FULLY_GEARED_GROUP"] = "You're fully BIS geared! Check the M+ tab to help your group get upgrades.",
+    ["ROADMAP_NO_DATA"] = "Scan your group first to generate upgrade actions.",
+    ["ROADMAP_NO_DATA_SOLO"] = "Click Scan to analyze your gear and generate upgrade actions.",
     ["DASHBOARD_RIO_STALE"] = "RIO formula may be outdated - using gear scoring only",
     ["DASHBOARD_VAULT_UNCLAIMED"] = "Unclaimed rewards!",
     ["DASHBOARD_VAULT_NEED_MORE"] = "Need more keys",
@@ -114,6 +123,7 @@ local L = {
 local frFR = {
     ["ADDON_LOADED"] = "|cff00ff00Dungeon Optimizer|r charg\195\169. Tapez |cffeda55f/do|r pour ouvrir.",
     ["SCANNING_GROUP"] = "Scan du groupe en cours...",
+    ["SCANNING_SOLO"] = "Scan de votre \195\169quipement...",
     ["SCAN_COMPLETE"] = "Scan termin\195\169 : |cff00ff00%d|r membre(s) analys\195\169(s).",
     ["SKIPPED"] = "Ignor\195\169 :",
     ["EXCLUDED_RESET"] = "Vos compl\195\169tions de donjons ont \195\169t\195\169 r\195\169initialis\195\169es.",
@@ -125,10 +135,12 @@ local frFR = {
 
     ["TOOLTIP_LEFT"] = "|cffeda55fClic gauche|r : Ouvrir/Fermer la fen\195\170tre",
     ["TOOLTIP_RIGHT"] = "|cffeda55fClic droit|r : Scanner le groupe",
+    ["TOOLTIP_RIGHT_SOLO"] = "|cffeda55fClic droit|r : Scanner l'\195\169quipement",
 
     ["WINDOW_TITLE"] = "Dungeon Optimizer - Midnight Saison 1",
     ["STATUS_TEXT"] = "Clic droit minimap = scanner | /do help",
     ["SCAN_GROUP"] = "Scanner le groupe",
+    ["SCAN_SOLO"] = "Scanner",
     ["SCANNED_COUNT"] = "  |cff00ff00%d|r / %d scann\195\169s",
     ["BIS_MODE"] = "Mode BIS",
     ["RESET_EXCLUSIONS"] = "R\195\169init. mes compl\195\169tions",
@@ -169,6 +181,12 @@ local frFR = {
     -- V4 Dashboard
     ["DASHBOARD_NO_KEYS"] = "Aucune cl\195\169 d\195\169tect\195\169e",
     ["DASHBOARD_NO_DATA"] = "Aucune donn\195\169e disponible. Scannez le groupe.",
+    ["DASHBOARD_NO_DATA_SOLO"] = "Aucune donn\195\169e disponible. Cliquez sur Scanner.",
+    ["DASHBOARD_ALL_COMPLETED"] = "Tous les donjons compl\195\169t\195\169s cette semaine ! R\195\169initialisez pour voir le classement.",
+    ["ROADMAP_FULLY_GEARED"] = "Vous \195\170tes full BIS ! V\195\169rifiez l'onglet M+ pour le classement des donjons.",
+    ["ROADMAP_FULLY_GEARED_GROUP"] = "Vous \195\170tes full BIS ! V\195\169rifiez l'onglet M+ pour aider votre groupe.",
+    ["ROADMAP_NO_DATA"] = "Scannez votre groupe pour g\195\169n\195\169rer des actions d'am\195\169lioration.",
+    ["ROADMAP_NO_DATA_SOLO"] = "Cliquez sur Scanner pour analyser votre \195\169quipement.",
     ["DASHBOARD_RIO_STALE"] = "Formule RIO peut-\195\170tre obsol\195\168te - scoring gear uniquement",
     ["DASHBOARD_VAULT_UNCLAIMED"] = "R\195\169compenses non r\195\169clam\195\169es !",
     ["DASHBOARD_VAULT_NEED_MORE"] = "Besoin de plus de cl\195\169s",
