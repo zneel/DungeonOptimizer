@@ -568,6 +568,15 @@ function DungeonOptimizer:SimulateRIOGain(mapID, targetKeyLevel)
     if not mapID or not targetKeyLevel then return 0, 0, 0 end
 
     local scoreData = self:GetDungeonScoreData(mapID)
+
+    -- If the player has an overall M+ score but no season best data for this dungeon,
+    -- the API data hasn't loaded yet (common in solo). Don't fake a gain from 0.
+    local hasOverallScore = C_ChallengeMode and C_ChallengeMode.GetOverallDungeonScore
+        and (C_ChallengeMode.GetOverallDungeonScore() or 0) > 0
+    if hasOverallScore and (not scoreData or not scoreData.seasonBest) then
+        return 0, 0, 0
+    end
+
     local currentDungeonScore = 0
     if scoreData and scoreData.seasonBest then
         currentDungeonScore = scoreData.seasonBest.score or 0

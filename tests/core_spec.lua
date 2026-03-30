@@ -2105,12 +2105,23 @@ describe("SimulateRIOGain", function()
         assert.are.equal(0, delta)
     end)
 
-    it("handles dungeon with no prior runs", function()
-        -- mapID 9999 has no season best -> currentDungeonScore = 0
+    it("returns 0 when player has overall score but no data for this dungeon (API not loaded)", function()
+        -- mapID 9999 has no season best, but player has overall score 800
+        -- This means M+ data hasn't loaded yet, don't fake a gain from 0
+        local delta, projectedTotal = Core:SimulateRIOGain(9999, 10)
+        assert.are.equal(0, delta)
+        assert.are.equal(0, projectedTotal)
+    end)
+
+    it("allows full score for genuinely new player with no M+ history", function()
+        -- Player has never done M+ (overall score = 0), so missing data = legit new
+        _G.C_ChallengeMode = {
+            GetOverallDungeonScore = function() return 0 end,
+        }
         local delta, projectedTotal = Core:SimulateRIOGain(9999, 10)
         -- +10 timed: 126.5. Delta = 126.5 - 0 = 126.5
         assert.are.near(126.5, delta, 0.01)
-        assert.are.near(926.5, projectedTotal, 0.01) -- 800 + 126.5
+        assert.are.near(126.5, projectedTotal, 0.01) -- 0 + 126.5
     end)
 end)
 
