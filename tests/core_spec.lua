@@ -1947,9 +1947,19 @@ describe("GetTargetKeyLevel", function()
     end)
     after_each(stub.resetStubs)
 
-    it("returns saved setting as fallback", function()
-        Core.db.profile.targetKeyLevel = 12
+    it("returns season best + 1 as fallback when dungeon has been done", function()
+        _G.C_MythicPlus.GetSeasonBestForMap = function(mapID)
+            if mapID == 2773 then
+                return { level = 11, dungeonScore = 135 }, nil
+            end
+            return nil, nil
+        end
         assert.are.equal(12, Core:GetTargetKeyLevel("MAGISTER"))
+    end)
+
+    it("returns 10 as fallback when dungeon has never been done", function()
+        _G.C_MythicPlus.GetSeasonBestForMap = function() return nil, nil end
+        assert.are.equal(10, Core:GetTargetKeyLevel("MAGISTER"))
     end)
 
     it("returns party keystone level when available", function()
@@ -1959,8 +1969,13 @@ describe("GetTargetKeyLevel", function()
         assert.are.equal(15, Core:GetTargetKeyLevel("MAGISTER"))
     end)
 
-    it("returns fallback when party key is for different dungeon", function()
-        Core.db.profile.targetKeyLevel = 8
+    it("returns season best + 1 when party key is for different dungeon", function()
+        _G.C_MythicPlus.GetSeasonBestForMap = function(mapID)
+            if mapID == 2773 then
+                return { level = 7, dungeonScore = 100 }, nil
+            end
+            return nil, nil
+        end
         NS.partyKeystones = {
             ["Friend-Realm"] = { mapID = 2774, level = 15 },
         }
