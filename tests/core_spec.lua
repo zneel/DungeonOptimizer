@@ -1625,21 +1625,18 @@ describe("Challenge mode events", function()
     end)
     after_each(stub.resetStubs)
 
-    -- Regression: CHALLENGE_MODE_COMPLETED called GetActiveChallengeMapID which returns nil after completion
-    it("caches mapID at start and uses it on completion", function()
+    -- Completion no longer auto-excludes dungeons (rankings should always show all dungeons)
+    it("caches mapID at start and clears it on completion without excluding", function()
         _G.C_ChallengeMode = {
             GetActiveChallengeMapID = function() return 2773 end,
         }
         Core:CHALLENGE_MODE_START()
         assert.are.equal(2773, Core._activeChallengeMapID)
 
-        -- On completion, the active challenge is over
-        _G.C_ChallengeMode = {
-            GetActiveChallengeMapID = function() return nil end,
-        }
         Core:CHALLENGE_MODE_COMPLETED()
         assert.is_nil(Core._activeChallengeMapID)
-        assert.is_true(Core.db.profile.excludedDungeons["MAGISTER"] or false)
+        -- Dungeon should NOT be auto-excluded
+        assert.is_falsy(Core.db.profile.excludedDungeons["MAGISTER"])
     end)
 
     it("clears cached mapID after completion", function()

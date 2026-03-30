@@ -1433,7 +1433,7 @@ end
 
 -- Top actions list
 function UI:RenderTopActions(parent, yOffset, width)
-    local roadmap = NS.Core:GetRoadmap()
+    local roadmap, reason = NS.Core:GetRoadmap()
 
     -- Section title
     local titleFrame = CreateFrame("Frame", nil, parent)
@@ -1457,17 +1457,18 @@ function UI:RenderTopActions(parent, yOffset, width)
         local emptyLabel = CreateText(emptyFrame, 11, unpack(C.dim))
         emptyLabel:SetPoint("LEFT", 8, 0)
 
-        -- Check if ilvl data exists to distinguish "fully geared" from "no data"
-        local myName = NS.Inspect and NS.Inspect.GetUnitFullName and NS.Inspect:GetUnitFullName("player")
-        local pd = myName and NS.groupData[myName]
-        local hasIlvls = pd and pd.ilvls and next(pd.ilvls)
-        if hasIlvls then
+        if reason == "no_bis" then
+            emptyLabel:SetText(NS.L["ROADMAP_NO_BIS"])
+        elseif reason == "no_data" or reason == "no_spec" then
+            if IsInGroup() then
+                emptyLabel:SetText(NS.L["ROADMAP_NO_DATA"])
+            else
+                emptyLabel:SetText(NS.L["ROADMAP_NO_DATA_SOLO"])
+            end
+        else
+            -- Roadmap computed but empty: player genuinely has all BIS items
             local gearMsg = IsInGroup() and NS.L["ROADMAP_FULLY_GEARED_GROUP"] or NS.L["ROADMAP_FULLY_GEARED"]
             emptyLabel:SetText(gearMsg)
-        elseif IsInGroup() then
-            emptyLabel:SetText(NS.L["ROADMAP_NO_DATA"])
-        else
-            emptyLabel:SetText(NS.L["ROADMAP_NO_DATA_SOLO"])
         end
         return yOffset - 34
     end
@@ -1630,7 +1631,7 @@ function UI:RenderSlotDetails(parent, yOffset, width)
 
     if not isExpanded then return yOffset end
 
-    local slots = NS.Core:GetSlotDetails()
+    local slots, slotReason = NS.Core:GetSlotDetails()
     if not slots or #slots == 0 then
         local emptyFrame = CreateFrame("Frame", nil, parent)
         emptyFrame:SetSize(width, 20)
@@ -1638,7 +1639,13 @@ function UI:RenderSlotDetails(parent, yOffset, width)
         table.insert(self._dynamicFrames, emptyFrame)
         local emptyLabel = CreateText(emptyFrame, 10, unpack(C.dim))
         emptyLabel:SetPoint("LEFT", 8, 0)
-        emptyLabel:SetText("No slot data available.")
+        if slotReason == "no_bis" then
+            emptyLabel:SetText(NS.L["ROADMAP_NO_BIS"])
+        elseif IsInGroup() then
+            emptyLabel:SetText(NS.L["ROADMAP_NO_DATA"])
+        else
+            emptyLabel:SetText(NS.L["ROADMAP_NO_DATA_SOLO"])
+        end
         return yOffset - 24
     end
 

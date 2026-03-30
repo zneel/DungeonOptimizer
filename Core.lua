@@ -261,8 +261,6 @@ function DungeonOptimizer:OnEnable()
 
     -- #18: Build dynamic dungeon list from C_ChallengeMode API
     self:BuildDynamicDungeonList()
-    -- Auto-detect completed dungeons
-    self:AutoDetectCompletedDungeons()
     -- Seed per-player completion data from saved variables
     self:SeedLocalCompletions()
     -- Broadcast completions and off-spec to group after a short delay
@@ -408,22 +406,7 @@ function DungeonOptimizer:CHALLENGE_MODE_START()
 end
 
 function DungeonOptimizer:CHALLENGE_MODE_COMPLETED()
-    -- Auto-exclude the completed dungeon (use cached mapID since active challenge is over)
-    if C_ChallengeMode then
-        local mapID = self._activeChallengeMapID
-        self._activeChallengeMapID = nil
-        local dungeonKey = mapID and NS.CHALLENGE_MODE_MAP[mapID]
-        if dungeonKey then
-            self.db.profile.excludedDungeons[dungeonKey] = true
-            local myName = NS.Inspect:GetUnitFullName("player")
-            if myName then
-                NS.groupCompletions[myName] = NS.groupCompletions[myName] or {}
-                NS.groupCompletions[myName][dungeonKey] = true
-            end
-            self:BroadcastCompletions()
-            self:Print(string.format("Auto-excluded |cff00ff00%s|r (just completed).", dungeonKey))
-        end
-    end
+    self._activeChallengeMapID = nil
     -- Restore UI if it was hidden
     if NS.UI and NS.UI._wasShownBeforeRun then
         NS.UI._wasShownBeforeRun = nil
@@ -1905,14 +1888,14 @@ end
 -- Returns a sorted list of actions: { actionType, slot, ilvlGain, score, ... }
 function DungeonOptimizer:ComputeUpgradeRoadmap()
     local myName = NS.Inspect:GetUnitFullName("player")
-    if not myName or not NS.groupData[myName] then return {} end
+    if not myName or not NS.groupData[myName] then return {}, "no_data" end
 
     local playerData = NS.groupData[myName]
-    if not playerData.spec then return {} end
+    if not playerData.spec then return {}, "no_spec" end
 
     local bisTable = NS.GetActiveBISTable()
     local bisList = bisTable[playerData.spec]
-    if not bisList then return {} end
+    if not bisList then return {}, "no_bis" end
 
     local budget = self:GetCrestBudget()
     local sparks = self:GetSparkCount()
@@ -2099,14 +2082,14 @@ end
 -- Returns: { { slotId, slotName, currentIlvl, bisIlvl, trackName, level, maxLevel, source } }
 function DungeonOptimizer:GetSlotDetails()
     local myName = NS.Inspect:GetUnitFullName("player")
-    if not myName or not NS.groupData[myName] then return {} end
+    if not myName or not NS.groupData[myName] then return {}, "no_data" end
 
     local playerData = NS.groupData[myName]
-    if not playerData.spec then return {} end
+    if not playerData.spec then return {}, "no_spec" end
 
     local bisTable = NS.GetActiveBISTable()
     local bisList = bisTable[playerData.spec]
-    if not bisList then return {} end
+    if not bisList then return {}, "no_bis" end
 
     local slots = {}
     for _, slotId in ipairs(NS.SLOT_DISPLAY_ORDER) do
@@ -2170,7 +2153,7 @@ function DungeonOptimizer:InvalidateRoadmap()
     end
     self._roadmapTimer = self:ScheduleTimer(function()
         self._roadmapTimer = nil
-        NS.lastRoadmap = self:ComputeUpgradeRoadmap()
+        NS.lastRoadmap, NS.lastRoadmapReason = self:ComputeUpgradeRoadmap()
         roadmapDirty = false
         if NS.UI then NS.UI:RefreshIfVisible() end
     end, 0.5)
@@ -2179,10 +2162,10 @@ end
 -- Get the cached roadmap (recompute if dirty)
 function DungeonOptimizer:GetRoadmap()
     if roadmapDirty or not NS.lastRoadmap then
-        NS.lastRoadmap = self:ComputeUpgradeRoadmap()
+        NS.lastRoadmap, NS.lastRoadmapReason = self:ComputeUpgradeRoadmap()
         roadmapDirty = false
     end
-    return NS.lastRoadmap
+    return NS.lastRoadmap, NS.lastRoadmapReason
 end
 
 -- Returns true if sender is the local player (used to skip own messages)
