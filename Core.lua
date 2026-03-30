@@ -26,7 +26,6 @@ local defaults = {
         showTooltips = true,
         weightByScore = true, -- #20: factor M+ score into recommendations (legacy, kept for compat)
         upgradeScoring = true, -- #43: factor ilvl upgrades into scoring
-        targetKeyLevel = 10, -- #43: fallback target M+ key level
         offSpec = nil, -- off-spec key (e.g. "WARRIOR_FURY"), nil if disabled
         activeTab = "mplus", -- "mplus" or "raid" (legacy alias for activeMode)
         -- V4: new scoring weights
@@ -242,6 +241,8 @@ function DungeonOptimizer:OnEnable()
     self:RegisterEvent("CHALLENGE_MODE_COMPLETED")
     -- #27: affix updates
     self:RegisterEvent("MYTHIC_PLUS_CURRENT_AFFIX_UPDATE")
+    -- M+ data refresh (fires when season best / map info becomes available)
+    self:RegisterEvent("CHALLENGE_MODE_MAPS_UPDATE")
 
 
     -- Roadmap: recompute when gear or currency changes
@@ -282,6 +283,14 @@ function DungeonOptimizer:OnEnable()
     -- #27: Request current affixes
     if C_MythicPlus and C_MythicPlus.RequestCurrentAffixes then
         C_MythicPlus.RequestCurrentAffixes()
+    end
+    -- Request M+ map info so GetSeasonBestForMap() returns data in solo
+    if C_MythicPlus and C_MythicPlus.RequestMapInfo then
+        C_MythicPlus.RequestMapInfo()
+    end
+    -- Clean up orphaned targetKeyLevel saved variable (UI removed in v4)
+    if self.db.profile.targetKeyLevel ~= nil then
+        self.db.profile.targetKeyLevel = nil
     end
 end
 
@@ -413,6 +422,13 @@ function DungeonOptimizer:CHALLENGE_MODE_COMPLETED()
         self:RecalculateAllRankings()
         NS.UI:Show()
     end
+end
+
+-- M+ data available (fires after RequestMapInfo or when dungeon list changes)
+function DungeonOptimizer:CHALLENGE_MODE_MAPS_UPDATE()
+    self:BuildDynamicDungeonList()
+    self:RecalculateAllRankings()
+    if NS.UI then NS.UI:RefreshIfVisible() end
 end
 
 -- #27: Affix update
@@ -722,7 +738,7 @@ function DungeonOptimizer:GetRewardIlvlForKey(keyLevel)
 end
 
 -- ============================================================================
--- #43: TARGET KEY LEVEL (auto from party keys, fallback to saved setting)
+-- #43: TARGET KEY LEVEL (auto from party keys, fallback to season best + 1)
 -- ============================================================================
 function DungeonOptimizer:GetTargetKeyLevel(dungeonKey)
     -- Check party keystones for this dungeon
@@ -744,7 +760,19 @@ function DungeonOptimizer:GetTargetKeyLevel(dungeonKey)
             end
         end
     end
-    return self.db.profile.targetKeyLevel or 10
+    -- Fallback: season best + 1 for this dungeon, or 10 if never done
+    if dungeonKey and NS.CHALLENGE_MODE_MAP then
+        for mapID, dk in pairs(NS.CHALLENGE_MODE_MAP) do
+            if dk == dungeonKey then
+                local scoreData = self:GetDungeonScoreData(mapID)
+                if scoreData and scoreData.seasonBest and scoreData.seasonBest.level then
+                    return scoreData.seasonBest.level + 1
+                end
+                break
+            end
+        end
+    end
+    return 10
 end
 
 -- ============================================================================
