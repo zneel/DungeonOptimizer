@@ -595,12 +595,12 @@ function UI:RenderBestPickCallout(parent, yOffset, width)
 
     local arrow = CreateText(callout, 20, unpack(C.orange))
     arrow:SetPoint("LEFT", callout, "LEFT", 12, 0)
-    arrow:SetText("\226\150\178") -- ▲
+    arrow:SetText(">>") -- best pick indicator
 
     local mainText = ""
     if best.rioSimulation and best.rioSimulation.delta > 0 then
         mainText = string.format(
-            "Time |cffff8c00%s|r \226\134\146 Score |cffff8c00%d \226\134\146 %d (+%d)|r",
+            "Time |cffff8c00%s|r > Score |cffff8c00%d > %d (+%d)|r",
             best.dungeon.name,
             best.rioSimulation.currentTotal,
             best.rioSimulation.projectedTotal,
@@ -931,7 +931,7 @@ function UI:RenderExpandedDetail(parent, yOffset, width, details)
                 if item.isUpgrade then
                     local ilvlStr = ""
                     if item.currentIlvl and item.targetIlvl then
-                        ilvlStr = string.format(" (%d\226\134\146%d)", item.currentIlvl, item.targetIlvl)
+                        ilvlStr = string.format(" (%d>%d)", item.currentIlvl, item.targetIlvl)
                     end
                     itemLabel:SetText(string.format("|cff00cc00[UPG] [%s]|r |cff88cc88%s|r%s", item.slotName, displayName, ilvlStr))
                 elseif item.isOffSpec then
@@ -1003,7 +1003,7 @@ function UI:RenderVaultProgress(parent, yOffset, width)
         -- Threshold label
         local threshLabel = CreateText(card, 9, unpack(C.dim))
         threshLabel:SetPoint("TOP", card, "TOP", 0, -6)
-        threshLabel:SetText("Slot " .. i .. " \226\128\148 " .. (slotNames[i] or "?"))
+        threshLabel:SetText("Slot " .. i .. " - " .. (slotNames[i] or "?"))
 
         -- Progress bar
         local barBg = CreateBar(card, 0.1, 0.1, 0.24)
@@ -1615,7 +1615,7 @@ function UI:RenderSlotDetails(parent, yOffset, width)
     toggleFrame:SetBackdropBorderColor(unpack(C.cardBord))
     table.insert(self._dynamicFrames, toggleFrame)
 
-    local arrow = isExpanded and "\226\150\188" or "\226\150\182"  -- ▼ or ▶
+    local arrow = isExpanded and "v" or ">"
     local toggleLabel = CreateText(toggleFrame, 10, unpack(C.gold))
     toggleLabel:SetPoint("LEFT", 8, 0)
     toggleLabel:SetText(arrow .. " SLOT-BY-SLOT DETAILS")
